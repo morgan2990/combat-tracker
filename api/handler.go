@@ -56,6 +56,7 @@ func UpsertMonster(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		name := r.FormValue("name")
+		edition := r.FormValue("edition")
 		maxHP := 0
 		if v := r.FormValue("max_hp"); v != "" {
 			maxHP, _ = strconv.Atoi(v)
@@ -64,9 +65,15 @@ func UpsertMonster(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "name and max_hp required", http.StatusBadRequest)
 			return
 		}
+		if edition != "5e" && edition != "5.5e" {
+			http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+			return
+		}
 		m := store.Monster{
 			Name:       name,
+			Edition:    edition,
 			MaxHP:      maxHP,
+			IsCustom:   true,
 			SourceType: "pdf",
 		}
 		file, _, err := r.FormFile("pdf")
@@ -98,6 +105,11 @@ func UpsertMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
+	if m.Edition != "5e" && m.Edition != "5.5e" {
+		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+		return
+	}
+	m.IsCustom = true
 	if err := store.GlobalMonsters.UpsertMonster(m); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

@@ -11,13 +11,16 @@ import (
 )
 
 type Monster struct {
-	Name         string `bson:"name"                     json:"name"`
-	MaxHP        int    `bson:"max_hp"                   json:"max_hp"`
-	SourceType   string `bson:"source_type,omitempty"    json:"source_type,omitempty"`
-	ReferenceURL string `bson:"reference_url,omitempty"  json:"reference_url,omitempty"`
-	PDFObjectKey string `bson:"pdf_object_key,omitempty" json:"pdf_object_key,omitempty"`
-	FivEToolsID  string `bson:"five_etools_id,omitempty" json:"five_etools_id,omitempty"`
-	SourceBook   string `bson:"source_book,omitempty"    json:"source_book,omitempty"`
+	Name                string `bson:"name"                     json:"name"`
+	Edition             string `bson:"edition"                  json:"edition"`
+	MaxHP               int    `bson:"max_hp"                   json:"max_hp"`
+	InitiativeModifier  int    `bson:"initiative_modifier"      json:"initiative_modifier"`
+	IsCustom            bool   `bson:"is_custom"                json:"is_custom"`
+	SourceType          string `bson:"source_type,omitempty"    json:"source_type,omitempty"`
+	ReferenceURL        string `bson:"reference_url,omitempty"  json:"reference_url,omitempty"`
+	PDFObjectKey        string `bson:"pdf_object_key,omitempty" json:"pdf_object_key,omitempty"`
+	FiveEToolsID        string `bson:"five_etools_id,omitempty" json:"five_etools_id,omitempty"`
+	SourceBook          string `bson:"source_book,omitempty"    json:"source_book,omitempty"`
 }
 
 type MonsterStore struct {
@@ -29,7 +32,7 @@ var GlobalMonsters MonsterStore
 func (s *MonsterStore) UpsertMonster(m Monster) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	filter := bson.M{"name": m.Name}
+	filter := bson.M{"name": m.Name, "edition": m.Edition}
 	opts := options.Replace().SetUpsert(true)
 	_, err := s.col.ReplaceOne(ctx, filter, m, opts)
 	return err
