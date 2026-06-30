@@ -30,6 +30,26 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func GetRoom(w http.ResponseWriter, r *http.Request) {
+	roomID := r.PathValue("room_id")
+	if roomID == "" {
+		http.Error(w, "room_id required", http.StatusBadRequest)
+		return
+	}
+	rm, found := room.Global.GetOrRestoreRoom(roomID, &store.GlobalRooms)
+	if !found {
+		http.NotFound(w, r)
+		return
+	}
+	id, edition, isCombatActive := rm.Summary()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"room_id":          id,
+		"edition":          edition,
+		"is_combat_active": isCombatActive,
+	})
+}
+
 func UpsertEntity(w http.ResponseWriter, r *http.Request) {
 	var p store.Profile
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {

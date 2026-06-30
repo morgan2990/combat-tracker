@@ -70,3 +70,82 @@ func TestRollD20Bounds(t *testing.T) {
 		}
 	}
 }
+
+func TestActiveEntityID(t *testing.T) {
+	r := &Room{State: RoomState{
+		IsStarted:   true,
+		ActiveIndex: 1,
+		Entities: []Entity{
+			{ID: "e1"},
+			{ID: "e2"},
+		},
+	}}
+	id := r.activeEntityID()
+	if id == nil || *id != "e2" {
+		t.Fatalf("activeEntityID() = %v, want pointer to \"e2\"", id)
+	}
+
+	r.State.IsStarted = false
+	if id := r.activeEntityID(); id != nil {
+		t.Errorf("activeEntityID() with IsStarted=false = %v, want nil", *id)
+	}
+}
+
+func TestResolveActiveIndex(t *testing.T) {
+	r := &Room{State: RoomState{
+		Entities: []Entity{
+			{ID: "e1"},
+			{ID: "e2"},
+			{ID: "e3"},
+		},
+	}}
+
+	if idx := r.resolveActiveIndex(nil); idx != 0 {
+		t.Errorf("resolveActiveIndex(nil) = %d, want 0", idx)
+	}
+
+	target := "e3"
+	if idx := r.resolveActiveIndex(&target); idx != 2 {
+		t.Errorf("resolveActiveIndex(%q) = %d, want 2", target, idx)
+	}
+
+	missing := "does-not-exist"
+	if idx := r.resolveActiveIndex(&missing); idx != 0 {
+		t.Errorf("resolveActiveIndex(%q) = %d, want fallback 0", missing, idx)
+	}
+}
+
+func TestSnapshotConnectedStatus(t *testing.T) {
+	r := &Room{
+		State: RoomState{
+			Entities: []Entity{
+				{ID: "p1", Type: "player", SessionID: "sess-online"},
+				{ID: "p2", Type: "player", SessionID: "sess-offline"},
+				{ID: "c1", Type: "companion", OwnerID: "p1"},
+				{ID: "k1", Type: "creature"},
+			},
+		},
+		Clients: map[string]*Client{
+			"sess-online": {Role: "player", Name: "Aragorn"},
+		},
+	}
+
+	snap := r.snapshot()
+	connected := make(map[string]bool, len(snap.Entities))
+	for _, e := range snap.Entities {
+		connected[e.ID] = e.Connected
+	}
+
+	if !connected["p1"] {
+		t.Error("p1 (live session) should be connected")
+	}
+	if connected["p2"] {
+		t.Error("p2 (no live session) should not be connected")
+	}
+	if connected["c1"] {
+		t.Error("companion with no session_id should not be connected")
+	}
+	if connected["k1"] {
+		t.Error("creature with no session_id should not be connected")
+	}
+}

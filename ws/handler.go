@@ -84,7 +84,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rm, found := room.Global.GetRoom(roomID)
+	rm, found := room.Global.GetOrRestoreRoom(roomID, &store.GlobalRooms)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -112,6 +112,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rm.BroadcastState()
+	go rm.PersistNow(&store.GlobalRooms)
 	serve(rm, client)
 }
 
@@ -120,6 +121,7 @@ func serve(rm *room.Room, c *room.Client) {
 		c.Conn.Close()
 		rm.RemoveClient(c.SessionID)
 		rm.BroadcastState()
+		go rm.PersistNow(&store.GlobalRooms)
 	}()
 
 	c.Conn.SetReadDeadline(time.Now().Add(readDeadline))
@@ -155,6 +157,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.SetupCharacter(c.SessionID); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "set_initiative":
@@ -164,6 +167,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.SetInitiative(c.SessionID, msg.Initiative); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "update_entity":
@@ -173,6 +177,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.UpdateEntity(c.SessionID, msg.EntityID, msg.CurrentHP, msg.TempHP, msg.Conditions); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "add_companion":
@@ -182,22 +187,26 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.AddCompanion(c.SessionID, msg.Name, msg.MaxHP, msg.SharesInitiative, msg.Initiative); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "refresh_from_profile":
 		if err := rm.RefreshFromProfile(c.SessionID, &store.Global); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	// --- DM actions ---
 	case "start_combat":
 		if err := rm.StartCombat(c.SessionID); err == nil {
 			rm.BroadcastState()
+			go rm.PersistNow(&store.GlobalRooms)
 		}
 
 	case "next_turn":
 		if err := rm.NextTurn(c.SessionID); err == nil {
 			rm.BroadcastState()
+			go rm.PersistNow(&store.GlobalRooms)
 		}
 
 	case "add_creature":
@@ -207,6 +216,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.AddCreature(c.SessionID, msg.Name, msg.MaxHP, msg.InitiativeModifier, msg.Quantity, msg.SourceType, msg.ReferenceURL, msg.PDFObjectKey); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "remove_entity":
@@ -216,11 +226,13 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.RemoveEntity(c.SessionID, msg.EntityID); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "remove_dead_creatures":
 		if err := rm.RemoveDeadCreatures(c.SessionID); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "dm_update_entity":
@@ -230,11 +242,13 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		}
 		if err := rm.DMUpdateEntity(c.SessionID, msg.EntityID, msg.Name, msg.CurrentHP, msg.TempHP, msg.Initiative, msg.Conditions, msg.Dead); err == nil {
 			rm.BroadcastState()
+			rm.MarkDirty()
 		}
 
 	case "end_combat":
 		if err := rm.EndCombat(c.SessionID); err == nil {
 			rm.BroadcastState()
+			go rm.PersistNow(&store.GlobalRooms)
 		}
 	}
 }

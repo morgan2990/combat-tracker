@@ -7,11 +7,15 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"combatapp/api"
+	"combatapp/room"
 	"combatapp/store"
 	"combatapp/ws"
 )
+
+const roomSweepInterval = 30 * time.Second
 
 //go:embed all:frontend/dist
 var frontendDist embed.FS
@@ -22,6 +26,14 @@ func main() {
 	}
 	store.InitMinio()
 
+	go func() {
+		ticker := time.NewTicker(roomSweepInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			room.Global.SweepDirty(&store.GlobalRooms)
+		}
+	}()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -29,6 +41,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/rooms", api.CreateRoom)
+	mux.HandleFunc("GET /api/rooms/{room_id}", api.GetRoom)
 	mux.HandleFunc("POST /api/entities", api.UpsertEntity)
 	mux.HandleFunc("GET /api/entities/{name}", api.GetEntity)
 	mux.HandleFunc("POST /api/monsters", api.UpsertMonster)

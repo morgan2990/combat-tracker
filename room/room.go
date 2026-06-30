@@ -72,6 +72,7 @@ type Room struct {
 	State   RoomState
 	DMToken string
 	Clients map[string]*Client // session_id → *Client
+	dirty   bool               // true if state has changed since the last persisted snapshot
 }
 
 // sortEntities always re-sorts State.Entities descending by initiative.
@@ -622,6 +623,14 @@ func (r *Room) BroadcastState() {
 	}
 }
 
+// Summary returns the room's identifying metadata under a read lock, safe for
+// callers outside the room package (e.g. REST handlers).
+func (r *Room) Summary() (roomID, edition string, isCombatActive bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.State.RoomID, r.State.Edition, r.State.IsStarted
+}
+
 func (r *Room) isNameTaken(name string) bool {
 	for _, c := range r.Clients {
 		if c.Role == "player" && c.Name == name {
@@ -629,6 +638,96 @@ func (r *Room) isNameTaken(name string) bool {
 		}
 	}
 	return false
+}
+
+// --- Persistence ---
+
+// MarkDirty flags the room as having unsaved changes, to be picked up by the
+// next periodic sweep.
+func (r *Room) MarkDirty() {
+	r.mu.Lock()
+	r.dirty = true
+	r.mu.Unlock()
+}
+
+// activeEntityID returns the ID of the currently active entity, or nil if
+// combat has not started. Callers must hold at least r.mu.RLock().
+func (r *Room) activeEntityID() *string {
+	if !r.State.IsStarted || r.State.ActiveIndex < 0 || r.State.ActiveIndex >= len(r.State.Entities) {
+		return nil
+	}
+	id := r.State.Entities[r.State.ActiveIndex].ID
+	return &id
+}
+
+// resolveActiveIndex finds the index of the entity matching id, falling back
+// to 0 if id is nil or no entity matches.
+func (r *Room) resolveActiveIndex(id *string) int {
+	if id == nil {
+		return 0
+	}
+	for i, e := range r.State.Entities {
+		if e.ID == *id {
+			return i
+		}
+	}
+	return 0
+}
+
+// snapshot builds a persistable RoomSnapshot from the room's current state.
+// Callers must hold at least r.mu.RLock().
+func (r *Room) snapshot() store.RoomSnapshot {
+	entities := make([]store.RoomEntitySnapshot, len(r.State.Entities))
+	for i, e := range r.State.Entities {
+		connected := false
+		if e.Type == "player" && e.SessionID != "" {
+			_, connected = r.Clients[e.SessionID]
+		}
+		entities[i] = store.RoomEntitySnapshot{
+			ID:                 e.ID,
+			Name:               e.Name,
+			Type:               e.Type,
+			OwnerID:            e.OwnerID,
+			MaxHP:              e.MaxHP,
+			CurrentHP:          e.CurrentHP,
+			TempHP:             e.TempHP,
+			Initiative:         e.Initiative,
+			SharesInitiative:   e.SharesInitiative,
+			Conditions:         e.Conditions,
+			Dead:               e.Dead,
+			SourceType:         e.SourceType,
+			ReferenceURL:       e.ReferenceURL,
+			PDFObjectKey:       e.PDFObjectKey,
+			InitiativeModifier: e.InitiativeModifier,
+			InitiativeRoll:     e.InitiativeRoll,
+			Connected:          connected,
+		}
+	}
+	return store.RoomSnapshot{
+		RoomID:             r.State.RoomID,
+		DMToken:            r.DMToken,
+		IsCombatActive:     r.State.IsStarted,
+		CurrentRound:       r.State.Round,
+		ActiveTurnEntityID: r.activeEntityID(),
+		Edition:            r.State.Edition,
+		Entities:           entities,
+	}
+}
+
+// PersistNow snapshots the room's current state, clears the dirty flag, and
+// writes the snapshot to MongoDB. The MongoDB write happens outside the room
+// lock, so this is safe to call from its own goroutine without blocking other
+// room operations. If the write fails, the room is re-marked dirty so the
+// next periodic sweep retries it.
+func (r *Room) PersistNow(st *store.RoomStore) {
+	r.mu.Lock()
+	snap := r.snapshot()
+	r.dirty = false
+	r.mu.Unlock()
+
+	if err := st.SaveRoomSnapshot(snap); err != nil {
+		r.MarkDirty()
+	}
 }
 
 // Registry is the global in-memory store of all active rooms.
@@ -658,12 +757,93 @@ func (reg *Registry) CreateRoom(edition string) (roomID, dmToken string) {
 	return
 }
 
-// GetRoom retrieves a room by ID.
+// GetRoom retrieves a room by ID, checking only the in-memory registry.
 func (reg *Registry) GetRoom(roomID string) (*Room, bool) {
 	reg.mu.RLock()
 	defer reg.mu.RUnlock()
 	rm, ok := reg.rooms[roomID]
 	return rm, ok
+}
+
+// GetOrRestoreRoom retrieves a room by ID, checking the in-memory registry
+// first and falling back to MongoDB if not found in memory. A room restored
+// from MongoDB is registered into the registry before being returned.
+func (reg *Registry) GetOrRestoreRoom(roomID string, st *store.RoomStore) (*Room, bool) {
+	if rm, ok := reg.GetRoom(roomID); ok {
+		return rm, true
+	}
+
+	snap, err := st.GetRoomSnapshot(roomID)
+	if err != nil || snap == nil {
+		return nil, false
+	}
+	rm := inflateRoom(*snap)
+
+	reg.mu.Lock()
+	defer reg.mu.Unlock()
+	if existing, ok := reg.rooms[roomID]; ok {
+		return existing, true
+	}
+	reg.rooms[roomID] = rm
+	return rm, true
+}
+
+// SweepDirty persists every room that has been marked dirty since its last save.
+func (reg *Registry) SweepDirty(st *store.RoomStore) {
+	reg.mu.RLock()
+	rooms := make([]*Room, 0, len(reg.rooms))
+	for _, rm := range reg.rooms {
+		rooms = append(rooms, rm)
+	}
+	reg.mu.RUnlock()
+
+	for _, rm := range rooms {
+		rm.mu.RLock()
+		dirty := rm.dirty
+		rm.mu.RUnlock()
+		if dirty {
+			rm.PersistNow(st)
+		}
+	}
+}
+
+// inflateRoom converts a persisted RoomSnapshot back into a live Room, with an
+// empty Clients map since no WebSocket connection survives a process restart.
+func inflateRoom(snap store.RoomSnapshot) *Room {
+	entities := make([]Entity, len(snap.Entities))
+	for i, e := range snap.Entities {
+		entities[i] = Entity{
+			ID:                 e.ID,
+			Name:               e.Name,
+			Type:               e.Type,
+			OwnerID:            e.OwnerID,
+			MaxHP:              e.MaxHP,
+			CurrentHP:          e.CurrentHP,
+			TempHP:             e.TempHP,
+			Initiative:         e.Initiative,
+			SharesInitiative:   e.SharesInitiative,
+			Conditions:         e.Conditions,
+			Dead:               e.Dead,
+			SourceType:         e.SourceType,
+			ReferenceURL:       e.ReferenceURL,
+			PDFObjectKey:       e.PDFObjectKey,
+			InitiativeModifier: e.InitiativeModifier,
+			InitiativeRoll:     e.InitiativeRoll,
+		}
+	}
+	rm := &Room{
+		State: RoomState{
+			RoomID:    snap.RoomID,
+			Edition:   snap.Edition,
+			IsStarted: snap.IsCombatActive,
+			Round:     snap.CurrentRound,
+			Entities:  entities,
+		},
+		DMToken: snap.DMToken,
+		Clients: make(map[string]*Client),
+	}
+	rm.State.ActiveIndex = rm.resolveActiveIndex(snap.ActiveTurnEntityID)
+	return rm
 }
 
 func newRoomID() string {

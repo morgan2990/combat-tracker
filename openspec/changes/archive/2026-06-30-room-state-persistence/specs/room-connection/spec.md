@@ -1,10 +1,4 @@
-# Spec: Room Connection
-
-## Purpose
-
-Defines how clients connect to and disconnect from a combat room via WebSocket, including authentication, validation, session cleanup, and keepalive behaviour to prevent idle timeouts.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Users connect to a room via WebSocket
 The system SHALL provide a WebSocket endpoint at `GET /ws` that accepts connection parameters as query strings: `room_id`, `name`, `role` (`dm` or `player`), and optionally `dm_token`. Room lookup SHALL check the in-memory registry first and, on a miss, attempt to restore the room from MongoDB before deciding the room does not exist.
@@ -36,25 +30,3 @@ The system SHALL provide a WebSocket endpoint at `GET /ws` that accepts connecti
 #### Scenario: Player reconnects with name matching existing entity
 - **WHEN** a client connects with `role=player` and a `name` that matches an entity in `State.Entities` but has **no active connection** holding that name
 - **THEN** the server SHALL accept the connection, update the matching entity's `session_id` to the new session, and broadcast the full room state
-
-### Requirement: Connections are cleaned up on disconnect
-The system SHALL remove a client's session and entity registration when their WebSocket connection closes.
-
-#### Scenario: Player disconnects
-- **WHEN** a player's WebSocket connection closes (normally or abnormally)
-- **THEN** the server SHALL free the player's name so it can be claimed again by a new connection
-
-#### Scenario: State broadcast after disconnect
-- **WHEN** a client disconnects
-- **THEN** the server SHALL broadcast the updated room state to all remaining connected clients
-
-### Requirement: Server sends WebSocket keepalive pings
-The system SHALL send a WebSocket ping frame to each connected client every 30 seconds to prevent Cloudflare's idle timeout from dropping connections.
-
-#### Scenario: Ping sent to idle client
-- **WHEN** 30 seconds elapse without any message on a connection
-- **THEN** the server SHALL send a ping frame to that client
-
-#### Scenario: Client fails to respond to ping
-- **WHEN** a client does not respond to a ping within a reasonable deadline
-- **THEN** the server SHALL close that connection and clean up the session

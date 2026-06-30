@@ -49,6 +49,11 @@ func Init() error {
 	if err := ensureMonsterIndex(ctx, monstersCol); err != nil {
 		return err
 	}
+	roomsCol := db.Collection("rooms")
+	GlobalRooms = RoomStore{col: roomsCol}
+	if err := ensureRoomIndex(ctx, roomsCol); err != nil {
+		return err
+	}
 	return nil
 }
 
