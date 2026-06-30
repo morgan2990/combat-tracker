@@ -5,6 +5,7 @@ import { JoinScreen } from './components/JoinScreen'
 import { PlayerView } from './components/PlayerView'
 import { DMView } from './components/DMView'
 import { CharacterForm } from './components/CharacterForm'
+import { MonsterForm } from './components/MonsterForm'
 
 type AppStatus = 'joining' | 'connecting' | 'connected' | 'disconnected'
 
@@ -160,6 +161,7 @@ export default function App() {
         }
       />
       <Route path="/characters/new" element={<CharacterForm />} />
+      <Route path="/monsters/new" element={<MonsterForm />} />
       <Route
         path="/room"
         element={status === 'joining' ? <Navigate to="/" replace /> : <GameView />}

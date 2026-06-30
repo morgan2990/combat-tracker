@@ -11,6 +11,9 @@ export interface Entity {
   shares_initiative: boolean
   conditions: string[]
   dead: boolean
+  source_type?: string
+  reference_url?: string
+  pdf_object_key?: string
 }
 
 export interface RoomState {
