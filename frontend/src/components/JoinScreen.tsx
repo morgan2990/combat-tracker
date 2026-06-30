@@ -21,6 +21,7 @@ export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
 
   // DM shared name + rejoin fields
   const [dmName, setDmName] = useState('')
+  const [dmEdition, setDmEdition] = useState<'5e' | '5.5e'>('5e')
   const [rejoinRoomId, setRejoinRoomId] = useState('')
   const [dmToken, setDmToken] = useState('')
 
@@ -80,7 +81,11 @@ export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
     setCreating(true)
     setCreateError(null)
     try {
-      const res = await fetch('/api/rooms', { method: 'POST' })
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ edition: dmEdition }),
+      })
       if (!res.ok) throw new Error(`Server error ${res.status}`)
       const data = await res.json()
       onJoin(data.room_id, dmName.trim(), 'dm', data.dm_token)
@@ -208,6 +213,30 @@ export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
               style={inputStyle}
             />
           </label>
+
+          {/* Edition selector */}
+          <div style={{ marginTop: 12 }}>
+            <div style={labelText}>Edition</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              {(['5e', '5.5e'] as const).map(ed => (
+                <button
+                  key={ed}
+                  type="button"
+                  onClick={() => setDmEdition(ed)}
+                  style={{
+                    flex: 1, padding: '8px 0', fontSize: 14, cursor: 'pointer',
+                    fontWeight: dmEdition === ed ? 700 : 400,
+                    background: dmEdition === ed ? '#1a1a38' : '#2e2e48',
+                    color: dmEdition === ed ? '#3498db' : '#7878a0',
+                    border: dmEdition === ed ? '1px solid #3498db' : '1px solid transparent',
+                    borderRadius: 4,
+                  }}
+                >
+                  {ed}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Create New Room */}
           <div style={{ marginTop: 16 }}>

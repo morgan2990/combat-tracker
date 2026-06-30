@@ -12,12 +12,21 @@ import (
 )
 
 func CreateRoom(w http.ResponseWriter, r *http.Request) {
-	roomID, dmToken := room.Global.CreateRoom()
+	var body struct {
+		Edition string `json:"edition"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint — empty body is fine
+	edition := body.Edition
+	if edition != "5e" && edition != "5.5e" {
+		edition = "5e"
+	}
+	roomID, dmToken := room.Global.CreateRoom(edition)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
 		"room_id":  roomID,
 		"dm_token": dmToken,
+		"edition":  edition,
 	})
 }
 
@@ -135,6 +144,30 @@ func GetMonster(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(m)
+}
+
+func SearchMonsters(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	edition := r.URL.Query().Get("edition")
+	if q == "" || edition == "" {
+		http.Error(w, "q and edition are required", http.StatusBadRequest)
+		return
+	}
+	if edition != "5e" && edition != "5.5e" {
+		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+		return
+	}
+	m, err := store.GlobalMonsters.SearchMonsters(q, edition)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if m == nil {
+		w.Write([]byte("[]"))
+		return
+	}
+	json.NewEncoder(w).Encode([]store.Monster{*m})
 }
 
 func StreamMonsterPDF(w http.ResponseWriter, r *http.Request) {

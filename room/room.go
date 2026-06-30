@@ -35,6 +35,7 @@ type Entity struct {
 
 type RoomState struct {
 	RoomID      string   `json:"room_id"`
+	Edition     string   `json:"edition"`
 	IsStarted   bool     `json:"is_started"`
 	Round       int      `json:"round"`
 	ActiveIndex int      `json:"active_index"`
@@ -617,7 +618,7 @@ type Registry struct {
 var Global = &Registry{rooms: make(map[string]*Room)}
 
 // CreateRoom generates a unique room ID and DM token, registers the room, and returns both.
-func (reg *Registry) CreateRoom() (roomID, dmToken string) {
+func (reg *Registry) CreateRoom(edition string) (roomID, dmToken string) {
 	dmToken = newToken(4)
 	reg.mu.Lock()
 	defer reg.mu.Unlock()
@@ -628,7 +629,7 @@ func (reg *Registry) CreateRoom() (roomID, dmToken string) {
 		}
 	}
 	reg.rooms[roomID] = &Room{
-		State:   RoomState{RoomID: roomID, Entities: []Entity{}},
+		State:   RoomState{RoomID: roomID, Edition: edition, Entities: []Entity{}},
 		DMToken: dmToken,
 		Clients: make(map[string]*Client),
 	}

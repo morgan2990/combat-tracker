@@ -51,3 +51,17 @@ func (s *MonsterStore) GetMonsterByName(name string) (*Monster, error) {
 	}
 	return &m, nil
 }
+
+func (s *MonsterStore) SearchMonsters(name, edition string) (*Monster, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var m Monster
+	err := s.col.FindOne(ctx, bson.M{"name": name, "edition": edition}).Decode(&m)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}

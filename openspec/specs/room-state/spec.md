@@ -10,6 +10,7 @@ Defines the data model for a combat room's state, the broadcast contract for sta
 The system SHALL represent each room's combat state using the following structure:
 
 - `room_id` (string): the room's unique identifier
+- `edition` (string): the ruleset for this room — `"5e"` or `"5.5e"`; set at creation, immutable thereafter
 - `is_started` (bool): whether combat has been started by the DM
 - `round` (int): the current round number; 0 before combat starts, 1 when combat begins, incremented each time the turn order wraps
 - `active_index` (int): index into the entities slice for the currently active turn; always refers to the current sorted order and is preserved by ID across re-sorts
@@ -27,6 +28,14 @@ Each Entity SHALL have:
 - `initiative` (int)
 - `conditions` (array of strings): e.g., `["Prone", "Stunned"]`
 - `dead` (bool): true when the DM has marked the entity as dead; dead entities remain in the list and are rendered greyed-out on all clients
+
+#### Scenario: Room state includes edition after creation
+- **WHEN** a room is created with `edition: "5.5e"`
+- **THEN** the `RoomState` broadcast to all clients SHALL include `"edition": "5.5e"`
+
+#### Scenario: Edition is present in every broadcast
+- **WHEN** any mutation triggers a state broadcast (entity added, turn advanced, etc.)
+- **THEN** the broadcast SHALL include the `edition` field with the value set at room creation
 
 #### Scenario: Entity created with required fields
 - **WHEN** any entity is added to a room

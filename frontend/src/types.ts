@@ -18,6 +18,7 @@ export interface Entity {
 
 export interface RoomState {
   room_id: string
+  edition: string
   is_started: boolean
   round: number
   active_index: number

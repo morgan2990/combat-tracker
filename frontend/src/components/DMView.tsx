@@ -241,11 +241,12 @@ const actionBtn: React.CSSProperties = {
 
 interface AddCreatureFormProps {
   sendMessage: (msg: object) => void
+  edition: string
 }
 
 interface MonsterRef { source_type: string; reference_url: string; pdf_object_key: string }
 
-function AddCreatureForm({ sendMessage }: AddCreatureFormProps) {
+function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
   const [initiative, setInitiative] = useState('')
@@ -256,9 +257,12 @@ function AddCreatureForm({ sendMessage }: AddCreatureFormProps) {
     const trimmed = name.trim()
     if (!trimmed) { setMonsterRef(null); return }
     try {
-      const res = await fetch(`/api/monsters/${encodeURIComponent(trimmed)}`)
+      const ed = edition || '5e'
+      const res = await fetch(`/api/search/monsters?q=${encodeURIComponent(trimmed)}&edition=${encodeURIComponent(ed)}`)
       if (!res.ok) { setMonsterRef(null); return }
-      const m = await res.json()
+      const results = await res.json() as Array<{ max_hp?: number; source_type?: string; reference_url?: string; pdf_object_key?: string }>
+      const m = results[0]
+      if (!m) { setMonsterRef(null); return }
       if (m.max_hp) setMaxHP(String(m.max_hp))
       setMonsterRef({
         source_type: m.source_type ?? '',
@@ -419,7 +423,7 @@ export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
 
       {/* Add creature form */}
       <div style={{ border: '1px solid #2e2e48', borderRadius: 6, padding: '0 14px', marginBottom: 12, background: '#161626' }}>
-        <AddCreatureForm sendMessage={sendMessage} />
+        <AddCreatureForm sendMessage={sendMessage} edition={roomState.edition} />
       </div>
 
       {/* Remove all dead creatures */}

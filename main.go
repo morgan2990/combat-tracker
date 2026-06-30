@@ -33,6 +33,7 @@ func main() {
 	mux.HandleFunc("GET /api/entities/{name}", api.GetEntity)
 	mux.HandleFunc("POST /api/monsters", api.UpsertMonster)
 	mux.HandleFunc("GET /api/monsters/{name}", api.GetMonster)
+	mux.HandleFunc("GET /api/search/monsters", api.SearchMonsters)
 	mux.HandleFunc("GET /api/monsters/{name}/pdf", api.StreamMonsterPDF)
 	mux.HandleFunc("/ws", ws.Handler)
 
