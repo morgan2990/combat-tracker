@@ -433,6 +433,7 @@ export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
   const navigate = useNavigate()
   const { entities, active_index, is_started, round } = roomState
   const hasDeadCreatures = entities.some(e => e.dead && e.type === 'creature')
+  const pendingInitiative = entities.filter(e => (e.type === 'player' || e.type === 'companion') && e.initiative === null)
   const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [openDrawerEntityId, setOpenDrawerEntityId] = useState<string | null>(null)
 
@@ -466,12 +467,25 @@ export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
       {/* Combat controls */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         {!is_started ? (
-          <button
-            onClick={() => sendMessage({ type: 'start_combat' })}
-            style={{ padding: '10px 20px', fontSize: 15, fontWeight: 'bold', cursor: 'pointer', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4 }}
-          >
-            ▶ Start Combat
-          </button>
+          <>
+            <button
+              onClick={() => sendMessage({ type: 'start_combat' })}
+              disabled={pendingInitiative.length > 0}
+              style={{
+                padding: '10px 20px', fontSize: 15, fontWeight: 'bold',
+                background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4,
+                cursor: pendingInitiative.length > 0 ? 'not-allowed' : 'pointer',
+                opacity: pendingInitiative.length > 0 ? 0.45 : 1,
+              }}
+            >
+              ▶ Start Combat
+            </button>
+            {pendingInitiative.length > 0 && (
+              <span style={{ fontSize: 13, color: '#e67e22' }}>
+                Waiting on initiative: {pendingInitiative.map(e => e.name).join(', ')}
+              </span>
+            )}
+          </>
         ) : (
           <>
             <button
