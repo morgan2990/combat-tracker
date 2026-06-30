@@ -1,43 +1,52 @@
 # Epic 10: Automated Monster Initiative Rolling
 
 ## US10.1: MongoDB Schema Update for Initiative Modifiers
-**As a** Backend Developer,  
-**I want to** update the monster database schema to include initiative/dexterity modifiers,  
-**So that** the Go backend has the necessary data to automate rolls at the appropriate time.
+**As a** Backend Developer,
+**I want to** update the monster database schema to properly represent initiative modifiers,
+**So that** the Go backend can auto-roll initiative accurately for all monsters, distinguishing "no modifier set" from "modifier is zero."
 
 ### Technical Note:
-In D&D 5e/5.5e, the initiative modifier is derived directly from the creature's Dexterity modifier. In the 5e.tools JSON, this can be parsed from the `dex` attribute (e.g., a score of `14` yields a `+2` modifier).
+In D&D 5e/5.5e, the initiative modifier equals the creature's Dexterity modifier. The 5e.tools scrubber already computes `floor((dex - 10) / 2)` and stores it. Custom monsters registered via the UI may omit the modifier entirely, which must be preserved as a distinct nil state.
 
 ### Acceptance Criteria:
-- **AC 1:** Expand the MongoDB `monsters` collection schema to include an `initiative_modifier` field (Integer, can be positive, negative, or zero).
-- **AC 2:** Update the Data Scrubber (`US8.1` / `US9.2`) to calculate and extract this modifier during JSON ingestion. 
-    - *Formula:* `modifier = floor((dexterity - 10) / 2)`
-- **AC 3:** Ensure that manual monster creation (`US7.2`) also includes an optional `Initiative Modifier` numerical field in the UI form.
+- **AC 1:** `Monster.InitiativeModifier` is `*int` in the MongoDB schema. Nil means "not set"; a pointer to any integer (including 0 or negative) means "modifier is known."
+- **AC 2:** The Data Scrubber (Epic 8) always sets a non-nil pointer using `floor((dex - 10) / 2)`.
+- **AC 3:** The manual monster registration form (`MonsterForm.tsx`) gains an `edition` selector (fixing the existing 400 bug) and an optional `Initiative Modifier` integer field. If left blank, the field is omitted from the JSON payload so the backend stores nil.
 
 ---
 
-## US10.2: Conditional Initiative Engine (Go Backend State Logic)
-**As a** Dungeon Master,  
-**I want** the system to automatically roll a d20 + modifier for monsters either when I start combat or immediately upon adding them if combat is already running,  
-**So that** initiative is always calculated dynamically based on the current state of the room.
+## US10.2: Auto-Roll Engine and WebSocket Protocol (Go Backend)
+**As a** Dungeon Master,
+**I want** the system to automatically roll d20 + modifier for monsters either when I start combat or immediately upon adding them mid-combat,
+**So that** initiative is calculated dynamically and each creature carries its own independent roll.
+
+### Technical Note:
+The `Entity` struct gains `InitiativeModifier *int` (captured at add-time from the WS message) and `InitiativeRoll *int` (the raw d20 face, set when the roll fires). The `add_creature` WS message replaces its `initiative int` field with `initiative_modifier *int`. The auto-roll uses `crypto/rand` (already in scope) to produce a uniformly random integer 1–20.
 
 ### Acceptance Criteria:
-- **AC 1:** The Go backend must evaluate the room's status (`is_combat_active` boolean) to determine when to trigger the Random Number Generation (RNG) engine:
-    - **Scenario A (Pre-combat setup):** If the DM adds saved monsters *before* clicking "Start Combat", the monsters are staged in the room with an uncalculated initiative value.
-    - **Scenario B (Combat Trigger):** When the DM clicks "Start Combat", the Go backend must loop through all staged monsters, execute a $d20 + modifier$ roll for each, and assign the resulting score directly to each specific entity's data payload.
-    - **Scenario C (Mid-combat reinforcements):** If a saved monster is added *after* combat has already started, the Go backend must execute the $d20 + modifier$ roll **instantly** and assign the score to the new entity upon creation.
-- **AC 2:** **ID-Driven Association:** Every rolled or modified initiative value must be tied directly to its unique entity ID, ensuring that each creature carries its own individual calculated score at all times.
-- **AC 3:** The visual turn indicator and the UI state must rely strictly on the entity IDs to track state transitions, ensuring that adding new creatures mid-combat seamlessly maps them into the room based on their assigned score.
+- **AC 1:** `Entity` struct has `InitiativeModifier *int` (`json:"initiative_modifier,omitempty"`) and `InitiativeRoll *int` (`json:"initiative_roll,omitempty"`).
+- **AC 2:** The `add_creature` WS message carries `initiative_modifier *int` instead of `initiative int`.
+- **AC 3:** Backend rolling scenarios:
+  - **Scenario A (pre-combat staging):** Creature added before "Start Combat" is staged with `InitiativeModifier` set and `Initiative` nil. No roll yet.
+  - **Scenario B (StartCombat trigger):** `StartCombat` loops over all creature entities with non-nil `InitiativeModifier` and nil `Initiative`, rolls d20 for each, sets `Initiative = roll + modifier` and `InitiativeRoll = roll`, then calls `sortEntities()`.
+  - **Scenario C (mid-combat reinforcement):** Creature added after `IsStarted == true` with non-nil `InitiativeModifier` is rolled immediately; `Initiative` and `InitiativeRoll` are set before appending to entities.
+- **AC 4:** When quantity > 1, each creature in the batch receives its own independent d20 roll (not a shared roll).
+- **AC 5:** Nil `InitiativeModifier` means no auto-roll; `Initiative` stays nil and the DM sets it manually via the existing override controls.
 
 ---
 
 ## US10.4: UI Feedback and Staging Area
-**As a** Dungeon Master,  
-**I want to** see which monsters are pending an initiative roll before combat starts, and see their mathematical breakdown after the roll,  
-**So that** I can manage upcoming encounters cleanly.
+**As a** Dungeon Master,
+**I want to** see which monsters are pending a roll before combat starts, and see their roll breakdown afterward,
+**So that** I can manage upcoming encounters cleanly and verify the numbers.
+
+### Technical Note:
+The frontend `Entity` type gains `initiative_modifier: number | null` and `initiative_roll: number | null` mirroring the backend. The Add Creature form removes its manual initiative input entirely; the modifier is read from the monster search result and passed transparently in the WS message.
 
 ### Acceptance Criteria:
-- **AC 1:** In the pre-combat staging view, monsters without a calculated initiative should display a placeholder icon (e.g., a grayed-out `d20` icon or `--`).
-- **AC 2:** Once the rolls are triggered (either by starting the combat or as mid-combat reinforcements), the DM Panel must display the final score along with a small tooltip or indicator showing the breakdown (e.g., `16 (Rolled: 13 + Mod: +3)`).
-- **AC 3:** *(Override Safety)* The DM must still be able to manually edit the final initiative value at any time using the override controls (`US3.3`) in case they want to adjust the turn order manually.
-- **AC 4:** Every automated calculation must trigger a WebSocket state update to re-sort the initiative ladder from highest to lowest for all connected clients.
+- **AC 1:** In the pre-combat staging view, entities with `initiative === null` display `--` in place of an initiative value.
+- **AC 2:** When `initiative_roll` is non-nil, the DM panel shows a breakdown tooltip on the initiative value: `16 (d20: 13 + mod: +3)`.
+- **AC 3:** The DM can still manually override the final initiative at any time using the existing `dm_update_entity` controls (no change to that path).
+- **AC 4:** Every auto-roll (at StartCombat or mid-combat add) triggers a WebSocket broadcast so all clients see the re-sorted initiative ladder immediately.
+- **AC 5:** The Add Creature form has no initiative input. When a monster is found via search, its `initiative_modifier` is passed in the `add_creature` WS message. When no monster is found (manual name entry), `initiative_modifier` is omitted (nil).
+- **AC 6:** Frontend `Entity` type: `initiative_modifier: number | null`, `initiative_roll: number | null`.

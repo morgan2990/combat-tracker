@@ -85,6 +85,11 @@ func UpsertMonster(w http.ResponseWriter, r *http.Request) {
 			IsCustom:   true,
 			SourceType: "pdf",
 		}
+		if v := r.FormValue("initiative_modifier"); v != "" {
+			if val, err := strconv.Atoi(v); err == nil {
+				m.InitiativeModifier = &val
+			}
+		}
 		file, _, err := r.FormFile("pdf")
 		if err != nil {
 			http.Error(w, "pdf file required", http.StatusBadRequest)

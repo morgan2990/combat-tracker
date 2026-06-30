@@ -30,7 +30,9 @@ type Entity struct {
 	Dead             bool     `json:"dead"`
 	SourceType       string   `json:"source_type,omitempty"`
 	ReferenceURL     string   `json:"reference_url,omitempty"`
-	PDFObjectKey     string   `json:"pdf_object_key,omitempty"`
+	PDFObjectKey        string   `json:"pdf_object_key,omitempty"`
+	InitiativeModifier  *int     `json:"initiative_modifier,omitempty"`
+	InitiativeRoll      *int     `json:"initiative_roll,omitempty"`
 }
 
 type RoomState struct {
@@ -128,6 +130,16 @@ func (r *Room) StartCombat(sessionID string) error {
 			return errors.New("all players and companions must have initiative set before starting combat")
 		}
 	}
+	for i := range r.State.Entities {
+		e := &r.State.Entities[i]
+		if e.Type == "creature" && e.InitiativeModifier != nil && e.Initiative == nil {
+			d := rollD20()
+			total := d + *e.InitiativeModifier
+			e.InitiativeRoll = &d
+			e.Initiative = &total
+		}
+	}
+	r.sortEntities()
 	r.State.IsStarted = true
 	r.State.Round = 1
 	r.State.ActiveIndex = 0
@@ -162,7 +174,7 @@ func (r *Room) NextTurn(sessionID string) error {
 // AddCreature creates one or more creature entities and sorts them into the initiative order.
 // When quantity > 1, each entity is named with an auto-number suffix (e.g. "Goblin 1").
 // A single sort and broadcast is expected by the caller after this returns.
-func (r *Room) AddCreature(sessionID, name string, maxHP, initiative, quantity int, sourceType, referenceURL, pdfObjectKey string) error {
+func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier *int, quantity int, sourceType, referenceURL, pdfObjectKey string) error {
 	if name == "" || maxHP <= 0 {
 		return errors.New("invalid creature data")
 	}
@@ -179,18 +191,28 @@ func (r *Room) AddCreature(sessionID, name string, maxHP, initiative, quantity i
 		if quantity > 1 {
 			entityName = fmt.Sprintf("%s %d", name, i+1)
 		}
+		var init *int
+		var roll *int
+		if r.State.IsStarted && initiativeModifier != nil {
+			d := rollD20()
+			total := d + *initiativeModifier
+			roll = &d
+			init = &total
+		}
 		r.State.Entities = append(r.State.Entities, Entity{
-			ID:           newToken(8),
-			Name:         entityName,
-			Type:         "creature",
-			MaxHP:        maxHP,
-			CurrentHP:    maxHP,
-			Initiative:   &initiative,
-			Conditions:   []string{},
-			Dead:         false,
-			SourceType:   sourceType,
-			ReferenceURL: referenceURL,
-			PDFObjectKey: pdfObjectKey,
+			ID:                 newToken(8),
+			Name:               entityName,
+			Type:               "creature",
+			MaxHP:              maxHP,
+			CurrentHP:          maxHP,
+			Initiative:         init,
+			InitiativeModifier: initiativeModifier,
+			InitiativeRoll:     roll,
+			Conditions:         []string{},
+			Dead:               false,
+			SourceType:         sourceType,
+			ReferenceURL:       referenceURL,
+			PDFObjectKey:       pdfObjectKey,
 		})
 	}
 	r.sortEntities()
@@ -657,4 +679,9 @@ func newToken(byteLen int) string {
 	b := make([]byte, byteLen)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func rollD20() int {
+	n, _ := rand.Int(rand.Reader, big.NewInt(20))
+	return int(n.Int64()) + 1
 }

@@ -38,7 +38,7 @@ interface EntityRowProps {
 function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [hpInput, setHpInput] = useState('')
-  const [initInput, setInitInput] = useState(String(entity.initiative))
+  const [initInput, setInitInput] = useState(entity.initiative != null ? String(entity.initiative) : '')
   const [nameInput, setNameInput] = useState(entity.name)
 
   function sendUpdate(overrides: Partial<{
@@ -125,8 +125,13 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
           {entity.current_hp}/{entity.max_hp} HP
           {entity.temp_hp > 0 && <span style={{ color: '#3498db' }}> +{entity.temp_hp}</span>}
         </div>
-        <div style={{ fontSize: 12, color: '#7878a0', width: 36, textAlign: 'right', flexShrink: 0 }}>
-          {entity.initiative}
+        <div
+          style={{ fontSize: 12, color: '#7878a0', width: 36, textAlign: 'right', flexShrink: 0, cursor: entity.initiative_roll != null ? 'help' : 'default' }}
+          title={entity.initiative_roll != null && entity.initiative_modifier != null
+            ? `d20: ${entity.initiative_roll} ${entity.initiative_modifier >= 0 ? '+' : ''}${entity.initiative_modifier} = ${entity.initiative}`
+            : undefined}
+        >
+          {entity.initiative != null ? entity.initiative : '--'}
         </div>
         <span style={{ fontSize: 11, color: '#5a5a78', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
       </div>
@@ -244,12 +249,11 @@ interface AddCreatureFormProps {
   edition: string
 }
 
-interface MonsterRef { source_type: string; reference_url: string; pdf_object_key: string }
+interface MonsterRef { source_type: string; reference_url: string; pdf_object_key: string; initiative_modifier: number | null }
 
 function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
-  const [initiative, setInitiative] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [monsterRef, setMonsterRef] = useState<MonsterRef | null>(null)
 
@@ -260,7 +264,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
       const ed = edition || '5e'
       const res = await fetch(`/api/search/monsters?q=${encodeURIComponent(trimmed)}&edition=${encodeURIComponent(ed)}`)
       if (!res.ok) { setMonsterRef(null); return }
-      const results = await res.json() as Array<{ max_hp?: number; source_type?: string; reference_url?: string; pdf_object_key?: string }>
+      const results = await res.json() as Array<{ max_hp?: number; source_type?: string; reference_url?: string; pdf_object_key?: string; initiative_modifier?: number | null }>
       const m = results[0]
       if (!m) { setMonsterRef(null); return }
       if (m.max_hp) setMaxHP(String(m.max_hp))
@@ -268,6 +272,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
         source_type: m.source_type ?? '',
         reference_url: m.reference_url ?? '',
         pdf_object_key: m.pdf_object_key ?? '',
+        initiative_modifier: m.initiative_modifier ?? null,
       })
     } catch {
       setMonsterRef(null)
@@ -277,22 +282,23 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const hp = parseInt(maxHP, 10)
-    const init = parseInt(initiative, 10)
     const qty = Math.max(1, parseInt(quantity, 10) || 1)
     if (!name.trim() || !hp || hp <= 0) return
-    sendMessage({
+    const msg: Record<string, unknown> = {
       type: 'add_creature',
       name: name.trim(),
       max_hp: hp,
-      initiative: init || 0,
       quantity: qty,
       source_type: monsterRef?.source_type ?? '',
       reference_url: monsterRef?.reference_url ?? '',
       pdf_object_key: monsterRef?.pdf_object_key ?? '',
-    })
+    }
+    if (monsterRef?.initiative_modifier != null) {
+      msg.initiative_modifier = monsterRef.initiative_modifier
+    }
+    sendMessage(msg)
     setName('')
     setMaxHP('')
-    setInitiative('')
     setQuantity('1')
     setMonsterRef(null)
   }
@@ -313,10 +319,6 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
       <label style={labelStyle}>
         <span style={labelText}>Max HP</span>
         <input type="number" value={maxHP} onChange={e => setMaxHP(e.target.value)} placeholder="14" min={1} required style={{ ...fieldStyle, width: 70 }} />
-      </label>
-      <label style={labelStyle}>
-        <span style={labelText}>Initiative</span>
-        <input type="number" value={initiative} onChange={e => setInitiative(e.target.value)} placeholder="11" style={{ ...fieldStyle, width: 70 }} />
       </label>
       <label style={labelStyle}>
         <span style={labelText}>Qty</span>

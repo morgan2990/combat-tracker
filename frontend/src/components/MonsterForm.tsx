@@ -8,6 +8,8 @@ export function MonsterForm() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
+  const [edition, setEdition] = useState<'5e' | '5.5e'>('5e')
+  const [initiativeModifier, setInitiativeModifier] = useState('')
   const [sourceType, setSourceType] = useState<SourceType>('none')
   const [referenceURL, setReferenceURL] = useState('')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
@@ -26,14 +28,19 @@ export function MonsterForm() {
         const form = new FormData()
         form.append('name', name.trim())
         form.append('max_hp', maxHP)
+        form.append('edition', edition)
         form.append('source_type', 'pdf')
         form.append('pdf', pdfFile)
+        if (initiativeModifier.trim() !== '') form.append('initiative_modifier', initiativeModifier.trim())
         res = await fetch('/api/monsters', { method: 'POST', body: form })
       } else {
-        const body: Record<string, unknown> = { name: name.trim(), max_hp: parseInt(maxHP, 10) }
+        const body: Record<string, unknown> = { name: name.trim(), max_hp: parseInt(maxHP, 10), edition }
         if (sourceType === 'url' && referenceURL.trim()) {
           body.source_type = 'url'
           body.reference_url = referenceURL.trim()
+        }
+        if (initiativeModifier.trim() !== '') {
+          body.initiative_modifier = parseInt(initiativeModifier.trim(), 10)
         }
         res = await fetch('/api/monsters', {
           method: 'POST',
@@ -59,7 +66,7 @@ export function MonsterForm() {
         <div style={{ fontSize: 20, marginBottom: 16, color: '#27ae60' }}>Monster saved!</div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button
-            onClick={() => { setName(''); setMaxHP(''); setSourceType('none'); setReferenceURL(''); setPdfFile(null); setSaved(false) }}
+            onClick={() => { setName(''); setMaxHP(''); setEdition('5e'); setInitiativeModifier(''); setSourceType('none'); setReferenceURL(''); setPdfFile(null); setSaved(false) }}
             style={btnStyle('#2e2e48')}
           >
             Add Another
@@ -95,6 +102,39 @@ export function MonsterForm() {
             placeholder="7"
             min={1}
             required
+            style={{ ...fieldStyle, width: 100 }}
+          />
+        </label>
+
+        <div style={labelStyle}>
+          <span style={labelText}>Edition</span>
+          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+            {(['5e', '5.5e'] as const).map(ed => (
+              <button
+                key={ed}
+                type="button"
+                onClick={() => setEdition(ed)}
+                style={{
+                  padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
+                  border: '1px solid',
+                  borderColor: edition === ed ? '#3498db' : '#2e2e48',
+                  background: edition === ed ? '#0d1f38' : '#1a1a2c',
+                  color: edition === ed ? '#3498db' : '#8888aa',
+                }}
+              >
+                {ed}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label style={labelStyle}>
+          <span style={labelText}>Initiative Modifier (optional)</span>
+          <input
+            type="number"
+            value={initiativeModifier}
+            onChange={e => setInitiativeModifier(e.target.value)}
+            placeholder="e.g. 2 or -1"
             style={{ ...fieldStyle, width: 100 }}
           />
         </label>

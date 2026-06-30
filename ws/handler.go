@@ -49,13 +49,13 @@ type addCompanionMsg struct {
 
 // DM messages
 type addCreatureMsg struct {
-	Name         string `json:"name"`
-	MaxHP        int    `json:"max_hp"`
-	Initiative   int    `json:"initiative"`
-	Quantity     int    `json:"quantity"`
-	SourceType   string `json:"source_type"`
-	ReferenceURL string `json:"reference_url"`
-	PDFObjectKey string `json:"pdf_object_key"`
+	Name               string `json:"name"`
+	MaxHP              int    `json:"max_hp"`
+	InitiativeModifier *int   `json:"initiative_modifier"`
+	Quantity           int    `json:"quantity"`
+	SourceType         string `json:"source_type"`
+	ReferenceURL       string `json:"reference_url"`
+	PDFObjectKey       string `json:"pdf_object_key"`
 }
 
 type removeEntityMsg struct {
@@ -205,7 +205,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			return
 		}
-		if err := rm.AddCreature(c.SessionID, msg.Name, msg.MaxHP, msg.Initiative, msg.Quantity, msg.SourceType, msg.ReferenceURL, msg.PDFObjectKey); err == nil {
+		if err := rm.AddCreature(c.SessionID, msg.Name, msg.MaxHP, msg.InitiativeModifier, msg.Quantity, msg.SourceType, msg.ReferenceURL, msg.PDFObjectKey); err == nil {
 			rm.BroadcastState()
 		}
 

@@ -14,7 +14,7 @@ type Monster struct {
 	Name                string `bson:"name"                     json:"name"`
 	Edition             string `bson:"edition"                  json:"edition"`
 	MaxHP               int    `bson:"max_hp"                   json:"max_hp"`
-	InitiativeModifier  int    `bson:"initiative_modifier"      json:"initiative_modifier"`
+	InitiativeModifier  *int   `bson:"initiative_modifier,omitempty" json:"initiative_modifier,omitempty"`
 	IsCustom            bool   `bson:"is_custom"                json:"is_custom"`
 	SourceType          string `bson:"source_type,omitempty"    json:"source_type,omitempty"`
 	ReferenceURL        string `bson:"reference_url,omitempty"  json:"reference_url,omitempty"`

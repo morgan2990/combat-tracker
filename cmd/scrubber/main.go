@@ -42,7 +42,7 @@ type Monster struct {
 	Name               string `bson:"name"                     json:"name"`
 	Edition            string `bson:"edition"                  json:"edition"`
 	MaxHP              int    `bson:"max_hp"                   json:"max_hp"`
-	InitiativeModifier int    `bson:"initiative_modifier"      json:"initiative_modifier"`
+	InitiativeModifier *int   `bson:"initiative_modifier,omitempty" json:"initiative_modifier,omitempty"`
 	IsCustom           bool   `bson:"is_custom"                json:"is_custom"`
 	SourceType         string `bson:"source_type,omitempty"    json:"source_type,omitempty"`
 	ReferenceURL       string `bson:"reference_url,omitempty"  json:"reference_url,omitempty"`
@@ -146,11 +146,12 @@ func main() {
 		nameKebab := strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 		sourceLower := strings.ToLower(source)
 		id := nameKebab + "-" + sourceLower
+		mod := initMod
 		return Monster{
 			Name:               name,
 			Edition:            *edition,
 			MaxHP:              hp,
-			InitiativeModifier: initMod,
+			InitiativeModifier: &mod,
 			IsCustom:           false,
 			SourceType:         "url",
 			ReferenceURL:       baseURL + id + ".html",
@@ -167,7 +168,7 @@ func main() {
 		}
 		m := normalize(e.Name, e.Source, e.HP.Average, e.Dex)
 		upsert(m)
-		resolvedStats[entryKey{e.Name, e.Source}] = stats{m.MaxHP, m.InitiativeModifier}
+		resolvedStats[entryKey{e.Name, e.Source}] = stats{m.MaxHP, *m.InitiativeModifier}
 	}
 
 	// Pass 2: iteratively resolve _copy entries until no more progress.
@@ -198,9 +199,10 @@ func main() {
 			}
 
 			m := normalize(e.Name, e.Source, hp, dex)
-			m.InitiativeModifier = initMod
+			imod := initMod
+			m.InitiativeModifier = &imod
 			upsert(m)
-			resolvedStats[entryKey{e.Name, e.Source}] = stats{m.MaxHP, m.InitiativeModifier}
+			resolvedStats[entryKey{e.Name, e.Source}] = stats{m.MaxHP, *m.InitiativeModifier}
 			resolvedThisRound++
 		}
 

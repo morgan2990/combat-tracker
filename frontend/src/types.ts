@@ -8,6 +8,8 @@ export interface Entity {
   current_hp: number
   temp_hp: number
   initiative: number | null
+  initiative_modifier?: number | null
+  initiative_roll?: number | null
   shares_initiative: boolean
   conditions: string[]
   dead: boolean
