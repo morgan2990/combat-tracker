@@ -27,6 +27,13 @@ export interface RoomState {
   entities: Entity[]
 }
 
+export interface MonsterSearchHit {
+  id: string
+  name: string
+  max_hp: number
+  initiative_modifier: number | null
+}
+
 export type Role = 'dm' | 'player'
 
 export interface ProfileCompanion {

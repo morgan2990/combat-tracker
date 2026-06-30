@@ -25,6 +25,7 @@ func main() {
 		log.Fatalf("mongodb: %v", err)
 	}
 	store.InitMinio()
+	store.InitTypesense()
 
 	go func() {
 		ticker := time.NewTicker(roomSweepInterval)

@@ -121,12 +121,13 @@ func UpsertMonster(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		m.PDFObjectKey = "monsters/" + name + ".pdf"
-		if err := store.GlobalMonsters.UpsertMonster(m); err != nil {
+		saved, _, err := store.GlobalMonsters.UpsertMonster(m)
+		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(m)
+		json.NewEncoder(w).Encode(saved)
 		return
 	}
 
@@ -144,12 +145,13 @@ func UpsertMonster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m.IsCustom = true
-	if err := store.GlobalMonsters.UpsertMonster(m); err != nil {
+	saved, _, err := store.GlobalMonsters.UpsertMonster(m)
+	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(m)
+	json.NewEncoder(w).Encode(saved)
 }
 
 func GetMonster(w http.ResponseWriter, r *http.Request) {
@@ -182,17 +184,16 @@ func SearchMonsters(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
 		return
 	}
-	m, err := store.GlobalMonsters.SearchMonsters(q, edition)
+	hits, err := store.GlobalMonsters.SearchMonsters(q, edition)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if m == nil {
-		w.Write([]byte("[]"))
-		return
+	if hits == nil {
+		hits = []store.MonsterHit{}
 	}
-	json.NewEncoder(w).Encode([]store.Monster{*m})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(hits)
 }
 
 func StreamMonsterPDF(w http.ResponseWriter, r *http.Request) {

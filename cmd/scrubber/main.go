@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,11 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"combatapp/store"
 )
 
 type fiveEToolsHP struct {
@@ -36,18 +32,6 @@ type fiveEToolsEntry struct {
 
 type fiveEToolsFile struct {
 	Monster []fiveEToolsEntry `json:"monster"`
-}
-
-type Monster struct {
-	Name               string `bson:"name"                     json:"name"`
-	Edition            string `bson:"edition"                  json:"edition"`
-	MaxHP              int    `bson:"max_hp"                   json:"max_hp"`
-	InitiativeModifier *int   `bson:"initiative_modifier,omitempty" json:"initiative_modifier,omitempty"`
-	IsCustom           bool   `bson:"is_custom"                json:"is_custom"`
-	SourceType         string `bson:"source_type,omitempty"    json:"source_type,omitempty"`
-	ReferenceURL       string `bson:"reference_url,omitempty"  json:"reference_url,omitempty"`
-	FiveEToolsID       string `bson:"five_etools_id,omitempty" json:"five_etools_id,omitempty"`
-	SourceBook         string `bson:"source_book,omitempty"    json:"source_book,omitempty"`
 }
 
 type entryKey struct{ Name, Source string }
@@ -72,10 +56,10 @@ func main() {
 		baseURL = "https://5e.tools/bestiary/"
 	}
 
-	col, err := connectMongo()
-	if err != nil {
+	if err := store.Init(); err != nil {
 		log.Fatalf("mongodb: %v", err)
 	}
+	store.InitTypesense()
 
 	bestiaryDir := filepath.Join(*source, "data", "bestiary")
 	files, err := filepath.Glob(filepath.Join(bestiaryDir, "bestiary-*.json"))
@@ -118,25 +102,26 @@ func main() {
 
 	var processed, inserted, updated int
 
-	upsert := func(m Monster) {
-		filter := bson.M{"name": m.Name, "edition": m.Edition}
-		opts := options.Replace().SetUpsert(true)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		result, err := col.ReplaceOne(ctx, filter, m, opts)
-		cancel()
+	upsert := func(m store.Monster) {
+		result, outcome, err := store.GlobalMonsters.UpsertMonster(m)
 		if err != nil {
 			log.Printf("warning: upsert failed for %s (%s): %v", m.Name, m.Edition, err)
 			return
 		}
-		processed++
-		if result.UpsertedCount > 0 {
+		switch outcome {
+		case store.UpsertSkippedCustomProtected:
+			// Logged by UpsertMonster itself; not counted as processed.
+			return
+		case store.UpsertInserted:
 			inserted++
-		} else {
+		case store.UpsertUpdated:
 			updated++
 		}
+		processed++
+		resolvedStats[entryKey{result.Name, result.SourceBook}] = stats{result.MaxHP, derefOrZero(result.InitiativeModifier)}
 	}
 
-	normalize := func(name, source string, hp int, dex *int) Monster {
+	normalize := func(name, source string, hp int, dex *int) store.Monster {
 		initMod := 0
 		if dex != nil {
 			initMod = int(math.Floor(float64(*dex-10) / 2))
@@ -147,7 +132,7 @@ func main() {
 		sourceLower := strings.ToLower(source)
 		id := nameKebab + "-" + sourceLower
 		mod := initMod
-		return Monster{
+		return store.Monster{
 			Name:               name,
 			Edition:            *edition,
 			MaxHP:              hp,
@@ -168,7 +153,6 @@ func main() {
 		}
 		m := normalize(e.Name, e.Source, e.HP.Average, e.Dex)
 		upsert(m)
-		resolvedStats[entryKey{e.Name, e.Source}] = stats{m.MaxHP, *m.InitiativeModifier}
 	}
 
 	// Pass 2: iteratively resolve _copy entries until no more progress.
@@ -202,7 +186,6 @@ func main() {
 			imod := initMod
 			m.InitiativeModifier = &imod
 			upsert(m)
-			resolvedStats[entryKey{e.Name, e.Source}] = stats{m.MaxHP, *m.InitiativeModifier}
 			resolvedThisRound++
 		}
 
@@ -219,19 +202,9 @@ func main() {
 	fmt.Printf("Done: %d processed, %d inserted, %d updated\n", processed, inserted, updated)
 }
 
-func connectMongo() (*mongo.Collection, error) {
-	uri := os.Getenv("MONGODB_URI")
-	if uri == "" {
-		uri = "mongodb://admin:password@192.168.0.94:27017/combatapp?authSource=admin"
+func derefOrZero(p *int) int {
+	if p == nil {
+		return 0
 	}
-	client, err := mongo.Connect(options.Client().ApplyURI(uri))
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := client.Ping(ctx, nil); err != nil {
-		return nil, err
-	}
-	return client.Database("combatapp").Collection("monsters"), nil
+	return *p
 }

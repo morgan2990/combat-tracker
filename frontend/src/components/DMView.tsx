@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react'
-import type { FormEvent } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Entity, RoomState } from '../types'
+import type { Entity, RoomState, MonsterSearchHit } from '../types'
 import { StatblockDrawer } from './StatblockDrawer'
+
+const SEARCH_MIN_CHARS = 3
+const SEARCH_DEBOUNCE_MS = 175
 
 const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
 
@@ -252,30 +255,71 @@ interface AddCreatureFormProps {
 interface MonsterRef { source_type: string; reference_url: string; pdf_object_key: string; initiative_modifier: number | null }
 
 function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<MonsterSearchHit[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [monsterRef, setMonsterRef] = useState<MonsterRef | null>(null)
 
-  async function handleNameBlur() {
-    const trimmed = name.trim()
-    if (!trimmed) { setMonsterRef(null); return }
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (query.trim().length < SEARCH_MIN_CHARS) {
+      setResults([])
+      setShowDropdown(false)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const ed = edition || '5e'
+        const res = await fetch(`/api/search/monsters?q=${encodeURIComponent(query.trim())}&edition=${encodeURIComponent(ed)}`)
+        if (!res.ok) return
+        const hits = await res.json() as MonsterSearchHit[]
+        setResults(hits)
+        setShowDropdown(true)
+      } catch {
+        setResults([])
+        setShowDropdown(false)
+      }
+    }, SEARCH_DEBOUNCE_MS)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [query, edition])
+
+  async function selectMonster(hit: MonsterSearchHit) {
+    setQuery('')
+    setResults([])
+    setShowDropdown(false)
+    setName(hit.name)
+    setMaxHP(String(hit.max_hp))
+
     try {
-      const ed = edition || '5e'
-      const res = await fetch(`/api/search/monsters?q=${encodeURIComponent(trimmed)}&edition=${encodeURIComponent(ed)}`)
+      const res = await fetch(`/api/monsters/${encodeURIComponent(hit.name)}`)
       if (!res.ok) { setMonsterRef(null); return }
-      const results = await res.json() as Array<{ max_hp?: number; source_type?: string; reference_url?: string; pdf_object_key?: string; initiative_modifier?: number | null }>
-      const m = results[0]
-      if (!m) { setMonsterRef(null); return }
-      if (m.max_hp) setMaxHP(String(m.max_hp))
+      const m = await res.json() as { source_type?: string; reference_url?: string; pdf_object_key?: string; initiative_modifier?: number | null }
       setMonsterRef({
         source_type: m.source_type ?? '',
         reference_url: m.reference_url ?? '',
         pdf_object_key: m.pdf_object_key ?? '',
-        initiative_modifier: m.initiative_modifier ?? null,
+        initiative_modifier: m.initiative_modifier ?? hit.initiative_modifier,
       })
     } catch {
       setMonsterRef(null)
+    }
+  }
+
+  function handleSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && showDropdown && results[0]) {
+      e.preventDefault()
+      selectMonster(results[0])
     }
   }
 
@@ -304,33 +348,74 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', padding: '12px 0' }}>
-      <label style={labelStyle}>
-        <span style={labelText}>Name</span>
-        <input
-          value={name}
-          onChange={e => { setName(e.target.value); setMonsterRef(null) }}
-          onBlur={handleNameBlur}
-          placeholder="Goblin"
-          required
-          style={fieldStyle}
-        />
-      </label>
-      <label style={labelStyle}>
-        <span style={labelText}>Max HP</span>
-        <input type="number" value={maxHP} onChange={e => setMaxHP(e.target.value)} placeholder="14" min={1} required style={{ ...fieldStyle, width: 70 }} />
-      </label>
-      <label style={labelStyle}>
-        <span style={labelText}>Qty</span>
-        <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} style={{ ...fieldStyle, width: 52 }} />
-      </label>
-      {monsterRef && monsterRef.source_type && (
-        <span style={{ fontSize: 11, color: '#27ae60', alignSelf: 'center', paddingBottom: 2 }}>statblock ready</span>
-      )}
-      <button type="submit" style={{ padding: '8px 16px', fontSize: 14, alignSelf: 'flex-end', background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-        Add Creature
-      </button>
-    </form>
+    <div style={{ padding: '12px 0' }}>
+      <div style={{ position: 'relative', marginBottom: 8, maxWidth: 240 }}>
+        <label style={labelStyle}>
+          <span style={labelText}>Search monsters</span>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Type 3+ characters…"
+            style={fieldStyle}
+          />
+        </label>
+        {showDropdown && results.length > 0 && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+            background: '#1a1a38', border: '1px solid #2e2e48', borderRadius: 4,
+            marginTop: 2, maxHeight: 220, overflowY: 'auto',
+          }}>
+            {results.map(hit => (
+              <div
+                key={hit.id}
+                onClick={() => selectMonster(hit)}
+                style={{
+                  padding: '8px 10px', cursor: 'pointer', display: 'flex',
+                  justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
+                  borderBottom: '1px solid #2e2e48',
+                }}
+              >
+                <span style={{ color: '#d4d4e8' }}>{hit.name}</span>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, color: '#3498db', border: '1px solid #3498db', borderRadius: 3, padding: '1px 5px' }}>
+                    {edition || '5e'}
+                  </span>
+                  <span style={{ color: '#7878a0' }}>{hit.max_hp} HP</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={labelStyle}>
+          <span style={labelText}>Name</span>
+          <input
+            value={name}
+            onChange={e => { setName(e.target.value); setMonsterRef(null) }}
+            placeholder="Goblin"
+            required
+            style={fieldStyle}
+          />
+        </label>
+        <label style={labelStyle}>
+          <span style={labelText}>Max HP</span>
+          <input type="number" value={maxHP} onChange={e => setMaxHP(e.target.value)} placeholder="14" min={1} required style={{ ...fieldStyle, width: 70 }} />
+        </label>
+        <label style={labelStyle}>
+          <span style={labelText}>Qty</span>
+          <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} style={{ ...fieldStyle, width: 52 }} />
+        </label>
+        {monsterRef && monsterRef.source_type && (
+          <span style={{ fontSize: 11, color: '#27ae60', alignSelf: 'center', paddingBottom: 2 }}>statblock ready</span>
+        )}
+        <button type="submit" style={{ padding: '8px 16px', fontSize: 14, alignSelf: 'flex-end', background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+          Add Creature
+        </button>
+      </form>
+    </div>
   )
 }
 

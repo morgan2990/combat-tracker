@@ -1,10 +1,4 @@
-# Spec: Monster Search
-
-## Purpose
-
-Defines the edition-filtered monster search endpoint used by the DM Combat Panel, and the debounced autocomplete UX built on top of it. The endpoint queries the Typesense search index (see `monster-search-index`) for typo-tolerant, prefix-matched, edition-filtered results.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Backend exposes an edition-filtered monster search endpoint
 The system SHALL expose `GET /api/search/monsters?q=<query>&edition=<edition>`. Both query parameters are required. The endpoint SHALL return HTTP 400 if either parameter is missing or if `edition` is not `"5e"` or `"5.5e"`. The endpoint SHALL query the Typesense `monsters` collection with typo tolerance and prefix matching on `name`, filtered to `edition:=<edition>`, and return the top matching hits as a JSON array of `{ id, name, max_hp, initiative_modifier }` objects. This response shape (a top-N array of lightweight hits) supersedes the prior exact-match contract of a single-or-empty array of full `Monster` documents.
@@ -36,8 +30,6 @@ The system SHALL expose `GET /api/search/monsters?q=<query>&edition=<edition>`. 
 #### Scenario: Typesense unavailable at query time
 - **WHEN** a client sends a valid `GET /api/search/monsters` request and Typesense cannot be reached
 - **THEN** the server SHALL return HTTP 200 with an empty JSON array `[]` rather than an error
-
----
 
 ### Requirement: DM Combat Panel search bar uses the edition-filtered endpoint
 The DM Combat Panel's monster search SHALL be a debounced, live autocomplete dropdown, separate from the staging Name/Max HP/Quantity fields used to finalize a creature for `add_creature`.
