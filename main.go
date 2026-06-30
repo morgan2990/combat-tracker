@@ -20,6 +20,7 @@ func main() {
 	if err := store.Init(); err != nil {
 		log.Fatalf("mongodb: %v", err)
 	}
+	store.InitMinio()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -30,6 +31,9 @@ func main() {
 	mux.HandleFunc("POST /api/rooms", api.CreateRoom)
 	mux.HandleFunc("POST /api/entities", api.UpsertEntity)
 	mux.HandleFunc("GET /api/entities/{name}", api.GetEntity)
+	mux.HandleFunc("POST /api/monsters", api.UpsertMonster)
+	mux.HandleFunc("GET /api/monsters/{name}", api.GetMonster)
+	mux.HandleFunc("GET /api/monsters/{name}/pdf", api.StreamMonsterPDF)
 	mux.HandleFunc("/ws", ws.Handler)
 
 	distFS, err := fs.Sub(frontendDist, "frontend/dist")

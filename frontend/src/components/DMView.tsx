@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Entity, RoomState } from '../types'
+import { StatblockDrawer } from './StatblockDrawer'
 
 const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
 
@@ -30,9 +32,10 @@ interface EntityRowProps {
   entity: Entity
   isActive: boolean
   sendMessage: (msg: object) => void
+  onStatblock?: () => void
 }
 
-function EntityRow({ entity, isActive, sendMessage }: EntityRowProps) {
+function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [hpInput, setHpInput] = useState('')
   const [initInput, setInitInput] = useState(String(entity.initiative))
@@ -100,6 +103,15 @@ function EntityRow({ entity, isActive, sendMessage }: EntityRowProps) {
         <span style={{ width: 16, color: '#e67e22', flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontWeight: 600, color: textColor }}>{entity.name}</span>
+          {entity.type === 'creature' && entity.source_type && onStatblock && (
+            <button
+              onClick={e => { e.stopPropagation(); onStatblock() }}
+              title="View statblock"
+              style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+            >
+              📋
+            </button>
+          )}
           {vitalState === 'dead' && <span style={{ marginLeft: 6, fontSize: 11, color: '#e74c3c' }}>💀 Dead</span>}
           {vitalState === 'unconscious' && <span style={{ marginLeft: 6, fontSize: 11, color: '#e67e22' }}>😵 Unconscious</span>}
           <span style={{ marginLeft: 6, fontSize: 11, color: '#454568' }}>{entity.type}</span>
@@ -231,27 +243,68 @@ interface AddCreatureFormProps {
   sendMessage: (msg: object) => void
 }
 
+interface MonsterRef { source_type: string; reference_url: string; pdf_object_key: string }
+
 function AddCreatureForm({ sendMessage }: AddCreatureFormProps) {
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
   const [initiative, setInitiative] = useState('')
+  const [quantity, setQuantity] = useState('1')
+  const [monsterRef, setMonsterRef] = useState<MonsterRef | null>(null)
+
+  async function handleNameBlur() {
+    const trimmed = name.trim()
+    if (!trimmed) { setMonsterRef(null); return }
+    try {
+      const res = await fetch(`/api/monsters/${encodeURIComponent(trimmed)}`)
+      if (!res.ok) { setMonsterRef(null); return }
+      const m = await res.json()
+      if (m.max_hp) setMaxHP(String(m.max_hp))
+      setMonsterRef({
+        source_type: m.source_type ?? '',
+        reference_url: m.reference_url ?? '',
+        pdf_object_key: m.pdf_object_key ?? '',
+      })
+    } catch {
+      setMonsterRef(null)
+    }
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const hp = parseInt(maxHP, 10)
     const init = parseInt(initiative, 10)
+    const qty = Math.max(1, parseInt(quantity, 10) || 1)
     if (!name.trim() || !hp || hp <= 0) return
-    sendMessage({ type: 'add_creature', name: name.trim(), max_hp: hp, initiative: init || 0 })
+    sendMessage({
+      type: 'add_creature',
+      name: name.trim(),
+      max_hp: hp,
+      initiative: init || 0,
+      quantity: qty,
+      source_type: monsterRef?.source_type ?? '',
+      reference_url: monsterRef?.reference_url ?? '',
+      pdf_object_key: monsterRef?.pdf_object_key ?? '',
+    })
     setName('')
     setMaxHP('')
     setInitiative('')
+    setQuantity('1')
+    setMonsterRef(null)
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', padding: '12px 0' }}>
       <label style={labelStyle}>
         <span style={labelText}>Name</span>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Goblin" required style={fieldStyle} />
+        <input
+          value={name}
+          onChange={e => { setName(e.target.value); setMonsterRef(null) }}
+          onBlur={handleNameBlur}
+          placeholder="Goblin"
+          required
+          style={fieldStyle}
+        />
       </label>
       <label style={labelStyle}>
         <span style={labelText}>Max HP</span>
@@ -261,6 +314,13 @@ function AddCreatureForm({ sendMessage }: AddCreatureFormProps) {
         <span style={labelText}>Initiative</span>
         <input type="number" value={initiative} onChange={e => setInitiative(e.target.value)} placeholder="11" style={{ ...fieldStyle, width: 70 }} />
       </label>
+      <label style={labelStyle}>
+        <span style={labelText}>Qty</span>
+        <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} style={{ ...fieldStyle, width: 52 }} />
+      </label>
+      {monsterRef && monsterRef.source_type && (
+        <span style={{ fontSize: 11, color: '#27ae60', alignSelf: 'center', paddingBottom: 2 }}>statblock ready</span>
+      )}
       <button type="submit" style={{ padding: '8px 16px', fontSize: 14, alignSelf: 'flex-end', background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
         Add Creature
       </button>
@@ -279,9 +339,11 @@ interface DMViewProps {
 }
 
 export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
+  const navigate = useNavigate()
   const { entities, active_index, is_started, round } = roomState
   const hasDeadCreatures = entities.some(e => e.dead && e.type === 'creature')
   const [confirmingEnd, setConfirmingEnd] = useState(false)
+  const [openDrawerEntityId, setOpenDrawerEntityId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!is_started) setConfirmingEnd(false)
@@ -293,7 +355,15 @@ export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <h2 style={{ margin: 0 }}>⚔ DM Panel</h2>
-        {is_started && <span style={{ fontSize: 18, fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {is_started && <span style={{ fontSize: 18, fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
+          <button
+            onClick={() => navigate('/monsters/new')}
+            style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+          >
+            + Monster
+          </button>
+        </div>
       </div>
 
       {/* Room info bar */}
@@ -375,9 +445,21 @@ export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
             entity={entity}
             isActive={is_started && i === active_index}
             sendMessage={sendMessage}
+            onStatblock={entity.type === 'creature' && entity.source_type
+              ? () => setOpenDrawerEntityId(id => id === entity.id ? null : entity.id)
+              : undefined}
           />
         ))}
       </div>
+
+      {entities.filter(e => e.type === 'creature' && e.source_type).map(e => (
+        <StatblockDrawer
+          key={e.id}
+          entity={e}
+          open={openDrawerEntityId === e.id}
+          onClose={() => setOpenDrawerEntityId(null)}
+        />
+      ))}
     </div>
   )
 }

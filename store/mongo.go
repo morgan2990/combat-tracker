@@ -31,7 +31,7 @@ var Global Store
 func Init() error {
 	uri := os.Getenv("MONGODB_URI")
 	if uri == "" {
-		uri = "mongodb://localhost:27017"
+		uri = "mongodb://admin:password@192.168.0.94:27017/combatapp?authSource=admin"
 	}
 	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
@@ -42,7 +42,9 @@ func Init() error {
 	if err := client.Ping(ctx, nil); err != nil {
 		return err
 	}
-	Global = Store{col: client.Database("combatapp").Collection("entities")}
+	db := client.Database("combatapp")
+	Global = Store{col: db.Collection("entities")}
+	GlobalMonsters = MonsterStore{col: db.Collection("monsters")}
 	return nil
 }
 

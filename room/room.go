@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 	"sync"
@@ -27,6 +28,9 @@ type Entity struct {
 	SharesInitiative bool     `json:"shares_initiative"`
 	Conditions       []string `json:"conditions"`
 	Dead             bool     `json:"dead"`
+	SourceType       string   `json:"source_type,omitempty"`
+	ReferenceURL     string   `json:"reference_url,omitempty"`
+	PDFObjectKey     string   `json:"pdf_object_key,omitempty"`
 }
 
 type RoomState struct {
@@ -154,26 +158,40 @@ func (r *Room) NextTurn(sessionID string) error {
 
 // --- Creature management ---
 
-// AddCreature creates a creature entity and sorts it into the initiative order.
-func (r *Room) AddCreature(sessionID, name string, maxHP, initiative int) error {
+// AddCreature creates one or more creature entities and sorts them into the initiative order.
+// When quantity > 1, each entity is named with an auto-number suffix (e.g. "Goblin 1").
+// A single sort and broadcast is expected by the caller after this returns.
+func (r *Room) AddCreature(sessionID, name string, maxHP, initiative, quantity int, sourceType, referenceURL, pdfObjectKey string) error {
 	if name == "" || maxHP <= 0 {
 		return errors.New("invalid creature data")
+	}
+	if quantity < 1 {
+		quantity = 1
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if !r.isDM(sessionID) {
 		return errors.New("unauthorized")
 	}
-	r.State.Entities = append(r.State.Entities, Entity{
-		ID:         newToken(8),
-		Name:       name,
-		Type:       "creature",
-		MaxHP:      maxHP,
-		CurrentHP:  maxHP,
-		Initiative: &initiative,
-		Conditions: []string{},
-		Dead:       false,
-	})
+	for i := range quantity {
+		entityName := name
+		if quantity > 1 {
+			entityName = fmt.Sprintf("%s %d", name, i+1)
+		}
+		r.State.Entities = append(r.State.Entities, Entity{
+			ID:           newToken(8),
+			Name:         entityName,
+			Type:         "creature",
+			MaxHP:        maxHP,
+			CurrentHP:    maxHP,
+			Initiative:   &initiative,
+			Conditions:   []string{},
+			Dead:         false,
+			SourceType:   sourceType,
+			ReferenceURL: referenceURL,
+			PDFObjectKey: pdfObjectKey,
+		})
+	}
 	r.sortEntities()
 	return nil
 }
