@@ -1,10 +1,4 @@
-# Spec: Companion Management
-
-## Purpose
-
-Defines how players add companion or summoned creature entities to a room, the ownership model that grants edit permissions, and the persistence behaviour when a player disconnects.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Player can add a companion or summoned creature
 A player SHALL be able to add a companion entity linked to their own entity. The companion appears in the initiative tracker and is treated as a separate combatant. The `add_companion` message now includes a `shares_initiative` boolean field and no longer requires an `initiative` value (it is nullable).
@@ -25,27 +19,7 @@ A player SHALL be able to add a companion entity linked to their own entity. The
 - **WHEN** a player without an established entity (i.e., has not completed setup) sends `add_companion`
 - **THEN** the server SHALL ignore the message
 
-### Requirement: Companion owner has full edit permissions
-The player who owns a companion SHALL be able to update its HP and conditions using the same `update_entity` action used for their own entity.
-
-#### Scenario: Owner updates companion HP
-- **WHEN** a player sends `update_entity` targeting a companion whose `owner_id` matches the player's entity ID
-- **THEN** the server SHALL apply the update and broadcast the updated state
-
-#### Scenario: Non-owner cannot edit companion
-- **WHEN** a player sends `update_entity` targeting a companion whose `owner_id` does not match the player's entity ID
-- **THEN** the server SHALL reject the action, make no state change, and send no broadcast
-
-### Requirement: Companion entities persist after player disconnect
-When a player's WebSocket connection closes, their companion entities SHALL remain in `State.Entities` until explicitly removed by the DM.
-
-#### Scenario: Companion remains after player disconnect
-- **WHEN** a player's connection closes (normally or abnormally)
-- **THEN** any companion entities with `owner_id` equal to the disconnected player's entity ID SHALL remain in `State.Entities` and continue to appear in all clients' initiative trackers
-
-#### Scenario: Reconnected player retakes companion ownership
-- **WHEN** a player reconnects and their entity is re-linked (via the reconnection flow)
-- **THEN** their companion entities (matched by `owner_id`) SHALL again be editable by the reconnected session
+## ADDED Requirements
 
 ### Requirement: Companion with shared initiative copies owner's initiative automatically
 When a player sends `set_initiative`, the server SHALL propagate that initiative value to all companion entities in the room that have `SharesInitiative: true` and whose `OwnerID` matches the player's entity ID.

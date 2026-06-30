@@ -8,23 +8,25 @@ import (
 	"sort"
 	"sync"
 
+	"combatapp/store"
 	"github.com/gorilla/websocket"
 )
 
 const idChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 type Entity struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Type       string   `json:"type"` // player | creature | companion
-	OwnerID    string   `json:"owner_id,omitempty"`
-	SessionID  string   `json:"session_id,omitempty"`
-	MaxHP      int      `json:"max_hp"`
-	CurrentHP  int      `json:"current_hp"`
-	TempHP     int      `json:"temp_hp"`
-	Initiative int      `json:"initiative"`
-	Conditions []string `json:"conditions"`
-	Dead       bool     `json:"dead"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Type             string   `json:"type"` // player | creature | companion
+	OwnerID          string   `json:"owner_id,omitempty"`
+	SessionID        string   `json:"session_id,omitempty"`
+	MaxHP            int      `json:"max_hp"`
+	CurrentHP        int      `json:"current_hp"`
+	TempHP           int      `json:"temp_hp"`
+	Initiative       *int     `json:"initiative"`
+	SharesInitiative bool     `json:"shares_initiative"`
+	Conditions       []string `json:"conditions"`
+	Dead             bool     `json:"dead"`
 }
 
 type RoomState struct {
@@ -42,6 +44,7 @@ type Client struct {
 	Role      string // dm | player
 	Name      string
 	SessionID string
+	MaxHP     int // populated from profile on join; 0 means no profile loaded
 }
 
 func (c *Client) WriteJSON(v any) error {
@@ -73,7 +76,17 @@ func (r *Room) sortEntities() {
 	}
 
 	sort.SliceStable(r.State.Entities, func(i, j int) bool {
-		return r.State.Entities[i].Initiative > r.State.Entities[j].Initiative
+		a, b := r.State.Entities[i].Initiative, r.State.Entities[j].Initiative
+		if a == nil && b == nil {
+			return false
+		}
+		if a == nil {
+			return false
+		}
+		if b == nil {
+			return true
+		}
+		return *a > *b
 	})
 
 	if activeID != "" {
@@ -95,6 +108,7 @@ func (r *Room) isDM(sessionID string) bool {
 // --- Combat turn flow ---
 
 // StartCombat marks combat as started, sets round to 1, and resets active turn to index 0.
+// Returns an error if any player or companion entity has a nil initiative.
 func (r *Room) StartCombat(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -103,6 +117,11 @@ func (r *Room) StartCombat(sessionID string) error {
 	}
 	if r.State.IsStarted {
 		return errors.New("already started")
+	}
+	for _, e := range r.State.Entities {
+		if (e.Type == "player" || e.Type == "companion") && e.Initiative == nil {
+			return errors.New("all players and companions must have initiative set before starting combat")
+		}
 	}
 	r.State.IsStarted = true
 	r.State.Round = 1
@@ -151,7 +170,7 @@ func (r *Room) AddCreature(sessionID, name string, maxHP, initiative int) error 
 		Type:       "creature",
 		MaxHP:      maxHP,
 		CurrentHP:  maxHP,
-		Initiative: initiative,
+		Initiative: &initiative,
 		Conditions: []string{},
 		Dead:       false,
 	})
@@ -297,10 +316,10 @@ func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempH
 		if conditions == nil {
 			conditions = []string{}
 		}
-		initiativeChanged := initiative != e.Initiative
+		initiativeChanged := e.Initiative == nil || *e.Initiative != initiative
 		e.CurrentHP = currentHP
 		e.TempHP = tempHP
-		e.Initiative = initiative
+		e.Initiative = &initiative
 		e.Conditions = conditions
 		e.Dead = dead
 		if initiativeChanged {
@@ -313,17 +332,17 @@ func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempH
 
 // --- Player-initiated methods (Epic 2) ---
 
-// SetupCharacter creates a player entity for the given session.
-func (r *Room) SetupCharacter(sessionID string, maxHP, initiative int) error {
-	if maxHP <= 0 {
-		return errors.New("max_hp must be greater than 0")
-	}
+// SetupCharacter creates a player entity for the given session using max_hp from the client's profile.
+func (r *Room) SetupCharacter(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	c, ok := r.Clients[sessionID]
 	if !ok || c.Role != "player" {
 		return errors.New("session not found or not a player")
+	}
+	if c.MaxHP <= 0 {
+		return errors.New("no profile loaded for this session")
 	}
 	for _, e := range r.State.Entities {
 		if e.SessionID == sessionID {
@@ -335,12 +354,39 @@ func (r *Room) SetupCharacter(sessionID string, maxHP, initiative int) error {
 		Name:       c.Name,
 		Type:       "player",
 		SessionID:  sessionID,
-		MaxHP:      maxHP,
-		CurrentHP:  maxHP,
-		Initiative: initiative,
+		MaxHP:      c.MaxHP,
+		CurrentHP:  c.MaxHP,
+		Initiative: nil,
 		Conditions: []string{},
 		Dead:       false,
 	})
+	r.sortEntities()
+	return nil
+}
+
+// SetInitiative sets the player entity's initiative and propagates to shared companions.
+func (r *Room) SetInitiative(sessionID string, initiative int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var playerEntityID string
+	for i := range r.State.Entities {
+		e := &r.State.Entities[i]
+		if e.SessionID == sessionID && e.Type == "player" {
+			e.Initiative = &initiative
+			playerEntityID = e.ID
+			break
+		}
+	}
+	if playerEntityID == "" {
+		return errors.New("player entity not found; complete character setup first")
+	}
+	for i := range r.State.Entities {
+		e := &r.State.Entities[i]
+		if e.Type == "companion" && e.OwnerID == playerEntityID && e.SharesInitiative {
+			e.Initiative = &initiative
+		}
+	}
 	r.sortEntities()
 	return nil
 }
@@ -388,7 +434,8 @@ func (r *Room) UpdateEntity(sessionID, entityID string, currentHP, tempHP int, c
 }
 
 // AddCompanion creates a companion entity owned by the given player session.
-func (r *Room) AddCompanion(sessionID, name string, maxHP, initiative int) error {
+// initiative may be nil (not yet set).
+func (r *Room) AddCompanion(sessionID, name string, maxHP int, sharesInitiative bool, initiative *int) error {
 	if maxHP <= 0 || name == "" {
 		return errors.New("invalid companion data")
 	}
@@ -406,22 +453,82 @@ func (r *Room) AddCompanion(sessionID, name string, maxHP, initiative int) error
 		return errors.New("player entity not found; complete character setup first")
 	}
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:         newToken(8),
-		Name:       name,
-		Type:       "companion",
-		OwnerID:    ownerID,
-		MaxHP:      maxHP,
-		CurrentHP:  maxHP,
-		Initiative: initiative,
-		Conditions: []string{},
-		Dead:       false,
+		ID:               newToken(8),
+		Name:             name,
+		Type:             "companion",
+		OwnerID:          ownerID,
+		MaxHP:            maxHP,
+		CurrentHP:        maxHP,
+		Initiative:       initiative,
+		SharesInitiative: sharesInitiative,
+		Conditions:       []string{},
+		Dead:             false,
 	})
 	r.sortEntities()
 	return nil
 }
 
+// RefreshFromProfile re-fetches the player's MongoDB profile and updates max_hp
+// for the player entity and all linked companions in this room.
+func (r *Room) RefreshFromProfile(sessionID string, st *store.Store) error {
+	r.mu.RLock()
+	c, ok := r.Clients[sessionID]
+	r.mu.RUnlock()
+	if !ok || c.Role != "player" {
+		return errors.New("session not found or not a player")
+	}
+
+	profile, err := st.GetEntityByName(c.Name)
+	if err != nil {
+		return err
+	}
+	if profile == nil {
+		return errors.New("profile not found")
+	}
+	companions, err := st.GetCompanionsByParent(c.Name)
+	if err != nil {
+		return err
+	}
+
+	companionMaxHP := make(map[string]int, len(companions))
+	for _, cp := range companions {
+		companionMaxHP[cp.Name] = cp.MaxHP
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var playerEntityID string
+	for i := range r.State.Entities {
+		e := &r.State.Entities[i]
+		if e.SessionID == sessionID && e.Type == "player" {
+			e.MaxHP = profile.MaxHP
+			if e.CurrentHP > e.MaxHP {
+				e.CurrentHP = e.MaxHP
+			}
+			playerEntityID = e.ID
+			break
+		}
+	}
+	if playerEntityID == "" {
+		return errors.New("player entity not in room")
+	}
+	for i := range r.State.Entities {
+		e := &r.State.Entities[i]
+		if e.Type == "companion" && e.OwnerID == playerEntityID {
+			if newMax, ok := companionMaxHP[e.Name]; ok {
+				e.MaxHP = newMax
+				if e.CurrentHP > e.MaxHP {
+					e.CurrentHP = e.MaxHP
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // ValidateAndRegister validates a join attempt and registers the client.
-func (r *Room) ValidateAndRegister(role, dmToken, name string, conn *websocket.Conn) (*Client, int, string) {
+// maxHP is used for player sessions to store the profile value; pass 0 for DM sessions.
+func (r *Room) ValidateAndRegister(role, dmToken, name string, conn *websocket.Conn, maxHP int) (*Client, int, string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -437,6 +544,7 @@ func (r *Room) ValidateAndRegister(role, dmToken, name string, conn *websocket.C
 		Role:      role,
 		Name:      name,
 		SessionID: newToken(8),
+		MaxHP:     maxHP,
 	}
 	r.Clients[c.SessionID] = c
 

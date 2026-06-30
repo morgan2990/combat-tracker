@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"combatapp/api"
+	"combatapp/store"
 	"combatapp/ws"
 )
 
@@ -16,6 +17,10 @@ import (
 var frontendDist embed.FS
 
 func main() {
+	if err := store.Init(); err != nil {
+		log.Fatalf("mongodb: %v", err)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -23,6 +28,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/rooms", api.CreateRoom)
+	mux.HandleFunc("POST /api/entities", api.UpsertEntity)
+	mux.HandleFunc("GET /api/entities/{name}", api.GetEntity)
 	mux.HandleFunc("/ws", ws.Handler)
 
 	distFS, err := fs.Sub(frontendDist, "frontend/dist")

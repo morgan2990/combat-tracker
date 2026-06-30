@@ -7,7 +7,8 @@ export interface Entity {
   max_hp: number
   current_hp: number
   temp_hp: number
-  initiative: number
+  initiative: number | null
+  shares_initiative: boolean
   conditions: string[]
   dead: boolean
 }
@@ -21,3 +22,14 @@ export interface RoomState {
 }
 
 export type Role = 'dm' | 'player'
+
+export interface ProfileCompanion {
+  name: string
+  max_hp: number
+  shares_initiative: boolean
+}
+
+export interface ProfileData {
+  max_hp: number
+  companions: ProfileCompanion[]
+}
