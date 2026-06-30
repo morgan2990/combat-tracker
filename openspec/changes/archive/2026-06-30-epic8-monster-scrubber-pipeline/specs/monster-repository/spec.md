@@ -1,10 +1,6 @@
-# Spec: Monster Repository
+# Delta Spec: Monster Repository
 
-## Purpose
-
-Defines the server-side API for storing, retrieving, and streaming monster templates. A monster template is a named document that captures stat defaults and an optional statblock reference (URL or PDF). The repository backs the DM's ability to look up and reuse monster stat blocks across sessions.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: DM can register a URL-type monster template
 The system SHALL expose `POST /api/monsters` accepting a JSON body with `name` (string), `max_hp` (integer), `edition` (string, required, one of `"5e"` or `"5.5e"`), and optional fields: `source_type` ("url" | "pdf"), `reference_url` (string), `five_etools_id` (string), `source_book` (string). The document SHALL be upserted into the `monsters` collection keyed by `{ name, edition }` and SHALL set `is_custom: true`.
@@ -29,6 +25,8 @@ The system SHALL expose `POST /api/monsters` accepting a JSON body with `name` (
 - **WHEN** a scrubbed document `{ name: "Goblin", edition: "5.5e" }` exists and a client sends `POST /api/monsters` with `{ "name": "Goblin", "edition": "5e", "max_hp": 7 }`
 - **THEN** the server SHALL insert a new document `{ name: "Goblin", edition: "5e", is_custom: true }` without affecting the scraped document
 
+---
+
 ### Requirement: DM can register a PDF-type monster template
 The system SHALL expose `POST /api/monsters` accepting `multipart/form-data` with fields `name`, `max_hp`, `edition` (required), `source_type: "pdf"`, and a file part named `pdf`. The PDF SHALL be uploaded to MinIO under key `monsters/{name}.pdf`; `pdf_object_key` SHALL be set on the stored document. The document SHALL set `is_custom: true`.
 
@@ -47,29 +45,3 @@ The system SHALL expose `POST /api/monsters` accepting `multipart/form-data` wit
 #### Scenario: MinIO is unreachable during PDF upload
 - **WHEN** a client sends a valid PDF upload request but MinIO cannot be reached
 - **THEN** the server SHALL return HTTP 502 with an error message; no document SHALL be written to MongoDB
-
-### Requirement: DM can look up a monster template by exact name
-The system SHALL expose `GET /api/monsters/:name` that returns the monster document for the given name.
-
-#### Scenario: Monster found
-- **WHEN** a client sends `GET /api/monsters/Goblin` and a document with `name: "Goblin"` exists in the `monsters` collection
-- **THEN** the server SHALL return HTTP 200 with the document as JSON
-
-#### Scenario: Monster not found
-- **WHEN** a client sends `GET /api/monsters/Unknown` and no matching document exists
-- **THEN** the server SHALL return HTTP 404
-
-### Requirement: Backend can stream a monster PDF from MinIO
-The system SHALL expose `GET /api/monsters/:name/pdf` that proxies the PDF object from MinIO to the client as a streamed response.
-
-#### Scenario: PDF streamed successfully
-- **WHEN** a client sends `GET /api/monsters/Beholder/pdf` and the monster document has `pdf_object_key` set and the object exists in MinIO
-- **THEN** the server SHALL stream the object bytes with `Content-Type: application/pdf` and HTTP 200
-
-#### Scenario: Monster has no PDF
-- **WHEN** a client sends `GET /api/monsters/Goblin/pdf` and the monster document has no `pdf_object_key`
-- **THEN** the server SHALL return HTTP 404
-
-#### Scenario: MinIO object missing
-- **WHEN** a client sends `GET /api/monsters/Beholder/pdf`, the document has `pdf_object_key` set, but the object does not exist in MinIO
-- **THEN** the server SHALL return HTTP 404

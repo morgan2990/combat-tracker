@@ -44,8 +44,42 @@ func Init() error {
 	}
 	db := client.Database("combatapp")
 	Global = Store{col: db.Collection("entities")}
-	GlobalMonsters = MonsterStore{col: db.Collection("monsters")}
+	monstersCol := db.Collection("monsters")
+	GlobalMonsters = MonsterStore{col: monstersCol}
+	if err := ensureMonsterIndex(ctx, monstersCol); err != nil {
+		return err
+	}
 	return nil
+}
+
+func ensureMonsterIndex(ctx context.Context, col *mongo.Collection) error {
+	iv := col.Indexes()
+	cur, err := iv.List(ctx)
+	if err != nil {
+		return err
+	}
+	var indexes []bson.M
+	if err := cur.All(ctx, &indexes); err != nil {
+		return err
+	}
+	for _, idx := range indexes {
+		key, _ := idx["key"].(bson.M)
+		_, hasName := key["name"]
+		_, hasEdition := key["edition"]
+		unique, _ := idx["unique"].(bool)
+		if hasName && !hasEdition && unique {
+			name, _ := idx["name"].(string)
+			if err := iv.DropOne(ctx, name); err != nil {
+				return err
+			}
+			break
+		}
+	}
+	_, err = iv.CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "name", Value: 1}, {Key: "edition", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	return err
 }
 
 // UpsertEntity inserts or replaces the profile document keyed by Name.
