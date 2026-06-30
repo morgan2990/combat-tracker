@@ -3,9 +3,11 @@ package ws
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"combatapp/room"
+	"combatapp/store"
 	"github.com/gorilla/websocket"
 )
 
@@ -25,8 +27,9 @@ type baseMsg struct {
 }
 
 // Player messages
-type setupCharacterMsg struct {
-	MaxHP      int `json:"max_hp"`
+type setupCharacterMsg struct{}
+
+type setInitiativeMsg struct {
 	Initiative int `json:"initiative"`
 }
 
@@ -38,9 +41,10 @@ type updateEntityMsg struct {
 }
 
 type addCompanionMsg struct {
-	Name       string `json:"name"`
-	MaxHP      int    `json:"max_hp"`
-	Initiative int    `json:"initiative"`
+	Name             string `json:"name"`
+	MaxHP            int    `json:"max_hp"`
+	SharesInitiative bool   `json:"shares_initiative"`
+	Initiative       *int   `json:"initiative"`
 }
 
 // DM messages
@@ -88,7 +92,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, code, reason := rm.ValidateAndRegister(role, dmToken, name, conn)
+	maxHP := 0
+	if role == "player" {
+		if raw := q.Get("max_hp"); raw != "" {
+			if v, err := strconv.Atoi(raw); err == nil && v > 0 {
+				maxHP = v
+			}
+		}
+	}
+
+	client, code, reason := rm.ValidateAndRegister(role, dmToken, name, conn, maxHP)
 	if code != 0 {
 		closeWith(conn, code, reason)
 		return
@@ -133,11 +146,19 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 	switch base.Type {
 	// --- Player actions ---
 	case "setup_character":
-		var msg setupCharacterMsg
+		if c.MaxHP == 0 {
+			return // no profile loaded
+		}
+		if err := rm.SetupCharacter(c.SessionID); err == nil {
+			rm.BroadcastState()
+		}
+
+	case "set_initiative":
+		var msg setInitiativeMsg
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			return
 		}
-		if err := rm.SetupCharacter(c.SessionID, msg.MaxHP, msg.Initiative); err == nil {
+		if err := rm.SetInitiative(c.SessionID, msg.Initiative); err == nil {
 			rm.BroadcastState()
 		}
 
@@ -155,7 +176,12 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			return
 		}
-		if err := rm.AddCompanion(c.SessionID, msg.Name, msg.MaxHP, msg.Initiative); err == nil {
+		if err := rm.AddCompanion(c.SessionID, msg.Name, msg.MaxHP, msg.SharesInitiative, msg.Initiative); err == nil {
+			rm.BroadcastState()
+		}
+
+	case "refresh_from_profile":
+		if err := rm.RefreshFromProfile(c.SessionID, &store.Global); err == nil {
 			rm.BroadcastState()
 		}
 

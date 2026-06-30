@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import type { Entity, RoomState } from '../types'
 import { CompanionForm } from './CompanionForm'
 
@@ -131,13 +132,58 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
   )
 }
 
-interface PlayerViewProps {
-  roomState: RoomState
-  myEntityId: string | null
+interface InitiativeFormProps {
   sendMessage: (msg: object) => void
 }
 
-export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewProps) {
+function InitiativeForm({ sendMessage }: InitiativeFormProps) {
+  const [initiative, setInitiative] = useState('')
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    const init = parseInt(initiative, 10)
+    if (isNaN(init)) return
+    sendMessage({ type: 'set_initiative', initiative: init })
+  }
+
+  return (
+    <div style={{ padding: '12px 16px', background: '#1a1608', border: '1px solid #e67e22', borderRadius: 6, marginBottom: 16 }}>
+      <div style={{ fontWeight: 600, color: '#e67e22', marginBottom: 8, fontSize: 14 }}>Set your initiative</div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8 }}>
+        <input
+          type="number"
+          value={initiative}
+          onChange={e => setInitiative(e.target.value)}
+          placeholder="e.g. 14"
+          required
+          autoFocus
+          style={{ flex: 1, padding: '8px 12px', fontSize: 16, boxSizing: 'border-box' }}
+        />
+        <button
+          type="submit"
+          disabled={!initiative}
+          style={{
+            padding: '8px 16px', fontSize: 14, fontWeight: 600,
+            background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4,
+            cursor: !initiative ? 'not-allowed' : 'pointer',
+            opacity: !initiative ? 0.45 : 1,
+          }}
+        >
+          Set
+        </button>
+      </form>
+    </div>
+  )
+}
+
+interface PlayerViewProps {
+  roomState: RoomState
+  myEntityId: string | null
+  needsInitiative: boolean
+  sendMessage: (msg: object) => void
+}
+
+export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage }: PlayerViewProps) {
   const [showCompanionForm, setShowCompanionForm] = useState(false)
   const { entities, active_index, is_started, round } = roomState
 
@@ -153,7 +199,10 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
         {is_started && <span style={{ fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
       </div>
 
-      {!is_started && (
+      {/* Initiative prompt (shown until initiative is set) */}
+      {needsInitiative && <InitiativeForm sendMessage={sendMessage} />}
+
+      {!is_started && !needsInitiative && (
         <div style={{ padding: 10, background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, marginBottom: 12, fontSize: 14, color: '#7878a0' }}>
           Waiting for DM to start combat…
         </div>
@@ -213,7 +262,7 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
                 )}
               </div>
               <div style={{ fontSize: 12, color: '#5a5a78', width: 32, textAlign: 'right' }}>
-                {entity.initiative}
+                {entity.initiative !== null ? entity.initiative : '—'}
               </div>
             </div>
           )
@@ -223,17 +272,26 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
       {/* My entity editor */}
       {myEntity && (
         <div style={{ border: '1px solid #3498db', borderRadius: 6, padding: '12px 16px', marginBottom: 16, background: '#0c1929' }}>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: '#d4d4e8' }}>
-            {myEntity.name}
-            {is_started && active_index !== -1 && entities[active_index]?.id === myEntityId && (
-              <span style={{ marginLeft: 8, color: '#e67e22', fontSize: 13 }}>Your turn!</span>
-            )}
-            {entityVitalState(myEntity.dead, myEntity.current_hp) === 'dead' && (
-              <span style={{ marginLeft: 8, fontSize: 12, color: '#e74c3c' }}>💀 Dead</span>
-            )}
-            {entityVitalState(myEntity.dead, myEntity.current_hp) === 'unconscious' && (
-              <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, color: '#d4d4e8' }}>
+              {myEntity.name}
+              {is_started && active_index !== -1 && entities[active_index]?.id === myEntityId && (
+                <span style={{ marginLeft: 8, color: '#e67e22', fontSize: 13 }}>Your turn!</span>
+              )}
+              {entityVitalState(myEntity.dead, myEntity.current_hp) === 'dead' && (
+                <span style={{ marginLeft: 8, fontSize: 12, color: '#e74c3c' }}>💀 Dead</span>
+              )}
+              {entityVitalState(myEntity.dead, myEntity.current_hp) === 'unconscious' && (
+                <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
+              )}
+            </div>
+            <button
+              onClick={() => sendMessage({ type: 'refresh_from_profile' })}
+              title="Refresh max HP from saved profile"
+              style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: '#7878a0', border: '1px solid #2e2e48', borderRadius: 4 }}
+            >
+              ↻ Refresh profile
+            </button>
           </div>
           <EntityEditor entity={myEntity} sendMessage={sendMessage} />
           <button

@@ -1,10 +1,4 @@
-# Spec: Player Character Setup
-
-## Purpose
-
-Defines how a player establishes their entity in a room after connecting via WebSocket, including the setup form flow, server-side entity creation, and reconnection re-linking for returning players.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Player configures their character after connecting
 After a WebSocket connection is established, a new player (one without an existing entity in the room) SHALL be presented with a setup prompt to confirm their Max HP (pre-loaded from their profile, read-only) and enter their initiative. The player SHALL then send `setup_character` to create their entity, followed by `set_initiative` to set their initiative value.
@@ -21,6 +15,8 @@ After a WebSocket connection is established, a new player (one without an existi
 - **WHEN** a player sends `setup_character` but no `max_hp` was stored on their session (i.e., they connected without a valid profile query param)
 - **THEN** the server SHALL reject the message and send no broadcast
 
+## ADDED Requirements
+
 ### Requirement: Player sets initiative as a separate step after joining
 After creating their entity via `setup_character`, a player SHALL send a `set_initiative` message to assign their initiative value. This is a distinct step from entity creation, allowing companions to be loaded first and shared-initiative propagation to occur in one action.
 
@@ -31,18 +27,3 @@ After creating their entity via `setup_character`, a player SHALL send a `set_in
 #### Scenario: set_initiative rejected before character is set up
 - **WHEN** a player sends `set_initiative` before completing `setup_character`
 - **THEN** the server SHALL ignore the message and send no broadcast
-
-### Requirement: Reconnecting player skips setup and re-links to existing entity
-If a player connects with a name that matches an entity already present in `State.Entities`, the server SHALL re-link that entity to the new session instead of treating the name as a conflict.
-
-#### Scenario: Entity re-linked on reconnection
-- **WHEN** a player connects with a name matching an existing `player`-type entity in `State.Entities`
-- **THEN** the server SHALL update that entity's `session_id` to the new session ID and register the connection normally
-
-#### Scenario: Client detects existing entity and skips setup form
-- **WHEN** a newly connected player-role client receives the first `RoomState` broadcast
-- **THEN** the client SHALL check whether any entity matches `name === myName && type === "player"`; if found, it SHALL display the combat view directly without showing the setup form
-
-#### Scenario: Re-linked player retains ownership of companions
-- **WHEN** a player reconnects and their entity is re-linked to the new session
-- **THEN** companion entities whose `owner_id` equals the re-linked entity's `id` SHALL remain editable by that player in the new session

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Role } from '../types'
+import { Link } from 'react-router-dom'
+import type { Role, ProfileData } from '../types'
 
 interface JoinScreenProps {
-  onJoin: (roomId: string, name: string, role: Role, dmToken: string) => void
+  onJoin: (roomId: string, name: string, role: Role, dmToken: string, profile?: ProfileData) => void
   error: string | null
   connecting: boolean
 }
@@ -14,6 +15,9 @@ export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
   // Player fields
   const [playerRoomId, setPlayerRoomId] = useState('')
   const [playerName, setPlayerName] = useState('')
+  const [profile, setProfile] = useState<ProfileData | null>(null)
+  const [fetchingProfile, setFetchingProfile] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
 
   // DM shared name + rejoin fields
   const [dmName, setDmName] = useState('')
@@ -23,10 +27,46 @@ export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
+  function resetProfile() {
+    setProfile(null)
+    setProfileError(null)
+  }
+
+  async function handleFindCharacter() {
+    if (!playerName.trim()) return
+    setFetchingProfile(true)
+    setProfileError(null)
+    setProfile(null)
+    try {
+      const res = await fetch(`/api/entities/${encodeURIComponent(playerName.trim())}`)
+      if (res.status === 404) {
+        setProfileError('not_found')
+        return
+      }
+      if (!res.ok) {
+        setProfileError('error')
+        return
+      }
+      const data = await res.json()
+      setProfile({
+        max_hp: data.profile.max_hp,
+        companions: (data.companions as Array<{ name: string; max_hp: number; shares_initiative: boolean }>).map(c => ({
+          name: c.name,
+          max_hp: c.max_hp,
+          shares_initiative: c.shares_initiative,
+        })),
+      })
+    } catch {
+      setProfileError('error')
+    } finally {
+      setFetchingProfile(false)
+    }
+  }
+
   function handlePlayerJoin(e: FormEvent) {
     e.preventDefault()
-    if (!playerRoomId.trim() || !playerName.trim()) return
-    onJoin(playerRoomId.trim().toUpperCase(), playerName.trim(), 'player', '')
+    if (!playerRoomId.trim() || !playerName.trim() || !profile) return
+    onJoin(playerRoomId.trim().toUpperCase(), playerName.trim(), 'player', '', profile)
   }
 
   function handleRejoin(e: FormEvent) {
@@ -87,20 +127,74 @@ export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
               style={inputStyle}
             />
           </label>
+
           <label style={{ marginTop: 12, display: 'block' }}>
             <div style={labelText}>Character Name</div>
-            <input
-              value={playerName}
-              onChange={e => setPlayerName(e.target.value)}
-              placeholder="Your name"
-              required
-              style={inputStyle}
-            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <input
+                value={playerName}
+                onChange={e => { setPlayerName(e.target.value); resetProfile() }}
+                placeholder="Your character's name"
+                required
+                style={{ ...inputStyle, marginTop: 0, flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={handleFindCharacter}
+                disabled={fetchingProfile || !playerName.trim()}
+                style={{
+                  padding: '8px 12px', fontSize: 13, cursor: fetchingProfile || !playerName.trim() ? 'not-allowed' : 'pointer',
+                  opacity: fetchingProfile || !playerName.trim() ? 0.45 : 1,
+                  background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4, whiteSpace: 'nowrap',
+                }}
+              >
+                {fetchingProfile ? '…' : 'Find'}
+              </button>
+            </div>
           </label>
+
+          {/* Profile found */}
+          {profile && (
+            <div style={{ marginTop: 12, padding: '10px 12px', background: '#0f1f10', border: '1px solid #27ae60', borderRadius: 6, fontSize: 13 }}>
+              <div style={{ color: '#27ae60', fontWeight: 600, marginBottom: 4 }}>Profile found</div>
+              <div style={{ color: '#d4d4e8' }}>Max HP: <strong>{profile.max_hp}</strong></div>
+              {profile.companions.length > 0 && (
+                <div style={{ color: '#8888aa', marginTop: 4 }}>
+                  Companions: {profile.companions.map(c => c.name).join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profile not found */}
+          {profileError === 'not_found' && (
+            <div style={{ marginTop: 12, padding: '10px 12px', background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 6, fontSize: 13, color: '#e74c3c' }}>
+              Character not found.{' '}
+              <Link to="/characters/new" style={{ color: '#e07070' }}>Create a profile</Link> first.
+            </div>
+          )}
+
+          {/* Service error */}
+          {profileError === 'error' && (
+            <div style={{ marginTop: 12, padding: '10px 12px', background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 6, fontSize: 13, color: '#e74c3c' }}>
+              Service unavailable. Please try again.
+            </div>
+          )}
+
           {error && <div style={errorStyle}>{error}</div>}
-          <button type="submit" disabled={connecting} style={primaryBtn(connecting)}>
+
+          <button
+            type="submit"
+            disabled={connecting || !profile}
+            style={primaryBtn(connecting || !profile)}
+          >
             {connecting ? 'Connecting…' : 'Join Room'}
           </button>
+
+          <div style={{ marginTop: 12, textAlign: 'center', fontSize: 13, color: '#5a5a78' }}>
+            No profile yet?{' '}
+            <Link to="/characters/new" style={{ color: '#7878a0' }}>Create your character</Link>
+          </div>
         </form>
       ) : (
         <div>

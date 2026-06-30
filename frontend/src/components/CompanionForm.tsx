@@ -10,13 +10,20 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
   const [initiative, setInitiative] = useState('')
+  const [sharesInitiative, setSharesInitiative] = useState(false)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const hp = parseInt(maxHP, 10)
-    const init = parseInt(initiative, 10)
     if (!name.trim() || !hp || hp <= 0) return
-    onSubmit({ type: 'add_companion', name: name.trim(), max_hp: hp, initiative: init || 0 })
+    const init = initiative.trim() !== '' ? parseInt(initiative, 10) : null
+    onSubmit({
+      type: 'add_companion',
+      name: name.trim(),
+      max_hp: hp,
+      shares_initiative: sharesInitiative,
+      initiative: isNaN(init as number) ? null : init,
+    })
     onClose()
   }
 
@@ -48,16 +55,25 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
             />
           </label>
           <label style={labelStyle}>
-            <span>Initiative</span>
+            <span>Initiative <span style={{ fontWeight: 400, color: '#5a5a78' }}>(optional)</span></span>
             <input
               type="number"
               value={initiative}
               onChange={e => setInitiative(e.target.value)}
-              placeholder="e.g. 12"
-              style={inputStyle}
+              placeholder="leave blank if sharing"
+              disabled={sharesInitiative}
+              style={{ ...inputStyle, opacity: sharesInitiative ? 0.4 : 1 }}
             />
           </label>
-          <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, color: '#8888aa' }}>
+            <input
+              type="checkbox"
+              checked={sharesInitiative}
+              onChange={e => { setSharesInitiative(e.target.checked); if (e.target.checked) setInitiative('') }}
+            />
+            Shares initiative with me
+          </label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <button
               type="button"
               onClick={onClose}
