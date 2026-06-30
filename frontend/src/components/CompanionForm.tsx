@@ -23,7 +23,7 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
   return (
     <div style={overlayStyle}>
       <div style={panelStyle}>
-        <h3 style={{ marginTop: 0, marginBottom: 16 }}>Add Summon / Pet</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 16, color: '#d4d4e8' }}>Add Summon / Pet</h3>
         <form onSubmit={handleSubmit}>
           <label style={labelStyle}>
             <span>Name</span>
@@ -58,10 +58,17 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
             />
           </label>
           <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '10px 0' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ flex: 1, padding: '10px 0', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 }}
+            >
               Cancel
             </button>
-            <button type="submit" style={{ flex: 2, padding: '10px 0', fontWeight: 'bold' }}>
+            <button
+              type="submit"
+              style={{ flex: 2, padding: '10px 0', fontWeight: 'bold', background: '#9b59b6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 }}
+            >
               Add to Tracker
             </button>
           </div>
@@ -73,18 +80,18 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0,
-  background: 'rgba(0,0,0,0.5)',
+  background: 'rgba(0,0,0,0.65)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   zIndex: 100,
 }
 
 const panelStyle: React.CSSProperties = {
-  background: 'white',
+  background: '#1e1e30',
+  border: '1px solid #2e2e48',
   borderRadius: 8,
   padding: 24,
   width: '90%',
   maxWidth: 340,
-  fontFamily: 'sans-serif',
 }
 
 const labelStyle: React.CSSProperties = {
@@ -93,6 +100,8 @@ const labelStyle: React.CSSProperties = {
   gap: 4,
   marginBottom: 12,
   fontWeight: 600,
+  fontSize: 13,
+  color: '#7878a0',
 }
 
 const inputStyle: React.CSSProperties = {

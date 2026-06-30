@@ -9,86 +9,168 @@ interface JoinScreenProps {
 }
 
 export function JoinScreen({ onJoin, error, connecting }: JoinScreenProps) {
-  const [roomId, setRoomId] = useState('')
-  const [name, setName] = useState('')
-  const [role, setRole] = useState<Role>('player')
+  const [tab, setTab] = useState<Role>('player')
+
+  // Player fields
+  const [playerRoomId, setPlayerRoomId] = useState('')
+  const [playerName, setPlayerName] = useState('')
+
+  // DM shared name + rejoin fields
+  const [dmName, setDmName] = useState('')
+  const [rejoinRoomId, setRejoinRoomId] = useState('')
   const [dmToken, setDmToken] = useState('')
 
-  function handleSubmit(e: FormEvent) {
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  function handlePlayerJoin(e: FormEvent) {
     e.preventDefault()
-    if (!roomId.trim() || !name.trim()) return
-    onJoin(roomId.trim().toUpperCase(), name.trim(), role, dmToken.trim())
+    if (!playerRoomId.trim() || !playerName.trim()) return
+    onJoin(playerRoomId.trim().toUpperCase(), playerName.trim(), 'player', '')
+  }
+
+  function handleRejoin(e: FormEvent) {
+    e.preventDefault()
+    if (!rejoinRoomId.trim() || !dmName.trim() || !dmToken.trim()) return
+    onJoin(rejoinRoomId.trim().toUpperCase(), dmName.trim(), 'dm', dmToken.trim())
+  }
+
+  async function handleCreateRoom() {
+    if (!dmName.trim()) return
+    setCreating(true)
+    setCreateError(null)
+    try {
+      const res = await fetch('/api/rooms', { method: 'POST' })
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      const data = await res.json()
+      onJoin(data.room_id, dmName.trim(), 'dm', data.dm_token)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create room')
+      setCreating(false)
+    }
   }
 
   return (
-    <div style={{ maxWidth: 360, margin: '80px auto', padding: 24, fontFamily: 'sans-serif' }}>
-      <h1 style={{ marginBottom: 24 }}>⚔ Combat Tracker</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          <div>Room Code</div>
-          <input
-            value={roomId}
-            onChange={e => setRoomId(e.target.value.toUpperCase())}
-            maxLength={6}
-            placeholder="XXXXX"
-            required
-            style={inputStyle}
-          />
-        </label>
+    <div style={{ maxWidth: 380, margin: '80px auto', padding: 24 }}>
+      <h1 style={{ marginBottom: 24, fontSize: 26, fontWeight: 700 }}>⚔ Combat Tracker</h1>
 
-        <label style={{ marginTop: 12, display: 'block' }}>
-          <div>Character Name</div>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Your name"
-            required
-            style={inputStyle}
-          />
-        </label>
+      {/* Tab toggle */}
+      <div style={{ display: 'flex', marginBottom: 20, borderBottom: '2px solid #2e2e48' }}>
+        {(['player', 'dm'] as Role[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              flex: 1, padding: '8px 0', fontSize: 14,
+              fontWeight: tab === t ? 700 : 400,
+              background: 'none', border: 'none',
+              borderBottom: tab === t ? '2px solid #3498db' : '2px solid transparent',
+              marginBottom: -2, cursor: 'pointer',
+              color: tab === t ? '#3498db' : '#7878a0',
+            }}
+          >
+            {t === 'player' ? 'Player' : 'Dungeon Master'}
+          </button>
+        ))}
+      </div>
 
-        <div style={{ marginTop: 12 }}>
-          <div>Role</div>
-          <label style={{ marginRight: 16 }}>
-            <input type="radio" value="player" checked={role === 'player'} onChange={() => setRole('player')} />
-            {' '}Player
-          </label>
+      {tab === 'player' ? (
+        <form onSubmit={handlePlayerJoin}>
           <label>
-            <input type="radio" value="dm" checked={role === 'dm'} onChange={() => setRole('dm')} />
-            {' '}Dungeon Master
-          </label>
-        </div>
-
-        {role === 'dm' && (
-          <label style={{ marginTop: 12, display: 'block' }}>
-            <div>DM Token</div>
+            <div style={labelText}>Room Code</div>
             <input
-              value={dmToken}
-              onChange={e => setDmToken(e.target.value)}
-              placeholder="Token from room creation"
+              value={playerRoomId}
+              onChange={e => setPlayerRoomId(e.target.value.toUpperCase())}
+              maxLength={6}
+              placeholder="XXXXX"
               required
               style={inputStyle}
             />
           </label>
-        )}
+          <label style={{ marginTop: 12, display: 'block' }}>
+            <div style={labelText}>Character Name</div>
+            <input
+              value={playerName}
+              onChange={e => setPlayerName(e.target.value)}
+              placeholder="Your name"
+              required
+              style={inputStyle}
+            />
+          </label>
+          {error && <div style={errorStyle}>{error}</div>}
+          <button type="submit" disabled={connecting} style={primaryBtn(connecting)}>
+            {connecting ? 'Connecting…' : 'Join Room'}
+          </button>
+        </form>
+      ) : (
+        <div>
+          {/* Shared name field */}
+          <label>
+            <div style={labelText}>Your Name</div>
+            <input
+              value={dmName}
+              onChange={e => setDmName(e.target.value)}
+              placeholder="Dungeon Master"
+              style={inputStyle}
+            />
+          </label>
 
-        {error && (
-          <div style={{ marginTop: 12, color: '#c0392b', fontWeight: 'bold' }}>
-            {error}
+          {/* Create New Room */}
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={handleCreateRoom}
+              disabled={creating || connecting || !dmName.trim()}
+              style={primaryBtn(creating || connecting || !dmName.trim())}
+            >
+              {creating ? 'Creating…' : '▶ Create New Room'}
+            </button>
+            {createError && <div style={errorStyle}>{createError}</div>}
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={connecting}
-          style={{ marginTop: 20, width: '100%', padding: '12px 0', fontSize: 16, cursor: connecting ? 'wait' : 'pointer' }}
-        >
-          {connecting ? 'Connecting…' : 'Join Room'}
-        </button>
-      </form>
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0' }}>
+            <div style={{ flex: 1, height: 1, background: '#2e2e48' }} />
+            <span style={{ fontSize: 12, color: '#5a5a78', whiteSpace: 'nowrap' }}>or rejoin existing</span>
+            <div style={{ flex: 1, height: 1, background: '#2e2e48' }} />
+          </div>
+
+          {/* Rejoin Existing Room */}
+          <form onSubmit={handleRejoin}>
+            <label>
+              <div style={labelText}>Room Code</div>
+              <input
+                value={rejoinRoomId}
+                onChange={e => setRejoinRoomId(e.target.value.toUpperCase())}
+                maxLength={6}
+                placeholder="XXXXX"
+                style={inputStyle}
+              />
+            </label>
+            <label style={{ marginTop: 12, display: 'block' }}>
+              <div style={labelText}>DM Token</div>
+              <input
+                value={dmToken}
+                onChange={e => setDmToken(e.target.value)}
+                placeholder="Token from room creation"
+                style={inputStyle}
+              />
+            </label>
+            {error && <div style={errorStyle}>{error}</div>}
+            <button
+              type="submit"
+              disabled={connecting || !dmName.trim() || !rejoinRoomId.trim() || !dmToken.trim()}
+              style={{ ...primaryBtn(connecting || !dmName.trim() || !rejoinRoomId.trim() || !dmToken.trim()), marginTop: 12 }}
+            >
+              {connecting ? 'Connecting…' : '→ Rejoin Room'}
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
+
+const labelText: React.CSSProperties = { fontSize: 13, color: '#7878a0', marginBottom: 4 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -96,4 +178,26 @@ const inputStyle: React.CSSProperties = {
   fontSize: 16,
   boxSizing: 'border-box',
   marginTop: 4,
+}
+
+const errorStyle: React.CSSProperties = {
+  marginTop: 10,
+  color: '#e74c3c',
+  fontWeight: 'bold',
+  fontSize: 14,
+}
+
+function primaryBtn(disabled: boolean): React.CSSProperties {
+  return {
+    marginTop: 16,
+    width: '100%',
+    padding: '12px 0',
+    fontSize: 16,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.45 : 1,
+    background: '#e67e22',
+    color: '#fff',
+    border: 'none',
+    fontWeight: 600,
+  }
 }

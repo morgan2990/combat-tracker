@@ -4,6 +4,12 @@ import { CompanionForm } from './CompanionForm'
 
 const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
 
+function entityVitalState(dead: boolean, currentHP: number): 'dead' | 'unconscious' | 'alive' {
+  if (dead) return 'dead'
+  if (currentHP === 0) return 'unconscious'
+  return 'alive'
+}
+
 function hpLabel(current: number, max: number): string {
   if (max === 0) return 'Unknown'
   const ratio = current / max
@@ -80,7 +86,7 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
         ) : (
           <button
             onClick={() => { setHpInput(String(entity.current_hp)); setEditingHP(true) }}
-            style={{ fontSize: 18, fontWeight: 'bold', background: 'none', border: '1px solid #ccc', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', minWidth: 72, textAlign: 'center' }}
+            style={{ fontSize: 18, fontWeight: 'bold', background: 'none', border: '1px solid #2e2e48', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', minWidth: 72, textAlign: 'center', color: '#d4d4e8' }}
           >
             {entity.current_hp}/{entity.max_hp}
           </button>
@@ -110,9 +116,9 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
                 fontSize: 12,
                 borderRadius: 12,
                 border: '1px solid',
-                borderColor: active ? '#e74c3c' : '#ccc',
-                background: active ? '#fde8e8' : 'white',
-                color: active ? '#c0392b' : '#555',
+                borderColor: active ? '#e74c3c' : '#2e2e48',
+                background: active ? '#2a0808' : '#1a1a2c',
+                color: active ? '#e74c3c' : '#8888aa',
                 cursor: 'pointer',
               }}
             >
@@ -139,37 +145,47 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
   const myCompanions = entities.filter(e => e.type === 'companion' && e.owner_id === myEntityId)
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: 16, fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>⚔ Combat Tracker</h2>
-        {is_started && <span style={{ fontWeight: 'bold' }}>Round {round}</span>}
+        {is_started && <span style={{ fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
       </div>
 
       {!is_started && (
-        <div style={{ padding: 10, background: '#f5f5f5', borderRadius: 6, marginBottom: 12, fontSize: 14, color: '#666' }}>
+        <div style={{ padding: 10, background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, marginBottom: 12, fontSize: 14, color: '#7878a0' }}>
           Waiting for DM to start combat…
         </div>
       )}
 
       {/* Initiative tracker */}
-      <div style={{ border: '1px solid #ddd', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ border: '1px solid #2e2e48', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
         {entities.length === 0 && (
-          <div style={{ padding: 16, color: '#888' }}>No combatants yet.</div>
+          <div style={{ padding: 16, color: '#7878a0' }}>No combatants yet.</div>
         )}
         {entities.map((entity, i) => {
           const isActive = is_started && i === active_index
           const isMe = entity.id === myEntityId
           const isCreature = entity.type === 'creature'
+          const vitalState = isCreature ? 'alive' : entityVitalState(entity.dead, entity.current_hp)
+
+          const rowBg =
+            vitalState === 'dead'        ? '#141414' :
+            vitalState === 'unconscious' ? '#1a1608' :
+            isActive                     ? '#1f1508' :
+            isMe                         ? '#0f1a2c' : '#1a1a2c'
+          const textColor =
+            vitalState === 'dead'        ? '#585858' :
+            vitalState === 'unconscious' ? '#9090a0' : '#d4d4e8'
 
           return (
             <div
               key={entity.id}
               style={{
                 padding: '10px 14px',
-                borderBottom: '1px solid #eee',
-                background: isActive ? '#fff8e1' : isMe ? '#f0f7ff' : 'white',
+                borderBottom: '1px solid #2e2e48',
+                background: rowBg,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
@@ -177,9 +193,11 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
             >
               <span style={{ width: 16, color: '#e67e22' }}>{isActive ? '▶' : ''}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: isMe ? 700 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontWeight: isMe ? 700 : 400, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {entity.name}
                   {isMe && <span style={{ fontSize: 11, color: '#3498db', marginLeft: 6 }}>you</span>}
+                  {vitalState === 'dead' && <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 6 }}>💀 Dead</span>}
+                  {vitalState === 'unconscious' && <span style={{ fontSize: 11, color: '#e67e22', marginLeft: 6 }}>😵 Unconscious</span>}
                 </div>
                 {entity.conditions.length > 0 && (
                   <div style={{ fontSize: 11, color: '#e74c3c', marginTop: 2 }}>
@@ -187,14 +205,14 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: 14, textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 14, textAlign: 'right', flexShrink: 0, color: textColor }}>
                 {isCreature ? (
-                  <span style={{ color: '#888', fontStyle: 'italic' }}>{hpLabel(entity.current_hp, entity.max_hp)}</span>
+                  <span style={{ color: '#7878a0', fontStyle: 'italic' }}>{hpLabel(entity.current_hp, entity.max_hp)}</span>
                 ) : (
                   <span>{entity.current_hp}/{entity.max_hp} HP</span>
                 )}
               </div>
-              <div style={{ fontSize: 12, color: '#aaa', width: 32, textAlign: 'right' }}>
+              <div style={{ fontSize: 12, color: '#5a5a78', width: 32, textAlign: 'right' }}>
                 {entity.initiative}
               </div>
             </div>
@@ -204,17 +222,23 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
 
       {/* My entity editor */}
       {myEntity && (
-        <div style={{ border: '1px solid #3498db', borderRadius: 6, padding: '12px 16px', marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>
+        <div style={{ border: '1px solid #3498db', borderRadius: 6, padding: '12px 16px', marginBottom: 16, background: '#0c1929' }}>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: '#d4d4e8' }}>
             {myEntity.name}
             {is_started && active_index !== -1 && entities[active_index]?.id === myEntityId && (
               <span style={{ marginLeft: 8, color: '#e67e22', fontSize: 13 }}>Your turn!</span>
+            )}
+            {entityVitalState(myEntity.dead, myEntity.current_hp) === 'dead' && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#e74c3c' }}>💀 Dead</span>
+            )}
+            {entityVitalState(myEntity.dead, myEntity.current_hp) === 'unconscious' && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
             )}
           </div>
           <EntityEditor entity={myEntity} sendMessage={sendMessage} />
           <button
             onClick={() => setShowCompanionForm(true)}
-            style={{ marginTop: 12, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}
+            style={{ marginTop: 12, padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
           >
             + Add Summon / Pet
           </button>
@@ -223,9 +247,15 @@ export function PlayerView({ roomState, myEntityId, sendMessage }: PlayerViewPro
 
       {/* Owned companion editors */}
       {myCompanions.map(companion => (
-        <div key={companion.id} style={{ border: '1px solid #9b59b6', borderRadius: 6, padding: '12px 16px', marginBottom: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: '#8e44ad' }}>
-            {companion.name} <span style={{ fontSize: 11, fontWeight: 400, color: '#aaa' }}>companion</span>
+        <div key={companion.id} style={{ border: '1px solid #9b59b6', borderRadius: 6, padding: '12px 16px', marginBottom: 12, background: '#130f1d' }}>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: '#b07fe0' }}>
+            {companion.name} <span style={{ fontSize: 11, fontWeight: 400, color: '#5a5a78' }}>companion</span>
+            {entityVitalState(companion.dead, companion.current_hp) === 'dead' && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#e74c3c' }}>💀 Dead</span>
+            )}
+            {entityVitalState(companion.dead, companion.current_hp) === 'unconscious' && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
+            )}
           </div>
           <EntityEditor entity={companion} sendMessage={sendMessage} />
         </div>
@@ -246,7 +276,8 @@ const deltaBtn: React.CSSProperties = {
   fontSize: 14,
   cursor: 'pointer',
   borderRadius: 4,
-  border: '1px solid #ccc',
-  background: 'white',
+  border: '1px solid #2e2e48',
+  background: '#1e1e30',
+  color: '#d4d4e8',
   minWidth: 38,
 }

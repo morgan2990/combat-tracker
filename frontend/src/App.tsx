@@ -28,6 +28,7 @@ export default function App() {
   const [needsSetup, setNeedsSetup] = useState(false)
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [savedDmToken, setSavedDmToken] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
   const statusRef = useRef<AppStatus>('joining')
 
@@ -50,6 +51,7 @@ export default function App() {
     ws.onopen = () => {
       setRole(selectedRole)
       setMyName(name)
+      if (selectedRole === 'dm') setSavedDmToken(dmToken)
       setStatusSync('connected')
     }
 
@@ -92,9 +94,12 @@ export default function App() {
 
   if (status === 'disconnected') {
     return (
-      <div style={{ textAlign: 'center', marginTop: 80, fontFamily: 'sans-serif' }}>
-        <div style={{ fontSize: 18, marginBottom: 16 }}>Disconnected from server.</div>
-        <button onClick={backToJoin} style={{ padding: '10px 24px', fontSize: 16 }}>
+      <div style={{ textAlign: 'center', marginTop: 80 }}>
+        <div style={{ fontSize: 18, marginBottom: 16, color: '#d4d4e8' }}>Disconnected from server.</div>
+        <button
+          onClick={backToJoin}
+          style={{ padding: '10px 24px', fontSize: 16, background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+        >
           Back to Join Screen
         </button>
       </div>
@@ -114,7 +119,7 @@ export default function App() {
   if (!roomState) return null
 
   if (role === 'dm') {
-    return <DMView roomState={roomState} sendMessage={sendMessage} />
+    return <DMView roomState={roomState} sendMessage={sendMessage} dmToken={savedDmToken} />
   }
 
   if (needsSetup) {
