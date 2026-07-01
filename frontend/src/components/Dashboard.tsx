@@ -93,6 +93,9 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
               </button>
             </div>
             {createError && <div style={errorStyle}>{createError}</div>}
+            <Link to="/monsters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
+              + New Monster
+            </Link>
           </div>
         </div>
 

@@ -71,7 +71,7 @@ export function MonsterForm() {
           >
             Add Another
           </button>
-          <button onClick={() => navigate('/')} style={btnStyle('#2980b9')}>Back to Join</button>
+          <button onClick={() => navigate('/')} style={btnStyle('#2980b9')}>Back to Dashboard</button>
         </div>
       </div>
     )
