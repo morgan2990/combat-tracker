@@ -1,7 +1,7 @@
 export interface Entity {
   id: string
   name: string
-  type: 'pc' | 'creature' | 'companion'
+  type: 'pc' | 'creature' | 'companion' | 'lair_action'
   owner_id?: string
   session_id?: string
   pc_id?: string

@@ -104,6 +104,14 @@ func (r *Room) sortEntities() {
 		if b == nil {
 			return true
 		}
+		if *a == *b {
+			iLair := r.State.Entities[i].Type == "lair_action"
+			jLair := r.State.Entities[j].Type == "lair_action"
+			if iLair != jLair {
+				return jLair
+			}
+			return false
+		}
 		return *a > *b
 	})
 
@@ -320,6 +328,30 @@ func (r *Room) RemoveDeadCreatures(sessionID string) error {
 			}
 		}
 	}
+	return nil
+}
+
+// AddLairAction appends a fixed-initiative-20, HP-less "Lair Action" entity.
+// It defaults to hidden so players don't learn a lair action exists until the
+// DM reveals it via toggle_entity_visibility.
+func (r *Room) AddLairAction(sessionID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.isOwner(sessionID) {
+		return errors.New("unauthorized")
+	}
+	initiative := 20
+	r.State.Entities = append(r.State.Entities, Entity{
+		ID:         newToken(8),
+		Name:       "Lair Action",
+		Type:       "lair_action",
+		Initiative: &initiative,
+		MaxHP:      0,
+		CurrentHP:  0,
+		Conditions: []string{},
+		IsHidden:   true,
+	})
+	r.sortEntities()
 	return nil
 }
 

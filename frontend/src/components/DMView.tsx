@@ -94,7 +94,7 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
     sendUpdate({ conditions: next })
   }
 
-  const vitalState = entityVitalState(entity)
+  const vitalState = entity.type === 'lair_action' ? 'alive' : entityVitalState(entity)
   const rowBg =
     vitalState === 'dead'        ? '#141414' :
     vitalState === 'unconscious' ? '#1a1608' :
@@ -124,7 +124,7 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
               📋
             </button>
           )}
-          {entity.type === 'creature' && (
+          {(entity.type === 'creature' || entity.type === 'lair_action') && (
             <button
               onClick={e => { e.stopPropagation(); sendMessage({ type: 'toggle_entity_visibility', entity_id: entity.id }) }}
               title={entity.is_hidden ? 'Hidden from players — click to reveal' : 'Visible to players — click to hide'}
@@ -142,10 +142,12 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
             </div>
           )}
         </div>
-        <div style={{ fontSize: 13, color: textColor, flexShrink: 0, textAlign: 'right' }}>
-          {entity.current_hp}/{entity.max_hp} HP
-          {entity.temp_hp > 0 && <span style={{ color: '#3498db' }}> +{entity.temp_hp}</span>}
-        </div>
+        {entity.type !== 'lair_action' && (
+          <div style={{ fontSize: 13, color: textColor, flexShrink: 0, textAlign: 'right' }}>
+            {entity.current_hp}/{entity.max_hp} HP
+            {entity.temp_hp > 0 && <span style={{ color: '#3498db' }}> +{entity.temp_hp}</span>}
+          </div>
+        )}
         <div
           style={{ fontSize: 12, color: '#7878a0', width: 36, textAlign: 'right', flexShrink: 0, cursor: entity.initiative_roll != null ? 'help' : 'default' }}
           title={entity.initiative_roll != null && entity.initiative_modifier != null
@@ -163,20 +165,22 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
 
             {/* HP smart input */}
-            <div>
-              <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>HP (+5, -12, or 20)</div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <input
-                  type="text"
-                  value={hpInput}
-                  onChange={e => setHpInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') applyHP() }}
-                  placeholder={String(entity.current_hp)}
-                  style={{ width: 90, padding: '6px 8px', fontSize: 14 }}
-                />
-                <button onClick={applyHP} style={actionBtn}>Apply</button>
+            {entity.type !== 'lair_action' && (
+              <div>
+                <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>HP (+5, -12, or 20)</div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    type="text"
+                    value={hpInput}
+                    onChange={e => setHpInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') applyHP() }}
+                    placeholder={String(entity.current_hp)}
+                    style={{ width: 90, padding: '6px 8px', fontSize: 14 }}
+                  />
+                  <button onClick={applyHP} style={actionBtn}>Apply</button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Initiative */}
             <div>
@@ -193,8 +197,8 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
               </div>
             </div>
 
-            {/* Creature name (creatures only) */}
-            {entity.type === 'creature' && (
+            {/* Creature name (creatures and lair actions) */}
+            {(entity.type === 'creature' || entity.type === 'lair_action') && (
               <div>
                 <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>Name</div>
                 <div style={{ display: 'flex', gap: 4 }}>
@@ -210,8 +214,8 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
               </div>
             )}
 
-            {/* Creature alias (creatures only) */}
-            {entity.type === 'creature' && (
+            {/* Creature alias (creatures and lair actions) */}
+            {(entity.type === 'creature' || entity.type === 'lair_action') && (
               <div>
                 <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>Alias</div>
                 <div style={{ display: 'flex', gap: 4 }}>
@@ -230,41 +234,45 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
           </div>
 
           {/* Condition toggles */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {CONDITIONS.map(cond => {
-              const active = entity.conditions.includes(cond)
-              return (
-                <button
-                  key={cond}
-                  onClick={() => toggleCondition(cond)}
-                  style={{
-                    padding: '3px 9px', fontSize: 12, borderRadius: 12, border: '1px solid',
-                    borderColor: active ? '#e74c3c' : '#2e2e48',
-                    background: active ? '#2a0808' : '#1a1a2c',
-                    color: active ? '#e74c3c' : '#8888aa',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {cond}
-                </button>
-              )
-            })}
-          </div>
+          {entity.type !== 'lair_action' && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {CONDITIONS.map(cond => {
+                const active = entity.conditions.includes(cond)
+                return (
+                  <button
+                    key={cond}
+                    onClick={() => toggleCondition(cond)}
+                    style={{
+                      padding: '3px 9px', fontSize: 12, borderRadius: 12, border: '1px solid',
+                      borderColor: active ? '#e74c3c' : '#2e2e48',
+                      background: active ? '#2a0808' : '#1a1a2c',
+                      color: active ? '#e74c3c' : '#8888aa',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {cond}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => entity.dead
-                ? sendUpdate({ dead: false })
-                : sendUpdate({ dead: true, current_hp: 0 })}
-              style={{
-                padding: '6px 14px', fontSize: 13, cursor: 'pointer',
-                background: entity.dead ? '#27ae60' : '#e74c3c',
-                color: '#fff', border: 'none', borderRadius: 4,
-              }}
-            >
-              {entity.dead ? 'Revive' : 'Kill'}
-            </button>
+            {entity.type !== 'lair_action' && (
+              <button
+                onClick={() => entity.dead
+                  ? sendUpdate({ dead: false })
+                  : sendUpdate({ dead: true, current_hp: 0 })}
+                style={{
+                  padding: '6px 14px', fontSize: 13, cursor: 'pointer',
+                  background: entity.dead ? '#27ae60' : '#e74c3c',
+                  color: '#fff', border: 'none', borderRadius: 4,
+                }}
+              >
+                {entity.dead ? 'Revive' : 'Kill'}
+              </button>
+            )}
             <button
               onClick={() => sendMessage({ type: 'remove_entity', entity_id: entity.id })}
               style={{ padding: '6px 14px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
@@ -576,6 +584,12 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
             )}
           </>
         )}
+        <button
+          onClick={() => sendMessage({ type: 'add_lair_action' })}
+          style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+        >
+          + Add Lair Action
+        </button>
       </div>
 
       {/* Add creature form */}

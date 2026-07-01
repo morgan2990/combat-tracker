@@ -269,6 +269,12 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 			rm.MarkDirty()
 		}
 
+	case "add_lair_action":
+		if err := rm.AddLairAction(c.SessionID); err == nil {
+			rm.BroadcastState()
+			rm.MarkDirty()
+		}
+
 	case "toggle_entity_visibility":
 		var msg toggleEntityVisibilityMsg
 		if err := json.Unmarshal(raw, &msg); err != nil {

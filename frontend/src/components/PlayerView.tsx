@@ -228,7 +228,8 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
           const isActive = is_started && i === active_index
           const isMe = entity.id === myEntityId
           const isCreature = entity.type === 'creature'
-          const vitalState = isCreature ? 'alive' : entityVitalState(entity.dead, entity.current_hp)
+          const isLairAction = entity.type === 'lair_action'
+          const vitalState = (isCreature || isLairAction) ? 'alive' : entityVitalState(entity.dead, entity.current_hp)
 
           const rowBg =
             vitalState === 'dead'        ? '#141414' :
@@ -266,7 +267,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
                 )}
               </div>
               <div style={{ fontSize: 14, textAlign: 'right', flexShrink: 0, color: textColor }}>
-                {isCreature ? (
+                {isLairAction ? null : isCreature ? (
                   <span style={{ color: '#7878a0', fontStyle: 'italic' }}>{hpLabel(entity.current_hp, entity.max_hp)}</span>
                 ) : (
                   <span>{entity.current_hp}/{entity.max_hp} HP</span>
