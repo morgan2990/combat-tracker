@@ -25,7 +25,7 @@ export function MonsterForm() {
   // In edit mode, load the existing custom monster.
   useEffect(() => {
     if (!id) return
-    fetch(`/api/monsters/custom/${encodeURIComponent(id)}`)
+    fetch(`/api/custom-monsters/${encodeURIComponent(id)}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (!data) return
@@ -69,7 +69,7 @@ export function MonsterForm() {
         if (initiativeModifier.trim() !== '') {
           body.initiative_modifier = parseInt(initiativeModifier.trim(), 10)
         }
-        res = await fetch(editing ? `/api/monsters/custom/${encodeURIComponent(id!)}` : '/api/monsters', {
+        res = await fetch(editing ? `/api/custom-monsters/${encodeURIComponent(id!)}` : '/api/monsters', {
           method: editing ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),

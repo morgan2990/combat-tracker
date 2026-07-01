@@ -25,32 +25,32 @@
 ## 3. Backend: HTTP routes
 
 - [x] 3.1 In `api/handler.go`, split `UpsertMonster` into the official path (scrubber-only, unchanged, not HTTP-exposed beyond what exists) and a custom-monster HTTP handler that requires `auth.ResolveUserID`, accepts `private`, and calls `CreateCustomMonster`
-- [x] 3.2 Add `GetCustomMonster` handler for `GET /api/monsters/custom/{id}` — 401 if unauthenticated, 403 if `private` and not owner, 404 if missing
-- [x] 3.3 Add `UpdateCustomMonster` handler for `PUT /api/monsters/custom/{id}` — 403 if not owner
-- [x] 3.4 Add `DeleteCustomMonsterHandler` for `DELETE /api/monsters/custom/{id}` — 403 if not owner, 204 on success
-- [x] 3.5 Add `ListMyCustomMonsters` handler for `GET /api/monsters/custom?mine=true`
-- [x] 3.6 Add `StreamCustomMonsterPDF` handler for `GET /api/monsters/custom/{id}/pdf` — same ownership/privacy check as `GetCustomMonster`
+- [x] 3.2 Add `GetCustomMonster` handler for `GET /api/custom-monsters/{id}` — 401 if unauthenticated, 403 if `private` and not owner, 404 if missing
+- [x] 3.3 Add `UpdateCustomMonster` handler for `PUT /api/custom-monsters/{id}` — 403 if not owner
+- [x] 3.4 Add `DeleteCustomMonsterHandler` for `DELETE /api/custom-monsters/{id}` — 403 if not owner, 204 on success
+- [x] 3.5 Add `ListMyCustomMonsters` handler for `GET /api/custom-monsters?mine=true`
+- [x] 3.6 Add `StreamCustomMonsterPDF` handler for `GET /api/custom-monsters/{id}/pdf` — same ownership/privacy check as `GetCustomMonster`
 - [x] 3.7 Add `auth.ResolveUserID` requirement to `SearchMonsters` handler (401 if unauthenticated), pass the resolved user id into `SearchMonsters`/`searchTypesenseMonsters`
 - [x] 3.8 Confirm `GetMonster` and `StreamMonsterPDF` (existing, name-keyed) now only ever resolve against the official `monsters` collection
-- [x] 3.9 Register the new routes in `main.go`: `POST /api/monsters` (custom create, existing path repointed), `GET /api/monsters/custom/{id}`, `PUT /api/monsters/custom/{id}`, `DELETE /api/monsters/custom/{id}`, `GET /api/monsters/custom`, `GET /api/monsters/custom/{id}/pdf`
+- [x] 3.9 Register the new routes in `main.go`: `POST /api/monsters` (custom create, existing path repointed), `GET /api/custom-monsters/{id}`, `PUT /api/custom-monsters/{id}`, `DELETE /api/custom-monsters/{id}`, `GET /api/custom-monsters`, `GET /api/custom-monsters/{id}/pdf`
 
 ## 4. Frontend: MonsterForm privacy + edit mode
 
 - [x] 4.1 Add the "Mark as Private Campaign Content" checkbox with an informational tooltip to `MonsterForm.tsx`, defaulting unchecked, included as `private` in both JSON and multipart submission paths
-- [x] 4.2 Add edit-mode support to `MonsterForm.tsx` (mirror `CharacterForm.tsx`'s `useParams<{id?: string}>()` pattern): on mount with an `id`, fetch `GET /api/monsters/custom/:id` and populate all fields including `private`
-- [x] 4.3 Submit via `PUT /api/monsters/custom/:id` when in edit mode, `POST /api/monsters` when creating
+- [x] 4.2 Add edit-mode support to `MonsterForm.tsx` (mirror `CharacterForm.tsx`'s `useParams<{id?: string}>()` pattern): on mount with an `id`, fetch `GET /api/custom-monsters/:id` and populate all fields including `private`
+- [x] 4.3 Submit via `PUT /api/custom-monsters/:id` when in edit mode, `POST /api/monsters` when creating
 - [x] 4.4 Add the `/monsters/custom/:id/edit` route in `App.tsx`
 
 ## 5. Frontend: Dashboard "My Monsters" list
 
-- [x] 5.1 Fetch the DM's own custom monsters (`GET /api/monsters/custom?mine=true`) in `Dashboard.tsx`, alongside the existing `me` data fetch
+- [x] 5.1 Fetch the DM's own custom monsters (`GET /api/custom-monsters?mine=true`) in `Dashboard.tsx`, alongside the existing `me` data fetch
 - [x] 5.2 Render a "My Monsters" list in the "As DM" panel, styled consistently with "My Rooms"/"My Characters", showing each monster's name and privacy state
 - [x] 5.3 Add an Edit link per row → `/monsters/custom/:id/edit`
-- [x] 5.4 Add a Delete action per row with a confirm step (e.g. `window.confirm` or a two-click pattern) before sending `DELETE /api/monsters/custom/:id`; remove the row from the list on success
+- [x] 5.4 Add a Delete action per row with a confirm step (e.g. `window.confirm` or a two-click pattern) before sending `DELETE /api/custom-monsters/:id`; remove the row from the list on success
 
 ## 6. Frontend: DMView statblock-preview routing
 
-- [x] 6.1 Update `DMView.tsx`'s `selectMonster` (currently `fetch('/api/monsters/${hit.name}')`) to branch on `hit.is_custom`: official hits keep the name-keyed fetch, custom hits use `fetch('/api/monsters/custom/${hit.id}')`
+- [x] 6.1 Update `DMView.tsx`'s `selectMonster` (currently `fetch('/api/monsters/${hit.name}')`) to branch on `hit.is_custom`: official hits keep the name-keyed fetch, custom hits use `fetch('/api/custom-monsters/${hit.id}')`
 - [x] 6.2 Update the search-result dropdown rendering to show an author indicator (e.g. "by Alice") for custom hits, using `owner_display_name`
 - [x] 6.3 Update `frontend/src/types.ts` (`MonsterSearchHit`) to include `is_custom` and `owner_display_name`
 
@@ -64,7 +64,7 @@
 
 - [ ] 8.1 Manually verify: two different DMs can each create a custom monster with the same name/edition without one overwriting the other
 - [ ] 8.2 Manually verify: a private custom monster does not appear in another DM's search results, but does appear in the owner's own search
-- [ ] 8.3 Manually verify: `GET /api/monsters/custom/:id` for a private monster returns 403 for a non-owner
+- [ ] 8.3 Manually verify: `GET /api/custom-monsters/:id` for a private monster returns 403 for a non-owner
 - [ ] 8.4 Manually verify: editing a custom monster loads its saved privacy state correctly, and saving updates the same document (same id)
 - [ ] 8.5 Manually verify: deleting a custom monster removes it from the Dashboard list and from search results
 - [ ] 8.6 Manually verify: delete requires confirmation — a single click without confirming does not delete

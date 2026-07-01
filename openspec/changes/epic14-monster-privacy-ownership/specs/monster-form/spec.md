@@ -20,7 +20,7 @@
 
 ### Requirement: Edit Mode for Custom Monsters
 
-`MonsterForm.tsx` SHALL support an edit mode, reached via `/monsters/custom/:id/edit`, mirroring `CharacterForm.tsx`'s existing edit-mode pattern. On mount with an `id` route param, the form SHALL fetch the existing custom monster document (`GET /api/monsters/custom/:id`) and populate all fields, including the current `private` state, from the response. Submitting in edit mode SHALL send `PUT /api/monsters/custom/:id` instead of `POST /api/monsters`.
+`MonsterForm.tsx` SHALL support an edit mode, reached via `/monsters/custom/:id/edit`, mirroring `CharacterForm.tsx`'s existing edit-mode pattern. On mount with an `id` route param, the form SHALL fetch the existing custom monster document (`GET /api/custom-monsters/:id`) and populate all fields, including the current `private` state, from the response. Submitting in edit mode SHALL send `PUT /api/custom-monsters/:id` instead of `POST /api/monsters`.
 
 #### Scenario: Editing loads the current privacy state
 - **WHEN** a DM opens `/monsters/custom/:id/edit` for a custom monster they previously marked private
@@ -32,4 +32,4 @@
 
 #### Scenario: Submitting in edit mode updates the existing document
 - **WHEN** a DM changes fields on the edit form and submits
-- **THEN** the frontend SHALL send `PUT /api/monsters/custom/:id` with the updated values, not create a new document
+- **THEN** the frontend SHALL send `PUT /api/custom-monsters/:id` with the updated values, not create a new document

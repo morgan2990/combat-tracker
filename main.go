@@ -57,11 +57,14 @@ func main() {
 	mux.HandleFunc("GET /api/pcs/{id}", api.GetPC)
 	mux.HandleFunc("POST /api/pcs/{id}/companions", api.CreateCompanion)
 	mux.HandleFunc("POST /api/monsters", api.CreateCustomMonster)
-	mux.HandleFunc("GET /api/monsters/custom", api.ListMyCustomMonsters)
-	mux.HandleFunc("GET /api/monsters/custom/{id}", api.GetCustomMonster)
-	mux.HandleFunc("PUT /api/monsters/custom/{id}", api.UpdateCustomMonster)
-	mux.HandleFunc("DELETE /api/monsters/custom/{id}", api.DeleteCustomMonster)
-	mux.HandleFunc("GET /api/monsters/custom/{id}/pdf", api.StreamCustomMonsterPDF)
+	// custom-monsters is a distinct top-level path from monsters/{name} so the
+	// two route sets can never structurally overlap in Go's ServeMux (e.g.
+	// monsters/{name}/pdf vs monsters/custom/{id} would otherwise conflict).
+	mux.HandleFunc("GET /api/custom-monsters", api.ListMyCustomMonsters)
+	mux.HandleFunc("GET /api/custom-monsters/{id}", api.GetCustomMonster)
+	mux.HandleFunc("PUT /api/custom-monsters/{id}", api.UpdateCustomMonster)
+	mux.HandleFunc("DELETE /api/custom-monsters/{id}", api.DeleteCustomMonster)
+	mux.HandleFunc("GET /api/custom-monsters/{id}/pdf", api.StreamCustomMonsterPDF)
 	mux.HandleFunc("GET /api/monsters/{name}", api.GetMonster)
 	mux.HandleFunc("GET /api/search/monsters", api.SearchMonsters)
 	mux.HandleFunc("GET /api/monsters/{name}/pdf", api.StreamMonsterPDF)

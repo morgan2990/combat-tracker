@@ -79,44 +79,44 @@ The system SHALL expose `GET /api/monsters/:name/pdf` that proxies the PDF objec
 ## ADDED Requirements
 
 ### Requirement: DM can look up a custom monster template by id
-The system SHALL expose `GET /api/monsters/custom/:id` that returns the `custom_monsters` document for the given MongoDB id, including `owner_id`, `owner_display_name`, and `private`. The request SHALL require authentication. If the document is `private: true` and `owner_id` does not match the authenticated requester, the server SHALL return HTTP 403 instead of the document.
+The system SHALL expose `GET /api/custom-monsters/:id` that returns the `custom_monsters` document for the given MongoDB id, including `owner_id`, `owner_display_name`, and `private`. The request SHALL require authentication. If the document is `private: true` and `owner_id` does not match the authenticated requester, the server SHALL return HTTP 403 instead of the document.
 
 #### Scenario: Owner fetches their own private custom monster
-- **WHEN** an authenticated DM requests `GET /api/monsters/custom/:id` for their own document with `private: true`
+- **WHEN** an authenticated DM requests `GET /api/custom-monsters/:id` for their own document with `private: true`
 - **THEN** the server SHALL return HTTP 200 with the document
 
 #### Scenario: Non-owner fetches a private custom monster
-- **WHEN** an authenticated DM requests `GET /api/monsters/custom/:id` for a document owned by a different user with `private: true`
+- **WHEN** an authenticated DM requests `GET /api/custom-monsters/:id` for a document owned by a different user with `private: true`
 - **THEN** the server SHALL return HTTP 403
 
 #### Scenario: Any authenticated DM fetches a public custom monster
-- **WHEN** an authenticated DM requests `GET /api/monsters/custom/:id` for a document with `private: false` owned by a different user
+- **WHEN** an authenticated DM requests `GET /api/custom-monsters/:id` for a document with `private: false` owned by a different user
 - **THEN** the server SHALL return HTTP 200 with the document
 
 #### Scenario: Custom monster not found
-- **WHEN** an authenticated DM requests `GET /api/monsters/custom/:id` for an id with no matching document
+- **WHEN** an authenticated DM requests `GET /api/custom-monsters/:id` for an id with no matching document
 - **THEN** the server SHALL return HTTP 404
 
 ### Requirement: DM can edit their own custom monster template
-The system SHALL expose `PUT /api/monsters/custom/:id` accepting the same fields as creation (`name`, `max_hp`, `edition`, `private`, and statblock-reference fields). The request SHALL require authentication. If `owner_id` on the existing document does not match the authenticated requester, the server SHALL return HTTP 403 and SHALL NOT modify the document. On success, the server SHALL update the document in place (same `id`) and best-effort mirror the change into Typesense.
+The system SHALL expose `PUT /api/custom-monsters/:id` accepting the same fields as creation (`name`, `max_hp`, `edition`, `private`, and statblock-reference fields). The request SHALL require authentication. If `owner_id` on the existing document does not match the authenticated requester, the server SHALL return HTTP 403 and SHALL NOT modify the document. On success, the server SHALL update the document in place (same `id`) and best-effort mirror the change into Typesense.
 
 #### Scenario: Owner edits their own custom monster
-- **WHEN** the owning DM sends `PUT /api/monsters/custom/:id` with updated `max_hp` and `private` values
+- **WHEN** the owning DM sends `PUT /api/custom-monsters/:id` with updated `max_hp` and `private` values
 - **THEN** the server SHALL update the document, preserve its `id`, and return HTTP 200 with the updated document
 
 #### Scenario: Non-owner attempts to edit
-- **WHEN** a DM who does not own the document sends `PUT /api/monsters/custom/:id`
+- **WHEN** a DM who does not own the document sends `PUT /api/custom-monsters/:id`
 - **THEN** the server SHALL return HTTP 403 and SHALL NOT modify the document
 
 ### Requirement: DM can delete their own custom monster template
-The system SHALL expose `DELETE /api/monsters/custom/:id`. The request SHALL require authentication. If `owner_id` on the existing document does not match the authenticated requester, the server SHALL return HTTP 403 and SHALL NOT delete the document. On success, the server SHALL remove the document from `custom_monsters` and best-effort remove the corresponding document from the Typesense index (failure to remove from Typesense SHALL be logged and SHALL NOT cause the endpoint to report failure).
+The system SHALL expose `DELETE /api/custom-monsters/:id`. The request SHALL require authentication. If `owner_id` on the existing document does not match the authenticated requester, the server SHALL return HTTP 403 and SHALL NOT delete the document. On success, the server SHALL remove the document from `custom_monsters` and best-effort remove the corresponding document from the Typesense index (failure to remove from Typesense SHALL be logged and SHALL NOT cause the endpoint to report failure).
 
 #### Scenario: Owner deletes their own custom monster
-- **WHEN** the owning DM sends `DELETE /api/monsters/custom/:id`
+- **WHEN** the owning DM sends `DELETE /api/custom-monsters/:id`
 - **THEN** the server SHALL remove the document from `custom_monsters`, best-effort remove it from Typesense, and return HTTP 204
 
 #### Scenario: Non-owner attempts to delete
-- **WHEN** a DM who does not own the document sends `DELETE /api/monsters/custom/:id`
+- **WHEN** a DM who does not own the document sends `DELETE /api/custom-monsters/:id`
 - **THEN** the server SHALL return HTTP 403 and SHALL NOT delete the document
 
 #### Scenario: Typesense removal fails
@@ -124,7 +124,7 @@ The system SHALL expose `DELETE /api/monsters/custom/:id`. The request SHALL req
 - **THEN** the server SHALL log the failure and still return HTTP 204 for the delete request
 
 ### Requirement: DM can list their own custom monster templates
-The system SHALL expose `GET /api/monsters/custom?mine=true` (or equivalent) that returns all `custom_monsters` documents whose `owner_id` matches the authenticated requester, regardless of their `private` value. The request SHALL require authentication.
+The system SHALL expose `GET /api/custom-monsters?mine=true` (or equivalent) that returns all `custom_monsters` documents whose `owner_id` matches the authenticated requester, regardless of their `private` value. The request SHALL require authentication.
 
 #### Scenario: DM lists their own monsters
 - **WHEN** an authenticated DM who has created three custom monsters (two public, one private) requests their own list
@@ -135,12 +135,12 @@ The system SHALL expose `GET /api/monsters/custom?mine=true` (or equivalent) tha
 - **THEN** the response SHALL NOT include the other DM's documents, public or private
 
 ### Requirement: Backend can stream a custom monster PDF by id
-The system SHALL expose `GET /api/monsters/custom/:id/pdf` that proxies the PDF object from MinIO for a `custom_monsters` document. The request SHALL require authentication. If the document is `private: true` and `owner_id` does not match the authenticated requester, the server SHALL return HTTP 403 instead of streaming the file.
+The system SHALL expose `GET /api/custom-monsters/:id/pdf` that proxies the PDF object from MinIO for a `custom_monsters` document. The request SHALL require authentication. If the document is `private: true` and `owner_id` does not match the authenticated requester, the server SHALL return HTTP 403 instead of streaming the file.
 
 #### Scenario: Owner streams their own private monster's PDF
-- **WHEN** the owning DM requests `GET /api/monsters/custom/:id/pdf` for their own private document with `pdf_object_key` set
+- **WHEN** the owning DM requests `GET /api/custom-monsters/:id/pdf` for their own private document with `pdf_object_key` set
 - **THEN** the server SHALL stream the PDF with HTTP 200
 
 #### Scenario: Non-owner requests a private monster's PDF
-- **WHEN** a different DM requests `GET /api/monsters/custom/:id/pdf` for a private document they do not own
+- **WHEN** a different DM requests `GET /api/custom-monsters/:id/pdf` for a private document they do not own
 - **THEN** the server SHALL return HTTP 403 and SHALL NOT stream the file

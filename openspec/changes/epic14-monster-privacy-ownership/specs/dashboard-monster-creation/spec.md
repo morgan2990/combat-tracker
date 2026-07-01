@@ -26,7 +26,7 @@ Each row in the "My Monsters" list SHALL include a Delete action. Activating it 
 
 #### Scenario: DM deletes a monster after confirming
 - **WHEN** a DM clicks Delete on a row and confirms the action
-- **THEN** the frontend SHALL send `DELETE /api/monsters/custom/:id` and remove the row from the list on success
+- **THEN** the frontend SHALL send `DELETE /api/custom-monsters/:id` and remove the row from the list on success
 
 #### Scenario: DM cancels the delete confirmation
 - **WHEN** a DM clicks Delete on a row and then declines/cancels the confirmation step

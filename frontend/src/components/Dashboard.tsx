@@ -20,7 +20,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   const [myMonsters, setMyMonsters] = useState<CustomMonster[]>([])
 
   useEffect(() => {
-    fetch('/api/monsters/custom')
+    fetch('/api/custom-monsters')
       .then(res => res.ok ? res.json() : [])
       .then((data: CustomMonster[]) => setMyMonsters(data))
       .catch(() => setMyMonsters([]))
@@ -28,7 +28,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
 
   async function handleDeleteMonster(id: string) {
     if (!window.confirm('Delete this monster? This cannot be undone.')) return
-    const res = await fetch(`/api/monsters/custom/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    const res = await fetch(`/api/custom-monsters/${encodeURIComponent(id)}`, { method: 'DELETE' })
     if (res.ok) {
       setMyMonsters(prev => prev.filter(m => m.id !== id))
     }

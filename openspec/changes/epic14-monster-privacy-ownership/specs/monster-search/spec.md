@@ -52,7 +52,7 @@ The DM Combat Panel's monster search SHALL be a debounced, live autocomplete dro
 
 The search input SHALL NOT dispatch any request to `GET /api/search/monsters` while the input contains fewer than 3 characters. At 3 or more characters, the frontend SHALL debounce requests by approximately 175ms after the user stops typing before dispatching the request, using the room's current `edition`. If the input drops back below 3 characters, the frontend SHALL immediately clear and close the dropdown without dispatching a request, cancelling any pending debounced request.
 
-Matching results SHALL render in a dropdown below the search input, each showing the monster's name, an edition badge, its `max_hp`, and — for custom hits — an indicator of its author (e.g. "by Alice") so the DM can distinguish same-named monsters. Selecting a result (via click or `Enter`) SHALL: clear the search input and close the dropdown; autofill the staging Name and Max HP fields from the selected hit; and issue a single follow-up request to recover `source_type`, `reference_url`, and `pdf_object_key` for statblock-reference linking — `GET /api/monsters/{name}` for an official hit (`is_custom: false`), or `GET /api/monsters/custom/{id}` for a custom hit (`is_custom: true`), since these fields are not present in the search index or its response.
+Matching results SHALL render in a dropdown below the search input, each showing the monster's name, an edition badge, its `max_hp`, and — for custom hits — an indicator of its author (e.g. "by Alice") so the DM can distinguish same-named monsters. Selecting a result (via click or `Enter`) SHALL: clear the search input and close the dropdown; autofill the staging Name and Max HP fields from the selected hit; and issue a single follow-up request to recover `source_type`, `reference_url`, and `pdf_object_key` for statblock-reference linking — `GET /api/monsters/{name}` for an official hit (`is_custom: false`), or `GET /api/custom-monsters/{id}` for a custom hit (`is_custom: true`), since these fields are not present in the search index or its response.
 
 The staging Name/Max HP fields SHALL remain freely editable at all times, whether populated by a dropdown selection or typed directly, so creatures with no matching search result can still be added.
 
@@ -74,7 +74,7 @@ The staging Name/Max HP fields SHALL remain freely editable at all times, whethe
 
 #### Scenario: Selecting a custom result via click
 - **WHEN** the DM clicks a dropdown result for a custom "Goblin" hit with `id: "abc123"`
-- **THEN** the frontend SHALL autofill the staging fields as above and issue `GET /api/monsters/custom/abc123` to recover statblock-reference fields
+- **THEN** the frontend SHALL autofill the staging fields as above and issue `GET /api/custom-monsters/abc123` to recover statblock-reference fields
 
 #### Scenario: Selecting a result via Enter
 - **WHEN** the DM presses `Enter` while a dropdown result is highlighted

@@ -302,7 +302,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
 
     try {
       const url = hit.is_custom
-        ? `/api/monsters/custom/${encodeURIComponent(hit.id)}`
+        ? `/api/custom-monsters/${encodeURIComponent(hit.id)}`
         : `/api/monsters/${encodeURIComponent(hit.name)}`
       const res = await fetch(url)
       if (!res.ok) { setMonsterRef(null); return }
