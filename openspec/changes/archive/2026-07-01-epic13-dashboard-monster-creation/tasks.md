@@ -14,7 +14,7 @@
 
 ## 4. Verify
 
-- [ ] 4.1 Manually verify: dashboard shows `+ New Monster` in "As DM" panel and navigates to `/monsters/new`
-- [ ] 4.2 Manually verify: an active combat room's DM panel no longer shows any monster-creation control
-- [ ] 4.3 Manually verify: saving a monster, clicking "Add Another" keeps the user on `/monsters/new` with a blank form; clicking "Back to Dashboard" navigates to `/`
+- [x] 4.1 Manually verify: dashboard shows `+ New Monster` in "As DM" panel and navigates to `/monsters/new`
+- [x] 4.2 Manually verify: an active combat room's DM panel no longer shows any monster-creation control
+- [x] 4.3 Manually verify: saving a monster, clicking "Add Another" keeps the user on `/monsters/new` with a blank form; clicking "Back to Dashboard" navigates to `/`
 - [x] 4.4 Run frontend type-check/build to confirm no dangling references to removed code
