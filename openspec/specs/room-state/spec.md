@@ -19,9 +19,9 @@ The system SHALL represent each room's combat state using the following structur
 Each Entity SHALL have:
 - `id` (string): UUID, assigned at creation
 - `name` (string): display name
-- `type` (string): one of `player`, `creature`, `companion`
-- `owner_id` (string): for companions, the `id` of the owning player entity; empty otherwise
-- `session_id` (string): the WS connection identifier for player-type entities; empty for creatures
+- `type` (string): one of `pc`, `creature`, `companion`
+- `owner_id` (string): for companions, the `id` of the owning PC entity; empty otherwise
+- `session_id` (string): the WS connection identifier for PC-type entities; empty for creatures
 - `max_hp` (int)
 - `current_hp` (int)
 - `temp_hp` (int)

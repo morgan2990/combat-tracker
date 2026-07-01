@@ -17,7 +17,7 @@ InitiativeModifier *int `json:"initiative_modifier,omitempty"`
 InitiativeRoll     *int `json:"initiative_roll,omitempty"`
 ```
 
-- `InitiativeModifier`: the d20 modifier captured from the `add_creature` WS message when the entity is created. Nil for players, companions, and creatures where no modifier was provided.
+- `InitiativeModifier`: the d20 modifier captured from the `add_creature` WS message when the entity is created. Nil for PCs, companions, and creatures where no modifier was provided.
 - `InitiativeRoll`: the raw d20 face (1–20), set when the auto-roll fires. Nil until a roll occurs. Stays nil if initiative was set manually.
 
 Both fields MUST be omitted from JSON serialisation when nil (`omitempty`).

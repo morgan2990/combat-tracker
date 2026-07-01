@@ -7,7 +7,7 @@ Defines how room combat state is mirrored to MongoDB so it survives a server res
 ## Requirements
 
 ### Requirement: Room state is persisted to MongoDB
-The system SHALL store a snapshot of each room's combat state in a MongoDB `rooms` collection, keyed by a unique `room_id` index. The persisted document SHALL include `room_id`, `dm_token`, `is_combat_active`, `current_round`, `active_turn_entity_id` (nullable), `edition`, and `entities`. Each persisted entity SHALL carry enough fields to fully reconstitute a `room.Entity` on restore — `id`, `name`, `type`, `owner_id`, `max_hp`, `current_hp`, `temp_hp`, `initiative`, `shares_initiative`, `conditions`, `dead`, `source_type`, `reference_url`, `pdf_object_key`, `initiative_modifier`, `initiative_roll` — plus a `connected` field. A narrower shape that omits `type`, `owner_id`, or `dead` is insufficient: combat logic (turn filtering, companion ownership, dead/alive state) depends on these fields being present after a restore.
+The system SHALL store a snapshot of each room's combat state in a MongoDB `rooms` collection, keyed by a unique `room_id` index. The persisted document SHALL include `room_id`, `owner_user_id`, `is_combat_active`, `current_round`, `active_turn_entity_id` (nullable), `edition`, and `entities`. Each persisted entity SHALL carry enough fields to fully reconstitute a `room.Entity` on restore — `id`, `name`, `type`, `owner_id`, `max_hp`, `current_hp`, `temp_hp`, `initiative`, `shares_initiative`, `conditions`, `dead`, `source_type`, `reference_url`, `pdf_object_key`, `initiative_modifier`, `initiative_roll` — plus a `connected` field. A narrower shape that omits `type`, `owner_id`, or `dead` is insufficient: combat logic (turn filtering, companion ownership, dead/alive state) depends on these fields being present after a restore.
 
 #### Scenario: Snapshot reflects combat-active state
 - **WHEN** a room's snapshot is persisted while `State.IsStarted` is true
@@ -18,10 +18,10 @@ The system SHALL store a snapshot of each room's combat state in a MongoDB `room
 - **THEN** the document SHALL have `is_combat_active: false` and `active_turn_entity_id` set to `null`
 
 #### Scenario: Connection status reflects live client map
-- **WHEN** a snapshot is built for an entity of type `player` whose `session_id` is a key in the room's current `Clients` map
+- **WHEN** a snapshot is built for an entity of type `pc` whose `session_id` is a key in the room's current `Clients` map
 - **THEN** that entity's `connected` field in the snapshot SHALL be `true`; if no such live session exists, it SHALL be `false`
 
-#### Scenario: Non-player entities have no independent connection
+#### Scenario: Non-PC entities have no independent connection
 - **WHEN** a snapshot is built for an entity of type `creature` or `companion`
 - **THEN** the `connected` field SHALL NOT be derived from any `session_id` lookup (these entity types carry no `session_id`)
 
@@ -64,7 +64,7 @@ The system SHALL provide a single lookup path that first checks the in-memory ro
 
 #### Scenario: Room found only in MongoDB
 - **WHEN** a lookup is performed for a `room_id` absent from the in-memory registry but present in the `rooms` MongoDB collection
-- **THEN** the server SHALL decode the stored snapshot into a new in-memory room (restoring `room_id`, `dm_token`, combat state, and entities, with `active_index` resolved from `active_turn_entity_id`), register it in the in-memory registry, and return it
+- **THEN** the server SHALL decode the stored snapshot into a new in-memory room (restoring `room_id`, `owner_user_id`, combat state, and entities, with `active_index` resolved from `active_turn_entity_id`), register it in the in-memory registry, and return it
 
 #### Scenario: Active turn ID cannot be resolved on restore
 - **WHEN** a restored snapshot's `active_turn_entity_id` does not match any entity in the restored `entities` list

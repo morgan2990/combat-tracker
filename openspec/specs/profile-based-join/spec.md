@@ -6,42 +6,49 @@ Defines how the join flow integrates with persistent player profiles: requiring 
 
 ## Requirements
 
-### Requirement: Player must have a saved profile to join a room
-A player SHALL only be able to join a room if a matching profile exists in MongoDB. The join screen SHALL present a "Find my character" button that fetches the profile before the WebSocket connection is opened. If no profile is found the player cannot proceed.
+### Requirement: A user must be logged in and select one of their own PCs to join a room
 
-#### Scenario: Player finds their profile and proceeds to join
-- **WHEN** a player enters their character name and clicks "Find my character"
-- **THEN** the frontend SHALL call `GET /api/entities/:name`; if a profile is returned, the frontend SHALL pre-populate the `max_hp` field (read-only) and reveal the initiative input field
+A user SHALL only be able to join a room as a player if they are authenticated and select one of their own PCs. The Dashboard SHALL list the user's PCs directly (from `GET /api/me`) — no name lookup or "Find my character" step is needed, since the system already knows which PCs belong to the logged-in user.
 
-#### Scenario: Profile not found — player is blocked
-- **WHEN** a player clicks "Find my character" and the server returns HTTP 404
-- **THEN** the frontend SHALL display an error message directing the player to create a profile at `/characters/new` and SHALL NOT allow the join form to be submitted
+#### Scenario: Logged-in user selects a PC to join with
+- **WHEN** an authenticated user with at least one PC selects a PC from their Dashboard's "My Characters" list and enters a room code
+- **THEN** the frontend SHALL proceed directly to opening a WebSocket connection using that PC's `id` — no profile-lookup round trip is needed first
 
-#### Scenario: Profile fetch fails due to server error
-- **WHEN** the `GET /api/entities/:name` call returns a non-200 response other than 404
-- **THEN** the frontend SHALL display a generic "Service unavailable" error and SHALL NOT allow the join form to be submitted
+#### Scenario: User with no PCs is directed to create one
+- **WHEN** an authenticated user with zero PCs attempts to join a room as a player
+- **THEN** the frontend SHALL direct them to create a character first (`/characters/new`) and SHALL NOT allow the join form to be submitted
 
-### Requirement: Player joins room with max_hp loaded from profile
-Once a profile is found, the player SHALL enter their initiative and submit the join form. The frontend SHALL pass `max_hp` from the fetched profile to the server via the WebSocket connection URL so the server can create the entity without trusting client-submitted stats.
+#### Scenario: Joining as a player requires authentication
+- **WHEN** an unauthenticated visitor attempts to reach the player-join flow
+- **THEN** the frontend SHALL redirect to the login/signup screen
 
-#### Scenario: Player submits the join form after profile fetch
-- **WHEN** a player has a fetched profile and enters an initiative value and clicks "Join Room"
-- **THEN** the frontend SHALL open a WebSocket connection to `/ws?room_id=X&name=Y&role=player&max_hp=N` where N is the profile's `max_hp`
+### Requirement: Player joins room with stats resolved server-side from the owned PC
 
-#### Scenario: Server creates entity with profile max_hp on setup_character
+Once a PC is selected, the player SHALL enter their initiative and submit the join form. The frontend SHALL open the WebSocket connection with `pc_id` in the URL; the server SHALL resolve `max_hp` and `name` by looking up that PC's MongoDB document (verifying ownership), rather than trusting any client-supplied stat values.
+
+#### Scenario: Player submits the join form after selecting a PC
+- **WHEN** a player has selected a PC and entered an initiative value, then clicks "Join Room"
+- **THEN** the frontend SHALL open a WebSocket connection to `/ws?room_id=X&role=player&pc_id=Y`
+
+#### Scenario: Server creates entity with PC's stored stats on setup_character
 - **WHEN** a connected player-role client sends `{ "type": "setup_character", "initiative": M }`
-- **THEN** the server SHALL create the player entity using the `max_hp` stored on the client's session (from the WS query param) and the provided initiative, with `current_hp` equal to `max_hp`
+- **THEN** the server SHALL create the player entity using the `max_hp` and `name` from the PC document resolved at connection time (via `pc_id`, ownership-checked), and the provided initiative, with `current_hp` equal to `max_hp`
 
-### Requirement: Companions auto-load from profile on join
-After the player entity is created, the frontend SHALL automatically send one `add_companion` message per companion in the fetched profile. Companions load with their saved `max_hp` and `shares_initiative` flag; initiative is `null` initially.
+### Requirement: Companions auto-load server-side from the PC's stored companions on join
 
-#### Scenario: Frontend auto-sends add_companion for each profile companion
-- **WHEN** the fetched profile includes one or more companions
-- **THEN** after `setup_character` succeeds, the frontend SHALL send `{ "type": "add_companion", "name": "...", "max_hp": N, "shares_initiative": true/false }` for each companion in order
+When the player entity is created, the server SHALL itself look up all companion documents whose `parent_pc_id` matches the joining PC and create a corresponding companion entity for each — the client SHALL NOT need to send individual `add_companion` messages for this initial load. Companions load with their saved `max_hp` and `shares_initiative` flag; initiative is `null` initially.
+
+#### Scenario: Server creates companion entities from the PC's stored companions
+- **WHEN** a player's `setup_character` succeeds and their PC has one or more companion documents
+- **THEN** the server SHALL create a companion entity for each, without requiring any further client messages
 
 #### Scenario: Companions load with null initiative
-- **WHEN** a companion is auto-loaded via `add_companion` from a profile
+- **WHEN** a companion entity is server-instantiated from a PC's stored companions
 - **THEN** the server SHALL create the companion entity with `initiative: null`
+
+#### Scenario: PC with no companions joins normally
+- **WHEN** a player's PC has zero linked companion documents
+- **THEN** the server SHALL create only the player entity, with no companion entities added
 
 ### Requirement: Shared initiative propagates when player sets their initiative
 When a player sends `set_initiative`, the server SHALL automatically copy that initiative value to all companions in the room whose `SharesInitiative` flag is true and whose `OwnerID` matches the player's entity ID.

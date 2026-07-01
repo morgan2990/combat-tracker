@@ -7,15 +7,20 @@ Defines how DMs create new combat rooms and how room state is stored. A room is 
 ## Requirements
 
 ### Requirement: DM can create a combat room
-The system SHALL provide a `POST /api/rooms` endpoint that creates a new combat room and returns a unique room ID and DM token. The request body MAY include an optional `edition` field (`"5e"` or `"5.5e"`); if omitted or invalid, the server SHALL default to `"5e"`.
+
+The system SHALL provide a `POST /api/rooms` endpoint, available only to authenticated users, that creates a new combat room owned by the requesting user and returns a unique room ID. The request body MAY include an optional `edition` field (`"5e"` or `"5.5e"`); if omitted or invalid, the server SHALL default to `"5e"`.
 
 #### Scenario: Successful room creation with edition
-- **WHEN** a client sends `POST /api/rooms` with body `{ "edition": "5.5e" }`
-- **THEN** the server SHALL respond with HTTP 201 and a JSON body containing a unique `room_id`, a `dm_token`, and the resolved `edition: "5.5e"`
+- **WHEN** an authenticated client sends `POST /api/rooms` with body `{ "edition": "5.5e" }`
+- **THEN** the server SHALL respond with HTTP 201 and a JSON body containing a unique `room_id` and the resolved `edition: "5.5e"`; the created room's `owner_user_id` SHALL be set to the requesting user's id
 
 #### Scenario: Successful room creation without edition defaults to 5e
-- **WHEN** a client sends `POST /api/rooms` with no body
+- **WHEN** an authenticated client sends `POST /api/rooms` with no body
 - **THEN** the server SHALL respond with HTTP 201 and `edition: "5e"` in the response
+
+#### Scenario: Room creation rejected when not authenticated
+- **WHEN** a client without a valid session sends `POST /api/rooms`
+- **THEN** the server SHALL respond with HTTP 401 and SHALL NOT create a room
 
 #### Scenario: Room ID is unique among active rooms
 - **WHEN** a room is created and a room with the generated ID already exists in memory
@@ -26,23 +31,24 @@ The system SHALL provide a `POST /api/rooms` endpoint that creates a new combat 
 - **THEN** the room's combat state SHALL contain no entities, `is_started` set to false, `round` set to 0, `active_index` set to 0, and `edition` set to the resolved value
 
 ### Requirement: DM can create a room from the browser UI
-The DM join screen SHALL present an edition selector (5e / 5.5e) alongside the DM name field before the room is created. The selected edition SHALL be included in the `POST /api/rooms` request body.
+
+The DM Dashboard SHALL present an edition selector (5e / 5.5e) and a "+ New Room" action that creates a room owned by the logged-in user and immediately opens a WebSocket connection to it as DM — no token is returned, copied, or re-entered.
 
 #### Scenario: DM creates a room with edition selected
-- **WHEN** the DM selects "5.5e", enters their display name, and clicks "Create New Room"
-- **THEN** the client SHALL call `POST /api/rooms` with `{ "edition": "5.5e" }`, receive `room_id`, `dm_token`, and `edition` from the response, and immediately open a WebSocket connection to that room
+- **WHEN** the logged-in DM selects "5.5e" and clicks "+ New Room"
+- **THEN** the client SHALL call `POST /api/rooms` with `{ "edition": "5.5e" }`, receive `room_id` and `edition` from the response, and immediately open a WebSocket connection to that room with `role=dm`
 
 #### Scenario: DM creates a room without changing the default edition
-- **WHEN** the DM does not change the edition selector (default: "5e") and clicks "Create New Room"
+- **WHEN** the logged-in DM does not change the edition selector (default: "5e") and clicks "+ New Room"
 - **THEN** the client SHALL call `POST /api/rooms` with `{ "edition": "5e" }`
-
-#### Scenario: DM can still rejoin an existing room manually
-- **WHEN** the DM enters a room code and DM token in the "Rejoin Existing Room" form and clicks Rejoin
-- **THEN** the client SHALL open a WebSocket connection to the specified room using the provided credentials
 
 #### Scenario: Room creation API failure is surfaced to the DM
 - **WHEN** `POST /api/rooms` returns a non-2xx status
 - **THEN** the client SHALL display an error message and SHALL NOT attempt a WebSocket connection
+
+#### Scenario: Owned rooms appear on the dashboard without re-entering credentials
+- **WHEN** a logged-in user has previously created one or more rooms
+- **THEN** the Dashboard's "My Rooms" list SHALL show each room with an action to open it directly, with no room code or token required
 
 ### Requirement: Room state is mirrored to MongoDB
 The system SHALL store the authoritative, fast-path room state in the Go server's process memory, and additionally mirror that state to a MongoDB `rooms` collection so it survives a server restart.

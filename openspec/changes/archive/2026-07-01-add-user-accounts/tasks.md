@@ -21,7 +21,7 @@
 - [x] 2.10 Add the `RoomMembership` Mongo collection/struct; upsert it (by `user_id`+`room_id`) whenever a `role=player` connection completes `setup_character`, per `room-membership`.
 - [x] 2.11 Wire `GET /api/me`'s `rooms` (owned), `pcs` (owned), and `recent_rooms` (from `RoomMembership`, ordered by `last_joined_at` descending) to real queries.
 - [x] 2.12 Update `room-persistence` snapshot/restore code: persisted room document drops `dm_token`, gains `owner_user_id`; persisted entity `type` values use `"pc"`.
-- [ ] 2.13 Deploy step: drop/rename the existing `entities` and `rooms` Mongo collections (clean break, no migration) before running the new schema against them.
+- [x] 2.13 Deploy step: drop/rename the existing `entities` and `rooms` Mongo collections (clean break, no migration) before running the new schema against them. (Done manually by the user against the dev DB.)
 
 ## 3. Frontend
 
