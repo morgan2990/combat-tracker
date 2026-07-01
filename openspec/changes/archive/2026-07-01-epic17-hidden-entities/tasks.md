@@ -28,7 +28,7 @@
 
 - [x] 6.1 `npx tsc --noEmit` in `frontend/` to confirm no type errors
 - [x] 6.2 `go build ./...` from the repo root to confirm the backend compiles
-- [ ] 6.3 Manual check via dev server: hide a creature mid-combat and confirm it disappears from Player View but stays visible (dimmed) in DM Panel; reveal it and confirm it reappears in Player View; confirm hiding a creature pre-combat has no additional visible effect (already hidden by the Epic 15 staging filter)
+- [x] 6.3 Manual check via dev server: hide a creature mid-combat and confirm it disappears from Player View but stays visible (dimmed) in DM Panel; reveal it and confirm it reappears in Player View; confirm hiding a creature pre-combat has no additional visible effect (already hidden by the Epic 15 staging filter)
 
 ## 7. Spec sync
 

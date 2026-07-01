@@ -7,7 +7,7 @@ Defines how room combat state is mirrored to MongoDB so it survives a server res
 ## Requirements
 
 ### Requirement: Room state is persisted to MongoDB
-The system SHALL store a snapshot of each room's combat state in a MongoDB `rooms` collection, keyed by a unique `room_id` index. The persisted document SHALL include `room_id`, `owner_user_id`, `is_combat_active`, `current_round`, `active_turn_entity_id` (nullable), `edition`, and `entities`. Each persisted entity SHALL carry enough fields to fully reconstitute a `room.Entity` on restore — `id`, `name`, `type`, `owner_id`, `max_hp`, `current_hp`, `temp_hp`, `initiative`, `shares_initiative`, `conditions`, `dead`, `source_type`, `reference_url`, `pdf_object_key`, `initiative_modifier`, `initiative_roll`, `display_name` — plus a `connected` field. A narrower shape that omits `type`, `owner_id`, `dead`, or `display_name` is insufficient: combat logic (turn filtering, companion ownership, dead/alive state) and player-facing name masking depend on these fields being present after a restore.
+The system SHALL store a snapshot of each room's combat state in a MongoDB `rooms` collection, keyed by a unique `room_id` index. The persisted document SHALL include `room_id`, `owner_user_id`, `is_combat_active`, `current_round`, `active_turn_entity_id` (nullable), `edition`, and `entities`. Each persisted entity SHALL carry enough fields to fully reconstitute a `room.Entity` on restore — `id`, `name`, `type`, `owner_id`, `max_hp`, `current_hp`, `temp_hp`, `initiative`, `shares_initiative`, `conditions`, `dead`, `source_type`, `reference_url`, `pdf_object_key`, `initiative_modifier`, `initiative_roll`, `display_name`, `is_hidden` — plus a `connected` field. A narrower shape that omits `type`, `owner_id`, `dead`, `display_name`, or `is_hidden` is insufficient: combat logic (turn filtering, companion ownership, dead/alive state) and player-facing name/visibility masking depend on these fields being present after a restore.
 
 #### Scenario: Snapshot reflects combat-active state
 - **WHEN** a room's snapshot is persisted while `State.IsStarted` is true
@@ -32,6 +32,14 @@ The system SHALL store a snapshot of each room's combat state in a MongoDB `room
 #### Scenario: Absent display name survives a restart as empty
 - **WHEN** a room containing a creature with an empty `DisplayName` is persisted and later restored
 - **THEN** the restored entity's `DisplayName` SHALL be the empty string, not `null` or a missing field causing a decode error
+
+#### Scenario: Hidden flag survives a restart
+- **WHEN** a room containing a creature with `IsHidden: true` is persisted, the process restarts, and the room is restored via `GetOrRestoreRoom`
+- **THEN** the restored entity's `IsHidden` SHALL be `true`
+
+#### Scenario: Visible flag survives a restart
+- **WHEN** a room containing a creature with `IsHidden: false` is persisted and later restored
+- **THEN** the restored entity's `IsHidden` SHALL be `false`
 
 ### Requirement: Room state changes trigger persistence
 The system SHALL write the current room snapshot to MongoDB immediately (as a fire-and-forget operation that does not block the WebSocket message loop) whenever any of the following occurs: a player joins, a player leaves, combat is started, combat is ended, or the active turn advances to the next entity. All other state-mutating events SHALL mark the room dirty without writing immediately.

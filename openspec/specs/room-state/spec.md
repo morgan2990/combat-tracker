@@ -107,7 +107,7 @@ The client application SHALL determine what data to display based on the connect
 
 #### Scenario: Player sees the full list the instant combat starts
 - **WHEN** a player-role client receives a `RoomState` broadcast where `is_started` has transitioned from `false` to `true`
-- **THEN** the player view SHALL immediately render all entities, including previously-hidden creatures, with no transition delay or animation
+- **THEN** the player view SHALL immediately render all entities, including previously-hidden creatures, with no transition delay or animation (subject to the `is_hidden` filter below, which applies independently of `is_started`)
 
 #### Scenario: Player sees a staging placeholder when creatures are hidden
 - **WHEN** a player-role client has `is_started: false` and the room's entity list contains at least one entity with `type: "creature"` but no visible (non-creature) entities
@@ -132,3 +132,15 @@ The client application SHALL determine what data to display based on the connect
 #### Scenario: Player falls back to the base name when no alias is set
 - **WHEN** a player-role client renders an entity with an empty `display_name`
 - **THEN** the player view SHALL render `name`, exactly as it does today for entities with no alias concept
+
+#### Scenario: Player does not see entities marked hidden
+- **WHEN** a player-role client receives a `RoomState` broadcast containing an entity with `is_hidden: true`
+- **THEN** the player view SHALL completely omit that entity from the rendered initiative ladder — no name, HP, condition, or turn-order slot SHALL appear — regardless of `is_started`
+
+#### Scenario: DM always sees hidden entities with distinct styling
+- **WHEN** a DM-role client renders an entity with `is_hidden: true`
+- **THEN** the DM view SHALL render that entity (never omit it) with a visually distinct treatment (e.g. reduced opacity) so the DM can tell at a glance which entities are currently hidden from players
+
+#### Scenario: Hidden and pre-combat masking compose without conflict
+- **WHEN** a player-role client evaluates an entity that is both `type: "creature"` with `is_started: false`, and separately has `is_hidden: true`
+- **THEN** the entity remains omitted from the player view under either condition; toggling `is_hidden` to `false` does not reveal the entity while `is_started` is still `false`, and starting combat does not reveal an entity that still has `is_hidden: true`
