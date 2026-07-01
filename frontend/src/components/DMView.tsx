@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
-import type { Entity, RoomState, MonsterSearchHit, Encounter } from '../types'
+import type { Entity, RoomState, MonsterSearchHit, Encounter, CustomMonster } from '../types'
 import { StatblockDrawer } from './StatblockDrawer'
 
 const SEARCH_MIN_CHARS = 3
@@ -309,6 +309,26 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   const [displayName, setDisplayName] = useState('')
   const [monsterRef, setMonsterRef] = useState<MonsterRef | null>(null)
 
+  const [myCreatures, setMyCreatures] = useState<CustomMonster[]>([])
+
+  useEffect(() => {
+    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
+      .then(res => res.ok ? res.json() : [])
+      .then((data: CustomMonster[]) => setMyCreatures(data))
+      .catch(() => setMyCreatures([]))
+  }, [edition])
+
+  function selectCustomMonster(m: CustomMonster) {
+    setName(m.name)
+    setMaxHP(String(m.max_hp))
+    setMonsterRef({
+      source_type: m.source_type ?? '',
+      reference_url: m.reference_url ?? '',
+      pdf_object_key: m.pdf_object_key ?? '',
+      initiative_modifier: m.initiative_modifier,
+    })
+  }
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -399,6 +419,26 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
 
   return (
     <div style={{ padding: '12px 0' }}>
+      {myCreatures.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={labelText}>My Creatures</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            {myCreatures.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => selectCustomMonster(m)}
+                style={{
+                  padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 12,
+                  border: '1px solid #2e2e48', background: '#1a1a2c', color: '#d4d4e8',
+                }}
+              >
+                {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{ position: 'relative', marginBottom: 8, maxWidth: 240 }}>
         <label style={labelStyle}>
           <span style={labelText}>Search monsters</span>

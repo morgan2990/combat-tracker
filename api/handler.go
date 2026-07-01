@@ -591,7 +591,8 @@ func ListMyCustomMonsters(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	monsters, err := store.GlobalCustomMonsters.ListCustomMonstersByOwner(userID)
+	edition := r.URL.Query().Get("edition")
+	monsters, err := store.GlobalCustomMonsters.ListCustomMonstersByOwner(userID, edition)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

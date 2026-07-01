@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import type { EncounterMonster, MonsterSearchHit } from '../types'
+import type { EncounterMonster, MonsterSearchHit, CustomMonster } from '../types'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -22,6 +22,15 @@ export function EncounterForm() {
   const [results, setResults] = useState<MonsterSearchHit[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [myCreatures, setMyCreatures] = useState<CustomMonster[]>([])
+
+  useEffect(() => {
+    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
+      .then(res => res.ok ? res.json() : [])
+      .then((data: CustomMonster[]) => setMyCreatures(data))
+      .catch(() => setMyCreatures([]))
+  }, [edition])
 
   // In edit mode, load the existing encounter.
   useEffect(() => {
@@ -76,6 +85,16 @@ export function EncounterForm() {
     setQuery('')
     setResults([])
     setShowDropdown(false)
+  }
+
+  function addCustomMonster(m: CustomMonster) {
+    setMonsters(prev => [...prev, {
+      name: m.name,
+      monster_id: m.id,
+      is_custom: true,
+      quantity: 1,
+      display_name: '',
+    }])
   }
 
   function handleSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -152,6 +171,27 @@ export function EncounterForm() {
             ))}
           </div>
         </div>
+
+        {myCreatures.length > 0 && (
+          <div>
+            <span style={labelText}>My Creatures</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {myCreatures.map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => addCustomMonster(m)}
+                  style={{
+                    padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 12,
+                    border: '1px solid #2e2e48', background: '#1a1a2c', color: '#d4d4e8',
+                  }}
+                >
+                  {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ position: 'relative' }}>
           <label style={labelStyle}>

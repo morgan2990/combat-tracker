@@ -107,11 +107,17 @@ func (s *CustomMonsterStore) DeleteCustomMonster(id string) error {
 	return nil
 }
 
-// ListCustomMonstersByOwner returns all custom monsters (public or private) owned by ownerID.
-func (s *CustomMonsterStore) ListCustomMonstersByOwner(ownerID string) ([]CustomMonster, error) {
+// ListCustomMonstersByOwner returns all custom monsters (public or private)
+// owned by ownerID, optionally filtered to a single edition when edition is
+// non-empty.
+func (s *CustomMonsterStore) ListCustomMonstersByOwner(ownerID string, edition string) ([]CustomMonster, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	cursor, err := s.col.Find(ctx, bson.M{"owner_id": ownerID})
+	filter := bson.M{"owner_id": ownerID}
+	if edition != "" {
+		filter["edition"] = edition
+	}
+	cursor, err := s.col.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
