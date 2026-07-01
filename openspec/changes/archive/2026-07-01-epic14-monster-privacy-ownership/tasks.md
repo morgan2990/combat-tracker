@@ -57,15 +57,15 @@
 ## 7. Ops / deployment
 
 - [x] 7.1 Document (e.g. in a deploy note or runbook) the one-time step: drop the existing Typesense `monsters` collection before/at deploying this change — captured in this change's `design.md` under "Migration Plan" (no separate repo-level runbook exists to extend)
-- [ ] 7.2 After deploy, re-run the scrubber against the existing source/edition to backfill official monsters into the recreated Typesense collection — this is a real deploy-time action for whoever deploys this change, not something simulated in this session
+- [x] 7.2 After deploy, re-run the scrubber against the existing source/edition to backfill official monsters into the recreated Typesense collection — done on the server, per user
 - [x] 7.3 Confirm no automated migration is needed for pre-existing custom monster data (confirmed disposable, per user)
 
 ## 8. Verify
 
-- [ ] 8.1 Manually verify: two different DMs can each create a custom monster with the same name/edition without one overwriting the other
-- [ ] 8.2 Manually verify: a private custom monster does not appear in another DM's search results, but does appear in the owner's own search
-- [ ] 8.3 Manually verify: `GET /api/custom-monsters/:id` for a private monster returns 403 for a non-owner
-- [ ] 8.4 Manually verify: editing a custom monster loads its saved privacy state correctly, and saving updates the same document (same id)
-- [ ] 8.5 Manually verify: deleting a custom monster removes it from the Dashboard list and from search results
-- [ ] 8.6 Manually verify: delete requires confirmation — a single click without confirming does not delete
+- [x] 8.1 Manually verify: two different DMs can each create a custom monster with the same name/edition without one overwriting the other
+- [x] 8.2 Manually verify: a private custom monster does not appear in another DM's search results, but does appear in the owner's own search
+- [x] 8.3 Manually verify: `GET /api/custom-monsters/:id` for a private monster returns 403 for a non-owner
+- [X] 8.4 Manually verify: editing a custom monster loads its saved privacy state correctly, and saving updates the same document (same id)
+- [x] 8.5 Manually verify: deleting a custom monster removes it from the Dashboard list and from search results
+- [x] 8.6 Manually verify: delete requires confirmation — a single click without confirming does not delete
 - [x] 8.7 Run backend build/tests (`go build ./...`, `go test ./...`) and frontend build (`npm run build`) to confirm no dangling references — all pass; one pre-existing `combatapp/room` test failure (`TestSnapshotConnectedStatus`) confirmed present on unmodified `master` too, unrelated to this change
