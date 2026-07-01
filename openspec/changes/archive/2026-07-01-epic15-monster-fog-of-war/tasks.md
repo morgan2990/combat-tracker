@@ -7,7 +7,7 @@
 ## 2. Verification
 
 - [x] 2.1 `npx tsc --noEmit` in `frontend/` to confirm no type errors
-- [ ] 2.2 Manual check via the `/run` skill or dev server: DM adds creatures pre-combat, confirm player view hides them and shows the staging placeholder; confirm DM Panel still shows them; start combat and confirm player view instantly reveals the full list
+- [x] 2.2 Manual check via the `/run` skill or dev server: DM adds creatures pre-combat, confirm player view hides them and shows the staging placeholder; confirm DM Panel still shows them; start combat and confirm player view instantly reveals the full list
 
 ## 3. Spec sync
 
