@@ -116,3 +116,19 @@ The client application SHALL determine what data to display based on the connect
 #### Scenario: DM sees staged creatures regardless of combat state
 - **WHEN** a DM-role client receives a `RoomState` broadcast with `is_started: false`
 - **THEN** the DM view SHALL render all entities, including creatures, exactly as it does when `is_started` is `true`
+
+#### Scenario: DM sees both names when an alias is set
+- **WHEN** a DM-role client renders an entity with a non-empty `display_name`
+- **THEN** the DM view SHALL render `"{display_name} ({name})"` (e.g. `"Guard 1 (Goblin 1)"`)
+
+#### Scenario: DM sees only the base name when no alias is set
+- **WHEN** a DM-role client renders an entity with an empty `display_name`
+- **THEN** the DM view SHALL render `name` alone, with no parenthetical
+
+#### Scenario: Player sees only the alias when one is set
+- **WHEN** a player-role client renders an entity with a non-empty `display_name`
+- **THEN** the player view SHALL render `display_name` only; the entity's `name` field SHALL NOT appear anywhere in the rendered row
+
+#### Scenario: Player falls back to the base name when no alias is set
+- **WHEN** a player-role client renders an entity with an empty `display_name`
+- **THEN** the player view SHALL render `name`, exactly as it does today for entities with no alias concept

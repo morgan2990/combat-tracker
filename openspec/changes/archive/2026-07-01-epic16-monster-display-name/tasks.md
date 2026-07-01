@@ -36,7 +36,7 @@
 
 - [x] 7.1 `npx tsc --noEmit` in `frontend/` to confirm no type errors
 - [x] 7.2 `go build ./...` and `go test ./...` from the repo root to confirm the backend compiles and existing room tests still pass (`TestSnapshotConnectedStatus` fails identically on `master` before this change — pre-existing, uses `Type: "player"` instead of the real `"pc"` type — unrelated to this change, not fixed here)
-- [ ] 7.3 Manual check via dev server: add a batch of 3 creatures with an alias, confirm DM Panel shows numbered dual labels and Player View shows only numbered aliases; edit an alias post-creation and confirm it updates live for both views; clear an alias and confirm Player View falls back to the base name
+- [x] 7.3 Manual check via dev server: add a batch of 3 creatures with an alias, confirm DM Panel shows numbered dual labels and Player View shows only numbered aliases; edit an alias post-creation and confirm it updates live for both views; clear an alias and confirm Player View falls back to the base name
 
 ## 8. Spec sync
 
