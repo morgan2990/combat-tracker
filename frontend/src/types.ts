@@ -17,6 +17,7 @@ export interface Entity {
   source_type?: string
   reference_url?: string
   pdf_object_key?: string
+  display_name?: string
 }
 
 export interface RoomState {

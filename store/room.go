@@ -31,6 +31,7 @@ type RoomEntitySnapshot struct {
 	PDFObjectKey       string   `bson:"pdf_object_key,omitempty"       json:"pdf_object_key,omitempty"`
 	InitiativeModifier *int     `bson:"initiative_modifier,omitempty"  json:"initiative_modifier,omitempty"`
 	InitiativeRoll     *int     `bson:"initiative_roll,omitempty"      json:"initiative_roll,omitempty"`
+	DisplayName        string   `bson:"display_name,omitempty"         json:"display_name,omitempty"`
 	Connected          bool     `bson:"connected"                      json:"connected"`
 }
 

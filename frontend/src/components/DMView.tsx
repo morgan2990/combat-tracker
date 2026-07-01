@@ -42,10 +42,11 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
   const [hpInput, setHpInput] = useState('')
   const [initInput, setInitInput] = useState(entity.initiative != null ? String(entity.initiative) : '')
   const [nameInput, setNameInput] = useState(entity.name)
+  const [aliasInput, setAliasInput] = useState(entity.display_name ?? '')
 
   function sendUpdate(overrides: Partial<{
     name: string; current_hp: number; temp_hp: number
-    initiative: number; conditions: string[]; dead: boolean
+    initiative: number; conditions: string[]; dead: boolean; display_name: string
   }>) {
     sendMessage({
       type: 'dm_update_entity',
@@ -56,6 +57,7 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
       initiative: entity.initiative,
       conditions: entity.conditions,
       dead: entity.dead,
+      display_name: entity.display_name ?? '',
       ...overrides,
     })
   }
@@ -76,6 +78,12 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
   function applyName() {
     if (nameInput.trim() && nameInput.trim() !== entity.name) {
       sendUpdate({ name: nameInput.trim() })
+    }
+  }
+
+  function applyDisplayName() {
+    if (aliasInput.trim() !== (entity.display_name ?? '')) {
+      sendUpdate({ display_name: aliasInput.trim() })
     }
   }
 
@@ -104,7 +112,9 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
       >
         <span style={{ width: 16, color: '#e67e22', flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontWeight: 600, color: textColor }}>{entity.name}</span>
+          <span style={{ fontWeight: 600, color: textColor }}>
+            {entity.display_name ? `${entity.display_name} (${entity.name})` : entity.name}
+          </span>
           {entity.type === 'creature' && entity.source_type && onStatblock && (
             <button
               onClick={e => { e.stopPropagation(); onStatblock() }}
@@ -190,6 +200,24 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
                 </div>
               </div>
             )}
+
+            {/* Creature alias (creatures only) */}
+            {entity.type === 'creature' && (
+              <div>
+                <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>Alias</div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    type="text"
+                    value={aliasInput}
+                    onChange={e => setAliasInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') applyDisplayName() }}
+                    placeholder="none"
+                    style={{ width: 120, padding: '6px 8px', fontSize: 14 }}
+                  />
+                  <button onClick={applyDisplayName} style={actionBtn}>Set</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Condition toggles */}
@@ -261,6 +289,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
   const [quantity, setQuantity] = useState('1')
+  const [displayName, setDisplayName] = useState('')
   const [monsterRef, setMonsterRef] = useState<MonsterRef | null>(null)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -338,6 +367,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
       source_type: monsterRef?.source_type ?? '',
       reference_url: monsterRef?.reference_url ?? '',
       pdf_object_key: monsterRef?.pdf_object_key ?? '',
+      display_name: displayName.trim(),
     }
     if (monsterRef?.initiative_modifier != null) {
       msg.initiative_modifier = monsterRef.initiative_modifier
@@ -346,6 +376,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
     setName('')
     setMaxHP('')
     setQuantity('1')
+    setDisplayName('')
     setMonsterRef(null)
   }
 
@@ -416,6 +447,15 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
         <label style={labelStyle}>
           <span style={labelText}>Qty</span>
           <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} style={{ ...fieldStyle, width: 52 }} />
+        </label>
+        <label style={labelStyle}>
+          <span style={labelText}>Custom Display Name / Alias (Optional)</span>
+          <input
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            placeholder="e.g. Guard Alpha"
+            style={{ ...fieldStyle, width: 160 }}
+          />
         </label>
         {monsterRef && monsterRef.source_type && (
           <span style={{ fontSize: 11, color: '#27ae60', alignSelf: 'center', paddingBottom: 2 }}>statblock ready</span>

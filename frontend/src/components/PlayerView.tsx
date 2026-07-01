@@ -254,7 +254,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
               <span style={{ width: 16, color: '#e67e22' }}>{isActive ? '▶' : ''}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: isMe ? 700 : 400, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {entity.name}
+                  {entity.display_name || entity.name}
                   {isMe && <span style={{ fontSize: 11, color: '#3498db', marginLeft: 6 }}>you</span>}
                   {vitalState === 'dead' && <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 6 }}>💀 Dead</span>}
                   {vitalState === 'unconscious' && <span style={{ fontSize: 11, color: '#e67e22', marginLeft: 6 }}>😵 Unconscious</span>}

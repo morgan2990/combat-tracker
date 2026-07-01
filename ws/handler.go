@@ -56,6 +56,7 @@ type addCreatureMsg struct {
 	SourceType         string `json:"source_type"`
 	ReferenceURL       string `json:"reference_url"`
 	PDFObjectKey       string `json:"pdf_object_key"`
+	DisplayName        string `json:"display_name"`
 }
 
 type removeEntityMsg struct {
@@ -63,13 +64,14 @@ type removeEntityMsg struct {
 }
 
 type dmUpdateEntityMsg struct {
-	EntityID   string   `json:"entity_id"`
-	Name       string   `json:"name"`
-	CurrentHP  int      `json:"current_hp"`
-	TempHP     int      `json:"temp_hp"`
-	Initiative int      `json:"initiative"`
-	Conditions []string `json:"conditions"`
-	Dead       bool     `json:"dead"`
+	EntityID    string   `json:"entity_id"`
+	Name        string   `json:"name"`
+	CurrentHP   int      `json:"current_hp"`
+	TempHP      int      `json:"temp_hp"`
+	Initiative  int      `json:"initiative"`
+	Conditions  []string `json:"conditions"`
+	Dead        bool     `json:"dead"`
+	DisplayName string   `json:"display_name"`
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +244,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			return
 		}
-		if err := rm.AddCreature(c.SessionID, msg.Name, msg.MaxHP, msg.InitiativeModifier, msg.Quantity, msg.SourceType, msg.ReferenceURL, msg.PDFObjectKey); err == nil {
+		if err := rm.AddCreature(c.SessionID, msg.Name, msg.MaxHP, msg.InitiativeModifier, msg.Quantity, msg.SourceType, msg.ReferenceURL, msg.PDFObjectKey, msg.DisplayName); err == nil {
 			rm.BroadcastState()
 			rm.MarkDirty()
 		}
@@ -268,7 +270,7 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			return
 		}
-		if err := rm.DMUpdateEntity(c.SessionID, msg.EntityID, msg.Name, msg.CurrentHP, msg.TempHP, msg.Initiative, msg.Conditions, msg.Dead); err == nil {
+		if err := rm.DMUpdateEntity(c.SessionID, msg.EntityID, msg.Name, msg.CurrentHP, msg.TempHP, msg.Initiative, msg.Conditions, msg.Dead, msg.DisplayName); err == nil {
 			rm.BroadcastState()
 			rm.MarkDirty()
 		}

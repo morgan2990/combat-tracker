@@ -39,6 +39,7 @@ type Entity struct {
 	PDFObjectKey        string   `json:"pdf_object_key,omitempty"`
 	InitiativeModifier  *int     `json:"initiative_modifier,omitempty"`
 	InitiativeRoll      *int     `json:"initiative_roll,omitempty"`
+	DisplayName         string   `json:"display_name,omitempty"`
 }
 
 type RoomState struct {
@@ -186,7 +187,7 @@ func (r *Room) NextTurn(sessionID string) error {
 // AddCreature creates one or more creature entities and sorts them into the initiative order.
 // When quantity > 1, each entity is named with an auto-number suffix (e.g. "Goblin 1").
 // A single sort and broadcast is expected by the caller after this returns.
-func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier *int, quantity int, sourceType, referenceURL, pdfObjectKey string) error {
+func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier *int, quantity int, sourceType, referenceURL, pdfObjectKey, displayName string) error {
 	if name == "" || maxHP <= 0 {
 		return errors.New("invalid creature data")
 	}
@@ -200,8 +201,12 @@ func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier
 	}
 	for i := range quantity {
 		entityName := name
+		entityDisplayName := displayName
 		if quantity > 1 {
 			entityName = fmt.Sprintf("%s %d", name, i+1)
+			if displayName != "" {
+				entityDisplayName = fmt.Sprintf("%s %d", displayName, i+1)
+			}
 		}
 		var init *int
 		var roll *int
@@ -225,6 +230,7 @@ func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier
 			SourceType:         sourceType,
 			ReferenceURL:       referenceURL,
 			PDFObjectKey:       pdfObjectKey,
+			DisplayName:        entityDisplayName,
 		})
 	}
 	r.sortEntities()
@@ -342,8 +348,10 @@ func (r *Room) EndCombat(sessionID string) error {
 
 // DMUpdateEntity applies DM-level edits to any entity without ownership checks.
 // The name field is applied only to creature-type entities.
+// displayName is also applied only to creature-type entities, but unlike name,
+// blank is a meaningful value: it clears the entity's alias.
 // If initiative changes, sortEntities is called with active position preserved.
-func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempHP, initiative int, conditions []string, dead bool) error {
+func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempHP, initiative int, conditions []string, dead bool, displayName string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if !r.isOwner(sessionID) {
@@ -356,6 +364,9 @@ func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempH
 		}
 		if e.Type == "creature" && name != "" {
 			e.Name = name
+		}
+		if e.Type == "creature" {
+			e.DisplayName = displayName
 		}
 		if currentHP > e.MaxHP {
 			currentHP = e.MaxHP
@@ -761,6 +772,7 @@ func (r *Room) snapshot() store.RoomSnapshot {
 			PDFObjectKey:       e.PDFObjectKey,
 			InitiativeModifier: e.InitiativeModifier,
 			InitiativeRoll:     e.InitiativeRoll,
+			DisplayName:        e.DisplayName,
 			Connected:          connected,
 		}
 	}
@@ -890,6 +902,7 @@ func inflateRoom(snap store.RoomSnapshot) *Room {
 			PDFObjectKey:       e.PDFObjectKey,
 			InitiativeModifier: e.InitiativeModifier,
 			InitiativeRoll:     e.InitiativeRoll,
+			DisplayName:        e.DisplayName,
 		}
 	}
 	rm := &Room{
