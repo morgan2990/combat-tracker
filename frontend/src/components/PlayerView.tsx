@@ -190,6 +190,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
 
   const myEntity = entities.find(e => e.id === myEntityId)
   const myCompanions = entities.filter(e => e.type === 'companion' && e.owner_id === myEntityId)
+  const visibleEntities = is_started ? entities : entities.filter(e => e.type !== 'creature')
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
@@ -217,10 +218,13 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
 
       {/* Initiative tracker */}
       <div style={{ border: '1px solid #2e2e48', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
-        {entities.length === 0 && (
+        {visibleEntities.length === 0 && entities.length === 0 && (
           <div style={{ padding: 16, color: '#7878a0' }}>No combatants yet.</div>
         )}
-        {entities.map((entity, i) => {
+        {visibleEntities.length === 0 && entities.length > 0 && (
+          <div style={{ padding: 16, color: '#7878a0' }}>The DM is preparing the encounter…</div>
+        )}
+        {visibleEntities.map((entity, i) => {
           const isActive = is_started && i === active_index
           const isMe = entity.id === myEntityId
           const isCreature = entity.type === 'creature'
