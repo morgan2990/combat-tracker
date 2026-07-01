@@ -208,6 +208,17 @@ func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier
 	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
+	r.appendCreatureGroup(name, maxHP, initiativeModifier, quantity, sourceType, referenceURL, pdfObjectKey, displayName)
+	r.sortEntities()
+	return nil
+}
+
+// appendCreatureGroup appends quantity instances of one creature group to
+// r.State.Entities, with auto-numbered names/aliases and per-instance
+// auto-rolled initiative when combat is active. Callers must hold r.mu and
+// call r.sortEntities() themselves once all groups for the operation have
+// been appended.
+func (r *Room) appendCreatureGroup(name string, maxHP int, initiativeModifier *int, quantity int, sourceType, referenceURL, pdfObjectKey, displayName string) {
 	for i := range quantity {
 		entityName := name
 		entityDisplayName := displayName
@@ -241,6 +252,37 @@ func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier
 			PDFObjectKey:       pdfObjectKey,
 			DisplayName:        entityDisplayName,
 		})
+	}
+}
+
+// MonsterGroup is one already-resolved monster group ready to be appended to
+// a room, as used by InjectEncounter. Resolution (looking up a monster by
+// name or by custom-monster id, and skipping groups that no longer resolve)
+// happens in the caller (ws/handler.go), which has access to the monster
+// stores; room stays free of any Mongo-lookup concerns.
+type MonsterGroup struct {
+	Name               string
+	MaxHP              int
+	InitiativeModifier *int
+	Quantity           int
+	SourceType         string
+	ReferenceURL       string
+	PDFObjectKey       string
+	DisplayName        string
+}
+
+// InjectEncounter appends every group in groups to the room in a single
+// locked operation, then sorts and lets the caller broadcast once for the
+// whole batch — equivalent to calling AddCreature once per group, but
+// without the intermediate re-locks and re-sorts that would cause.
+func (r *Room) InjectEncounter(sessionID string, groups []MonsterGroup) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.isOwner(sessionID) {
+		return errors.New("unauthorized")
+	}
+	for _, g := range groups {
+		r.appendCreatureGroup(g.Name, g.MaxHP, g.InitiativeModifier, g.Quantity, g.SourceType, g.ReferenceURL, g.PDFObjectKey, g.DisplayName)
 	}
 	r.sortEntities()
 	return nil

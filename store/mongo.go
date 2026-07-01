@@ -76,6 +76,11 @@ func Init() error {
 	if err := ensureMembershipIndex(ctx, membershipsCol); err != nil {
 		return err
 	}
+	encountersCol := db.Collection("encounters")
+	GlobalEncounters = EncounterStore{col: encountersCol}
+	if err := ensureEncounterIndex(ctx, encountersCol); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -91,6 +96,15 @@ func ensurePCIndex(ctx context.Context, col *mongo.Collection) error {
 // {name, edition} — unlike official monsters, custom monster names are not
 // unique across owners, so no such constraint should exist here).
 func ensureCustomMonsterIndex(ctx context.Context, col *mongo.Collection) error {
+	_, err := col.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	return err
+}
+
+// ensureEncounterIndex ensures a unique index on id.
+func ensureEncounterIndex(ctx context.Context, col *mongo.Collection) error {
 	_, err := col.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "id", Value: 1}},
 		Options: options.Index().SetUnique(true),

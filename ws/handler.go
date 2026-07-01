@@ -67,6 +67,10 @@ type toggleEntityVisibilityMsg struct {
 	EntityID string `json:"entity_id"`
 }
 
+type injectEncounterMsg struct {
+	EncounterID string `json:"encounter_id"`
+}
+
 type dmUpdateEntityMsg struct {
 	EntityID    string   `json:"entity_id"`
 	Name        string   `json:"name"`
@@ -249,6 +253,54 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 			return
 		}
 		if err := rm.AddCreature(c.SessionID, msg.Name, msg.MaxHP, msg.InitiativeModifier, msg.Quantity, msg.SourceType, msg.ReferenceURL, msg.PDFObjectKey, msg.DisplayName); err == nil {
+			rm.BroadcastState()
+			rm.MarkDirty()
+		}
+
+	case "inject_encounter":
+		var msg injectEncounterMsg
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			return
+		}
+		enc, err := store.GlobalEncounters.GetEncounterByID(msg.EncounterID)
+		if err != nil || enc == nil || enc.OwnerID != c.UserID {
+			return
+		}
+		groups := make([]room.MonsterGroup, 0, len(enc.Monsters))
+		for _, em := range enc.Monsters {
+			if em.IsCustom {
+				cm, err := store.GlobalCustomMonsters.GetCustomMonsterByID(em.MonsterID)
+				if err != nil || cm == nil {
+					continue
+				}
+				groups = append(groups, room.MonsterGroup{
+					Name:               cm.Name,
+					MaxHP:              cm.MaxHP,
+					InitiativeModifier: cm.InitiativeModifier,
+					Quantity:           em.Quantity,
+					SourceType:         cm.SourceType,
+					ReferenceURL:       cm.ReferenceURL,
+					PDFObjectKey:       cm.PDFObjectKey,
+					DisplayName:        em.DisplayName,
+				})
+				continue
+			}
+			m, err := store.GlobalMonsters.GetMonsterByName(em.Name)
+			if err != nil || m == nil {
+				continue
+			}
+			groups = append(groups, room.MonsterGroup{
+				Name:               m.Name,
+				MaxHP:              m.MaxHP,
+				InitiativeModifier: m.InitiativeModifier,
+				Quantity:           em.Quantity,
+				SourceType:         m.SourceType,
+				ReferenceURL:       m.ReferenceURL,
+				PDFObjectKey:       m.PDFObjectKey,
+				DisplayName:        em.DisplayName,
+			})
+		}
+		if err := rm.InjectEncounter(c.SessionID, groups); err == nil {
 			rm.BroadcastState()
 			rm.MarkDirty()
 		}

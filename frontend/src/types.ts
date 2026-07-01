@@ -54,6 +54,22 @@ export interface CustomMonster {
   pdf_object_key?: string
 }
 
+export interface EncounterMonster {
+  name: string
+  monster_id?: string
+  is_custom: boolean
+  quantity: number
+  display_name?: string
+}
+
+export interface Encounter {
+  id: string
+  name: string
+  owner_id: string
+  edition: string
+  monsters: EncounterMonster[]
+}
+
 export type Role = 'dm' | 'player'
 
 export interface PC {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import type { MeResponse, CustomMonster } from '../types'
+import type { MeResponse, CustomMonster, Encounter } from '../types'
 
 interface DashboardProps {
   me: MeResponse
@@ -18,6 +18,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   const [selectedPcId, setSelectedPcId] = useState(me.pcs[0]?.id ?? '')
 
   const [myMonsters, setMyMonsters] = useState<CustomMonster[]>([])
+  const [myEncounters, setMyEncounters] = useState<Encounter[]>([])
 
   useEffect(() => {
     fetch('/api/custom-monsters')
@@ -26,11 +27,26 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
       .catch(() => setMyMonsters([]))
   }, [])
 
+  useEffect(() => {
+    fetch('/api/encounters')
+      .then(res => res.ok ? res.json() : [])
+      .then((data: Encounter[]) => setMyEncounters(data))
+      .catch(() => setMyEncounters([]))
+  }, [])
+
   async function handleDeleteMonster(id: string) {
     if (!window.confirm('Delete this monster? This cannot be undone.')) return
     const res = await fetch(`/api/custom-monsters/${encodeURIComponent(id)}`, { method: 'DELETE' })
     if (res.ok) {
       setMyMonsters(prev => prev.filter(m => m.id !== id))
+    }
+  }
+
+  async function handleDeleteEncounter(id: string) {
+    if (!window.confirm('Delete this encounter? This cannot be undone.')) return
+    const res = await fetch(`/api/encounters/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    if (res.ok) {
+      setMyEncounters(prev => prev.filter(enc => enc.id !== id))
     }
   }
 
@@ -129,6 +145,23 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
             ))}
             <Link to="/monsters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
               + New Monster
+            </Link>
+
+            <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>My Encounters</div>
+            {myEncounters.length === 0 && (
+              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No encounters yet.</div>
+            )}
+            {myEncounters.map(enc => (
+              <div key={enc.id} style={listRow}>
+                <span>{enc.name}</span>
+                <span style={{ display: 'flex', gap: 8 }}>
+                  <Link to={`/encounters/${enc.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                  <button onClick={() => handleDeleteEncounter(enc.id)} style={deleteBtn}>Delete</button>
+                </span>
+              </div>
+            ))}
+            <Link to="/encounters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
+              + New Encounter
             </Link>
           </div>
         </div>

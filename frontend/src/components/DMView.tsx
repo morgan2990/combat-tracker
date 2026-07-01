@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
-import type { Entity, RoomState, MonsterSearchHit } from '../types'
+import type { Entity, RoomState, MonsterSearchHit, Encounter } from '../types'
 import { StatblockDrawer } from './StatblockDrawer'
 
 const SEARCH_MIN_CHARS = 3
@@ -489,6 +489,64 @@ const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'colum
 const labelText: React.CSSProperties = { fontSize: 11, color: '#7878a0' }
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: 120 }
 
+interface EncounterTemplatesControlProps {
+  sendMessage: (msg: object) => void
+  edition: string
+}
+
+function EncounterTemplatesControl({ sendMessage, edition }: EncounterTemplatesControlProps) {
+  const [open, setOpen] = useState(false)
+  const [encounters, setEncounters] = useState<Encounter[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  function toggleOpen() {
+    const next = !open
+    setOpen(next)
+    if (next && !loaded) {
+      fetch(`/api/encounters?edition=${encodeURIComponent(edition)}`)
+        .then(res => res.ok ? res.json() : [])
+        .then((data: Encounter[]) => { setEncounters(data); setLoaded(true) })
+        .catch(() => setEncounters([]))
+    }
+  }
+
+  function inject(encounterId: string) {
+    sendMessage({ type: 'inject_encounter', encounter_id: encounterId })
+    setOpen(false)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={toggleOpen}
+        style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+      >
+        📋 Encounter Templates
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, zIndex: 10, minWidth: 220,
+          background: '#1a1a38', border: '1px solid #2e2e48', borderRadius: 4,
+          marginTop: 2, maxHeight: 240, overflowY: 'auto',
+        }}>
+          {encounters.length === 0 && (
+            <div style={{ padding: 10, fontSize: 13, color: '#7878a0' }}>No saved encounters for this edition.</div>
+          )}
+          {encounters.map(enc => (
+            <div
+              key={enc.id}
+              onClick={() => inject(enc.id)}
+              style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: '#d4d4e8', borderBottom: '1px solid #2e2e48' }}
+            >
+              {enc.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface DMViewProps {
   roomState: RoomState
   sendMessage: (msg: object) => void
@@ -590,6 +648,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
         >
           + Add Lair Action
         </button>
+        <EncounterTemplatesControl sendMessage={sendMessage} edition={roomState.edition} />
       </div>
 
       {/* Add creature form */}

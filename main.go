@@ -68,6 +68,11 @@ func main() {
 	mux.HandleFunc("GET /api/monsters/{name}", api.GetMonster)
 	mux.HandleFunc("GET /api/search/monsters", api.SearchMonsters)
 	mux.HandleFunc("GET /api/monsters/{name}/pdf", api.StreamMonsterPDF)
+	mux.HandleFunc("POST /api/encounters", api.CreateEncounter)
+	mux.HandleFunc("GET /api/encounters", api.ListMyEncounters)
+	mux.HandleFunc("GET /api/encounters/{id}", api.GetEncounter)
+	mux.HandleFunc("PUT /api/encounters/{id}", api.UpdateEncounter)
+	mux.HandleFunc("DELETE /api/encounters/{id}", api.DeleteEncounter)
 	mux.HandleFunc("/ws", ws.Handler)
 
 	distFS, err := fs.Sub(frontendDist, "frontend/dist")

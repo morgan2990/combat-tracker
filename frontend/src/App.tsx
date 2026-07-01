@@ -7,6 +7,7 @@ import { PlayerView } from './components/PlayerView'
 import { DMView } from './components/DMView'
 import { CharacterForm } from './components/CharacterForm'
 import { MonsterForm } from './components/MonsterForm'
+import { EncounterForm } from './components/EncounterForm'
 
 type AppStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
 
@@ -196,6 +197,8 @@ export default function App() {
       <Route path="/characters/:id/edit" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
       <Route path="/monsters/new" element={<MonsterForm />} />
       <Route path="/monsters/custom/:id/edit" element={<MonsterForm />} />
+      <Route path="/encounters/new" element={<EncounterForm />} />
+      <Route path="/encounters/:id/edit" element={<EncounterForm />} />
       <Route
         path="/room"
         element={status === 'idle' ? <Navigate to="/" replace /> : <GameView />}
