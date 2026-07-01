@@ -33,9 +33,13 @@ type typesenseMonsterDoc struct {
 	InitiativeModifier *int   `json:"initiative_modifier,omitempty"`
 	Edition            string `json:"edition"`
 	IsCustom           bool   `json:"is_custom"`
-	Private            bool   `json:"private,omitempty"`
-	OwnerID            string `json:"owner_id,omitempty"`
-	OwnerDisplayName   string `json:"owner_display_name,omitempty"`
+	// Private is intentionally not omitempty: false (public) is a real,
+	// common value that must still be indexed so the `private:=false`
+	// search filter can match it — omitempty would drop the field entirely
+	// for public monsters, since Go treats false as the bool zero value.
+	Private          bool   `json:"private"`
+	OwnerID          string `json:"owner_id,omitempty"`
+	OwnerDisplayName string `json:"owner_display_name,omitempty"`
 }
 
 // MonsterHit is the lightweight result shape returned by a Typesense search.
