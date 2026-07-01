@@ -1,9 +1,10 @@
 export interface Entity {
   id: string
   name: string
-  type: 'player' | 'creature' | 'companion'
+  type: 'pc' | 'creature' | 'companion'
   owner_id?: string
   session_id?: string
+  pc_id?: string
   max_hp: number
   current_hp: number
   temp_hp: number
@@ -36,13 +37,32 @@ export interface MonsterSearchHit {
 
 export type Role = 'dm' | 'player'
 
-export interface ProfileCompanion {
+export interface PC {
+  id: string
+  owner_user_id: string
   name: string
+  type: 'pc' | 'companion'
   max_hp: number
+  parent_pc_id?: string
   shares_initiative: boolean
 }
 
-export interface ProfileData {
-  max_hp: number
-  companions: ProfileCompanion[]
+export interface RoomSummary {
+  room_id: string
+  edition: string
+  is_combat_active: boolean
+}
+
+export interface RoomMembership {
+  user_id: string
+  room_id: string
+  last_pc_id: string
+  last_joined_at: string
+}
+
+export interface MeResponse {
+  user: { username: string; display_name: string }
+  rooms: RoomSummary[]
+  pcs: PC[]
+  recent_rooms: RoomMembership[]
 }

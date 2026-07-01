@@ -18,6 +18,7 @@ type RoomEntitySnapshot struct {
 	Name               string   `bson:"name"                           json:"name"`
 	Type               string   `bson:"type"                           json:"type"`
 	OwnerID            string   `bson:"owner_id,omitempty"             json:"owner_id,omitempty"`
+	PCID               string   `bson:"pc_id,omitempty"                json:"pc_id,omitempty"`
 	MaxHP              int      `bson:"max_hp"                         json:"max_hp"`
 	CurrentHP          int      `bson:"current_hp"                     json:"current_hp"`
 	TempHP             int      `bson:"temp_hp"                        json:"temp_hp"`
@@ -36,7 +37,7 @@ type RoomEntitySnapshot struct {
 // RoomSnapshot is the persisted representation of a room's combat state.
 type RoomSnapshot struct {
 	RoomID             string               `bson:"room_id"               json:"room_id"`
-	DMToken            string               `bson:"dm_token"              json:"dm_token"`
+	OwnerUserID        string               `bson:"owner_user_id"         json:"owner_user_id"`
 	IsCombatActive     bool                 `bson:"is_combat_active"      json:"is_combat_active"`
 	CurrentRound       int                  `bson:"current_round"         json:"current_round"`
 	ActiveTurnEntityID *string              `bson:"active_turn_entity_id" json:"active_turn_entity_id"`
@@ -82,4 +83,27 @@ func (s *RoomStore) GetRoomSnapshot(roomID string) (*RoomSnapshot, error) {
 		return nil, err
 	}
 	return &snap, nil
+}
+
+// RoomSummary is a lightweight projection of a persisted room for dashboard listings.
+type RoomSummary struct {
+	RoomID         string `bson:"room_id"          json:"room_id"`
+	Edition        string `bson:"edition"          json:"edition"`
+	IsCombatActive bool   `bson:"is_combat_active" json:"is_combat_active"`
+}
+
+// ListByOwner returns a summary of every room owned by ownerUserID.
+func (s *RoomStore) ListByOwner(ownerUserID string) ([]RoomSummary, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	projection := bson.M{"room_id": 1, "edition": 1, "is_combat_active": 1}
+	cursor, err := s.col.Find(ctx, bson.M{"owner_user_id": ownerUserID}, options.Find().SetProjection(projection))
+	if err != nil {
+		return nil, err
+	}
+	var results []RoomSummary
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+	return results, nil
 }

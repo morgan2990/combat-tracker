@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import type { PC } from '../types'
 
 interface CompanionRow {
   name: string
@@ -12,46 +13,48 @@ function emptyCompanion(): CompanionRow {
   return { name: '', max_hp: '', shares_initiative: false }
 }
 
-export function CharacterForm() {
-  const [searchParams] = useSearchParams()
+interface CharacterFormProps {
+  onSaved: () => void
+}
+
+export function CharacterForm({ onSaved }: CharacterFormProps) {
+  const navigate = useNavigate()
+  const { id } = useParams<{ id?: string }>()
+  const editing = Boolean(id)
+
   const [charName, setCharName] = useState('')
   const [maxHP, setMaxHP] = useState('')
-  const [companions, setCompanions] = useState<CompanionRow[]>([])
+  const [existingCompanions, setExistingCompanions] = useState<PC[]>([])
+  const [newCompanions, setNewCompanions] = useState<CompanionRow[]>([])
+  const [loading, setLoading] = useState(editing)
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Pre-fill form if ?name= is set in the URL
+  // In edit mode, load the existing PC and its companions.
   useEffect(() => {
-    const nameParam = searchParams.get('name')
-    if (!nameParam) return
-    fetch(`/api/entities/${encodeURIComponent(nameParam)}`)
+    if (!id) return
+    fetch(`/api/pcs/${encodeURIComponent(id)}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (!data) return
-        setCharName(data.profile.name)
-        setMaxHP(String(data.profile.max_hp))
-        setCompanions(
-          (data.companions as Array<{ name: string; max_hp: number; shares_initiative: boolean }>).map(c => ({
-            name: c.name,
-            max_hp: String(c.max_hp),
-            shares_initiative: c.shares_initiative,
-          }))
-        )
+        setCharName(data.pc.name)
+        setMaxHP(String(data.pc.max_hp))
+        setExistingCompanions(data.companions as PC[])
       })
       .catch(() => {})
-  }, [searchParams])
+      .finally(() => setLoading(false))
+  }, [id])
 
-  function addCompanion() {
-    setCompanions(prev => [...prev, emptyCompanion()])
+  function addCompanionRow() {
+    setNewCompanions(prev => [...prev, emptyCompanion()])
   }
 
-  function removeCompanion(i: number) {
-    setCompanions(prev => prev.filter((_, idx) => idx !== i))
+  function removeCompanionRow(i: number) {
+    setNewCompanions(prev => prev.filter((_, idx) => idx !== i))
   }
 
-  function updateCompanion(i: number, field: keyof CompanionRow, value: string | boolean) {
-    setCompanions(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c))
+  function updateCompanionRow(i: number, field: keyof CompanionRow, value: string | boolean) {
+    setNewCompanions(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c))
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -63,34 +66,42 @@ export function CharacterForm() {
     setError(null)
 
     try {
-      // Save player profile
-      const playerRes = await fetch('/api/entities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: charName.trim(), type: 'player', max_hp: hp }),
-      })
-      if (!playerRes.ok) throw new Error('Failed to save character')
+      let pcId = id
+      if (editing && pcId) {
+        const res = await fetch(`/api/pcs/${encodeURIComponent(pcId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: charName.trim(), max_hp: hp }),
+        })
+        if (!res.ok) throw new Error('Failed to save character')
+      } else {
+        const res = await fetch('/api/pcs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: charName.trim(), max_hp: hp }),
+        })
+        if (!res.ok) throw new Error('Failed to save character')
+        const created = await res.json()
+        pcId = created.id
+      }
 
-      // Save each companion
-      for (const c of companions) {
+      for (const c of newCompanions) {
         if (!c.name.trim() || !c.max_hp) continue
         const cHP = parseInt(c.max_hp, 10)
         if (cHP <= 0) continue
-        const res = await fetch('/api/entities', {
+        const res = await fetch(`/api/pcs/${encodeURIComponent(pcId!)}/companions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: c.name.trim(),
-            type: 'companion',
             max_hp: cHP,
-            parent_pc_name: charName.trim(),
             shares_initiative: c.shares_initiative,
           }),
         })
         if (!res.ok) throw new Error(`Failed to save companion "${c.name}"`)
       }
 
-      setSuccess(true)
+      await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -98,29 +109,13 @@ export function CharacterForm() {
     }
   }
 
-  if (success) {
-    return (
-      <div style={{ maxWidth: 420, margin: '80px auto', padding: 24, textAlign: 'center' }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
-        <h2 style={{ marginBottom: 8, color: '#27ae60' }}>Profile saved!</h2>
-        <p style={{ color: '#7878a0', marginBottom: 24 }}>
-          <strong style={{ color: '#d4d4e8' }}>{charName}</strong> is ready to use.
-        </p>
-        <Link
-          to="/"
-          style={{ display: 'inline-block', padding: '12px 32px', background: '#e67e22', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 16, borderRadius: 4 }}
-        >
-          Back to Join Screen
-        </Link>
-      </div>
-    )
-  }
+  if (loading) return null
 
   return (
     <div style={{ maxWidth: 480, margin: '40px auto', padding: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <Link to="/" style={{ color: '#7878a0', textDecoration: 'none', fontSize: 14 }}>← Back</Link>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Create / Edit Character</h1>
+        <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#7878a0', fontSize: 14, cursor: 'pointer', padding: 0 }}>← Back</button>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{editing ? 'Edit Character' : 'Create Character'}</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -151,31 +146,43 @@ export function CharacterForm() {
           </label>
         </section>
 
-        {/* Companion rows */}
+        {/* Existing companions (edit mode, read-only here) */}
+        {existingCompanions.length > 0 && (
+          <section style={{ ...sectionStyle, marginTop: 20 }}>
+            <h3 style={sectionHeader}>Existing Companions / Pets</h3>
+            {existingCompanions.map(c => (
+              <div key={c.id} style={{ fontSize: 14, padding: '6px 0', borderBottom: '1px solid #2e2e48' }}>
+                {c.name} <span style={{ color: '#5a5a78', fontSize: 12 }}>{c.max_hp} HP{c.shares_initiative ? ' · shares initiative' : ''}</span>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* New companion rows */}
         <section style={{ ...sectionStyle, marginTop: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ ...sectionHeader, marginBottom: 0 }}>Companions / Pets</h3>
+            <h3 style={{ ...sectionHeader, marginBottom: 0 }}>Add Companions / Pets</h3>
             <button
               type="button"
-              onClick={addCompanion}
+              onClick={addCompanionRow}
               style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
             >
               + Add
             </button>
           </div>
 
-          {companions.length === 0 && (
-            <div style={{ color: '#5a5a78', fontSize: 13, padding: '8px 0' }}>No companions yet.</div>
+          {newCompanions.length === 0 && (
+            <div style={{ color: '#5a5a78', fontSize: 13, padding: '8px 0' }}>No new companions.</div>
           )}
 
-          {companions.map((c, i) => (
+          {newCompanions.map((c, i) => (
             <div key={i} style={{ background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, padding: 12, marginBottom: 10 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <div style={{ flex: 2 }}>
                   <div style={fieldLabel}>Name</div>
                   <input
                     value={c.name}
-                    onChange={e => updateCompanion(i, 'name', e.target.value)}
+                    onChange={e => updateCompanionRow(i, 'name', e.target.value)}
                     placeholder="e.g. Rex"
                     required
                     style={{ ...inputStyle, marginTop: 0 }}
@@ -186,7 +193,7 @@ export function CharacterForm() {
                   <input
                     type="number"
                     value={c.max_hp}
-                    onChange={e => updateCompanion(i, 'max_hp', e.target.value)}
+                    onChange={e => updateCompanionRow(i, 'max_hp', e.target.value)}
                     min={1}
                     required
                     placeholder="HP"
@@ -199,13 +206,13 @@ export function CharacterForm() {
                   <input
                     type="checkbox"
                     checked={c.shares_initiative}
-                    onChange={e => updateCompanion(i, 'shares_initiative', e.target.checked)}
+                    onChange={e => updateCompanionRow(i, 'shares_initiative', e.target.checked)}
                   />
                   Shares initiative with character
                 </label>
                 <button
                   type="button"
-                  onClick={() => removeCompanion(i)}
+                  onClick={() => removeCompanionRow(i)}
                   style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: 'none', color: '#e74c3c', border: '1px solid #3a1010', borderRadius: 4 }}
                 >
                   Remove
@@ -231,7 +238,7 @@ export function CharacterForm() {
             background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4,
           }}
         >
-          {submitting ? 'Saving…' : 'Save Profile'}
+          {submitting ? 'Saving…' : 'Save Character'}
         </button>
       </form>
     </div>

@@ -20,20 +20,12 @@ var globalMinio minioStore
 
 func InitMinio() {
 	endpoint := os.Getenv("MINIO_ENDPOINT")
-	if endpoint == "" {
-		endpoint = "192.168.0.193:9000"
-	}
 	accessKey := os.Getenv("MINIO_ACCESS_KEY")
-	if accessKey == "" {
-		accessKey = "usuario"
-	}
 	secretKey := os.Getenv("MINIO_SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "password"
-	}
 	bucket := os.Getenv("MINIO_BUCKET")
-	if bucket == "" {
-		bucket = "pdfs"
+	if endpoint == "" || accessKey == "" || secretKey == "" || bucket == "" {
+		log.Printf("minio: MINIO_ENDPOINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY/MINIO_BUCKET not fully set, skipping init")
+		return
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{

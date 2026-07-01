@@ -13,6 +13,7 @@ import (
 	"combatapp/room"
 	"combatapp/store"
 	"combatapp/ws"
+	"github.com/joho/godotenv"
 )
 
 const roomSweepInterval = 30 * time.Second
@@ -21,6 +22,10 @@ const roomSweepInterval = 30 * time.Second
 var frontendDist embed.FS
 
 func main() {
+	// Load .env for local development if present; silently no-op otherwise
+	// (production sets real environment variables directly).
+	_ = godotenv.Load()
+
 	if err := store.Init(); err != nil {
 		log.Fatalf("mongodb: %v", err)
 	}
@@ -41,10 +46,16 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/signup", api.SignUp)
+	mux.HandleFunc("POST /api/login", api.Login)
+	mux.HandleFunc("POST /api/logout", api.Logout)
+	mux.HandleFunc("GET /api/me", api.Me)
 	mux.HandleFunc("POST /api/rooms", api.CreateRoom)
 	mux.HandleFunc("GET /api/rooms/{room_id}", api.GetRoom)
-	mux.HandleFunc("POST /api/entities", api.UpsertEntity)
-	mux.HandleFunc("GET /api/entities/{name}", api.GetEntity)
+	mux.HandleFunc("POST /api/pcs", api.CreatePC)
+	mux.HandleFunc("PUT /api/pcs/{id}", api.UpdatePC)
+	mux.HandleFunc("GET /api/pcs/{id}", api.GetPC)
+	mux.HandleFunc("POST /api/pcs/{id}/companions", api.CreateCompanion)
 	mux.HandleFunc("POST /api/monsters", api.UpsertMonster)
 	mux.HandleFunc("GET /api/monsters/{name}", api.GetMonster)
 	mux.HandleFunc("GET /api/search/monsters", api.SearchMonsters)

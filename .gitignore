@@ -1,3 +1,6 @@
+# Local environment config (see .env.example)
+.env
+
 # Go build output
 *.exe
 combatapp

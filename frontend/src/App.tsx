@@ -1,40 +1,61 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import type { RoomState, Role, ProfileData } from './types'
-import { JoinScreen } from './components/JoinScreen'
+import type { RoomState, Role, MeResponse } from './types'
+import { LoginScreen } from './components/LoginScreen'
+import { Dashboard } from './components/Dashboard'
 import { PlayerView } from './components/PlayerView'
 import { DMView } from './components/DMView'
 import { CharacterForm } from './components/CharacterForm'
 import { MonsterForm } from './components/MonsterForm'
 
-type AppStatus = 'joining' | 'connecting' | 'connected' | 'disconnected'
+type AppStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
 
 const WS_ERRORS: Record<number, string> = {
+  4001: 'Not logged in.',
+  4003: 'Forbidden.',
   4004: 'Room not found.',
-  4003: 'Wrong DM token.',
-  4009: 'Name already taken.',
+  4009: 'That character is already in this room.',
 }
 
-function buildWsUrl(roomId: string, name: string, role: Role, dmToken: string, maxHP?: number): string {
+function buildWsUrl(roomId: string, role: Role, pcId?: string): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const params = new URLSearchParams({ room_id: roomId, name, role })
-  if (role === 'dm') params.set('dm_token', dmToken)
-  if (maxHP) params.set('max_hp', String(maxHP))
+  const params = new URLSearchParams({ room_id: roomId, role })
+  if (role === 'player' && pcId) params.set('pc_id', pcId)
   return `${proto}//${location.host}/ws?${params}`
 }
 
 export default function App() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<AppStatus>('joining')
+  const [me, setMe] = useState<MeResponse | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [status, setStatus] = useState<AppStatus>('idle')
   const [role, setRole] = useState<Role>('player')
-  const [_myName, setMyName] = useState('')
+  const [myPcId, setMyPcId] = useState<string | null>(null)
   const [myEntityId, setMyEntityId] = useState<string | null>(null)
   const [needsInitiative, setNeedsInitiative] = useState(false)
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [joinError, setJoinError] = useState<string | null>(null)
-  const [savedDmToken, setSavedDmToken] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
-  const statusRef = useRef<AppStatus>('joining')
+  const statusRef = useRef<AppStatus>('idle')
+
+  const refreshMe = useCallback(async () => {
+    try {
+      const res = await fetch('/api/me')
+      if (res.ok) {
+        setMe(await res.json())
+      } else {
+        setMe(null)
+      }
+    } catch {
+      setMe(null)
+    } finally {
+      setAuthChecked(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshMe()
+  }, [refreshMe])
 
   function setStatusSync(s: AppStatus) {
     statusRef.current = s
@@ -45,34 +66,19 @@ export default function App() {
     wsRef.current?.send(JSON.stringify(msg))
   }, [])
 
-  const connect = useCallback((
-    roomId: string,
-    name: string,
-    selectedRole: Role,
-    dmToken: string,
-    profile?: ProfileData,
-  ) => {
+  const connect = useCallback((roomId: string, selectedRole: Role, pcId?: string) => {
     setJoinError(null)
     setStatusSync('connecting')
 
-    const ws = new WebSocket(buildWsUrl(roomId, name, selectedRole, dmToken, profile?.max_hp))
+    const ws = new WebSocket(buildWsUrl(roomId, selectedRole, pcId))
     wsRef.current = ws
 
     ws.onopen = () => {
       setRole(selectedRole)
-      setMyName(name)
-      if (selectedRole === 'dm') setSavedDmToken(dmToken)
+      setMyPcId(pcId ?? null)
 
-      if (selectedRole === 'player' && profile) {
+      if (selectedRole === 'player') {
         ws.send(JSON.stringify({ type: 'setup_character' }))
-        for (const companion of profile.companions) {
-          ws.send(JSON.stringify({
-            type: 'add_companion',
-            name: companion.name,
-            max_hp: companion.max_hp,
-            shares_initiative: companion.shares_initiative,
-          }))
-        }
       }
 
       setStatusSync('connected')
@@ -84,8 +90,8 @@ export default function App() {
         const state = JSON.parse(event.data) as RoomState
         setRoomState(state)
 
-        if (selectedRole === 'player') {
-          const myEntity = state.entities.find(e => e.name === name && e.type === 'player')
+        if (selectedRole === 'player' && pcId) {
+          const myEntity = state.entities.find(e => e.pc_id === pcId && e.type === 'pc')
           if (myEntity) {
             setMyEntityId(myEntity.id)
             setNeedsInitiative(myEntity.initiative === null)
@@ -99,7 +105,7 @@ export default function App() {
     ws.onclose = (event) => {
       if (statusRef.current !== 'connected') {
         setJoinError(WS_ERRORS[event.code] ?? 'Failed to connect. Check the room code and try again.')
-        setStatusSync('joining')
+        setStatusSync('idle')
       } else {
         setStatusSync('disconnected')
       }
@@ -110,12 +116,22 @@ export default function App() {
     }
   }, [navigate])
 
-  const backToJoin = useCallback(() => {
+  const backToDashboard = useCallback(() => {
     wsRef.current?.close()
     setRoomState(null)
     setMyEntityId(null)
+    setMyPcId(null)
     setNeedsInitiative(false)
-    setStatusSync('joining')
+    setStatusSync('idle')
+    refreshMe()
+    navigate('/')
+  }, [navigate, refreshMe])
+
+  const handleLogout = useCallback(async () => {
+    await fetch('/api/logout', { method: 'POST' })
+    wsRef.current?.close()
+    setMe(null)
+    setRoomState(null)
     navigate('/')
   }, [navigate])
 
@@ -125,10 +141,10 @@ export default function App() {
         <div style={{ textAlign: 'center', marginTop: 80 }}>
           <div style={{ fontSize: 18, marginBottom: 16, color: '#d4d4e8' }}>Disconnected from server.</div>
           <button
-            onClick={backToJoin}
+            onClick={backToDashboard}
             style={{ padding: '10px 24px', fontSize: 16, background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4, cursor: 'pointer' }}
           >
-            Back to Join Screen
+            Back to Dashboard
           </button>
         </div>
       )
@@ -137,7 +153,7 @@ export default function App() {
     if (!roomState) return null
 
     if (role === 'dm') {
-      return <DMView roomState={roomState} sendMessage={sendMessage} dmToken={savedDmToken} />
+      return <DMView roomState={roomState} sendMessage={sendMessage} />
     }
 
     return (
@@ -150,6 +166,8 @@ export default function App() {
     )
   }
 
+  if (!authChecked) return null
+
   return (
     <Routes>
       <Route
@@ -157,14 +175,31 @@ export default function App() {
         element={
           status === 'connected'
             ? <Navigate to="/room" replace />
-            : <JoinScreen onJoin={connect} error={joinError} connecting={status === 'connecting'} />
+            : me
+              ? (
+                <>
+                  {joinError && (
+                    <div style={{ maxWidth: 760, margin: '12px auto 0', padding: '10px 16px', background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 6, color: '#e74c3c', fontSize: 13 }}>
+                      {joinError}
+                    </div>
+                  )}
+                  <Dashboard
+                    me={me}
+                    onOpenRoomAsDM={roomId => connect(roomId, 'dm')}
+                    onJoinAsPlayer={(roomId, pcId) => connect(roomId, 'player', pcId)}
+                    onLogout={handleLogout}
+                  />
+                </>
+              )
+              : <LoginScreen onAuthed={refreshMe} />
         }
       />
-      <Route path="/characters/new" element={<CharacterForm />} />
+      <Route path="/characters/new" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
+      <Route path="/characters/:id/edit" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
       <Route path="/monsters/new" element={<MonsterForm />} />
       <Route
         path="/room"
-        element={status === 'joining' ? <Navigate to="/" replace /> : <GameView />}
+        element={status === 'idle' ? <Navigate to="/" replace /> : <GameView />}
       />
     </Routes>
   )

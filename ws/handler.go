@@ -3,9 +3,9 @@ package ws
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
+	"combatapp/auth"
 	"combatapp/room"
 	"combatapp/store"
 	"github.com/gorilla/websocket"
@@ -75,13 +75,44 @@ type dmUpdateEntityMsg struct {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	roomID := q.Get("room_id")
-	name := q.Get("name")
 	role := q.Get("role")
-	dmToken := q.Get("dm_token")
+	pcID := q.Get("pc_id")
 
-	if roomID == "" || name == "" || (role != "dm" && role != "player") {
+	if roomID == "" || (role != "dm" && role != "player") {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
+	}
+
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		closeWith(conn, 4001, "not authenticated")
+		return
+	}
+
+	// For role=player, resolve name/max_hp server-side from the owned PC —
+	// never trust client-supplied stats.
+	name := ""
+	maxHP := 0
+	if role == "player" {
+		if pcID == "" {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		pc, err := store.Global.GetPCByID(pcID)
+		if err != nil || pc == nil || pc.OwnerUserID != userID {
+			conn, upErr := upgrader.Upgrade(w, r, nil)
+			if upErr != nil {
+				return
+			}
+			closeWith(conn, 4003, "forbidden")
+			return
+		}
+		name = pc.Name
+		maxHP = pc.MaxHP
 	}
 
 	rm, found := room.Global.GetOrRestoreRoom(roomID, &store.GlobalRooms)
@@ -96,16 +127,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxHP := 0
-	if role == "player" {
-		if raw := q.Get("max_hp"); raw != "" {
-			if v, err := strconv.Atoi(raw); err == nil && v > 0 {
-				maxHP = v
-			}
-		}
-	}
-
-	client, code, reason := rm.ValidateAndRegister(role, dmToken, name, conn, maxHP)
+	client, code, reason := rm.ValidateAndRegister(role, userID, pcID, name, maxHP, conn)
 	if code != 0 {
 		closeWith(conn, code, reason)
 		return
@@ -153,9 +175,15 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 	// --- Player actions ---
 	case "setup_character":
 		if c.MaxHP == 0 {
-			return // no profile loaded
+			return // no PC loaded
 		}
 		if err := rm.SetupCharacter(c.SessionID); err == nil {
+			companions, cErr := store.Global.GetCompanionsByParentID(c.PCID)
+			if cErr == nil && len(companions) > 0 {
+				rm.InstantiateCompanionsFromPC(c.SessionID, companions)
+			}
+			roomID, _, _ := rm.Summary()
+			go store.GlobalMemberships.Upsert(c.UserID, roomID, c.PCID)
 			rm.BroadcastState()
 			rm.MarkDirty()
 		}

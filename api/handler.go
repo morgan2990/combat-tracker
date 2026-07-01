@@ -7,11 +7,18 @@ import (
 	"strconv"
 	"strings"
 
+	"combatapp/auth"
 	"combatapp/room"
 	"combatapp/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func CreateRoom(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	var body struct {
 		Edition string `json:"edition"`
 	}
@@ -20,13 +27,15 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 	if edition != "5e" && edition != "5.5e" {
 		edition = "5e"
 	}
-	roomID, dmToken := room.Global.CreateRoom(edition)
+	roomID := room.Global.CreateRoom(edition, userID)
+	if rm, ok := room.Global.GetRoom(roomID); ok {
+		go rm.PersistNow(&store.GlobalRooms)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
-		"room_id":  roomID,
-		"dm_token": dmToken,
-		"edition":  edition,
+		"room_id": roomID,
+		"edition": edition,
 	})
 }
 
@@ -50,26 +59,257 @@ func GetRoom(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func UpsertEntity(w http.ResponseWriter, r *http.Request) {
-	var p store.Profile
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+// --- Auth ---
+
+type authPayload struct {
+	Username   string `json:"username"`
+	Passphrase string `json:"passphrase"`
+}
+
+func SignUp(w http.ResponseWriter, r *http.Request) {
+	var body authPayload
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	if p.Name == "" || p.MaxHP <= 0 || (p.Type != "player" && p.Type != "companion") {
-		http.Error(w, "invalid payload", http.StatusBadRequest)
+	if body.Username == "" || body.Passphrase == "" {
+		http.Error(w, "username and passphrase required", http.StatusBadRequest)
 		return
 	}
-	if p.Type == "companion" && p.ParentPCName == "" {
-		http.Error(w, "companion requires parent_pc_name", http.StatusBadRequest)
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.Passphrase), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "could not hash passphrase", http.StatusInternalServerError)
 		return
 	}
-	if err := store.Global.UpsertEntity(p); err != nil {
+	user, err := store.GlobalUsers.CreateUser(body.Username, string(hash))
+	if err != nil {
+		http.Error(w, "username taken", http.StatusConflict)
+		return
+	}
+	sess, err := store.GlobalUsers.CreateSession(user.ID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	auth.SetSessionCookie(w, sess.Token)
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"username": user.Username})
+}
+
+func Login(w http.ResponseWriter, r *http.Request) {
+	var body authPayload
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	user, err := store.GlobalUsers.GetUserByUsername(body.Username)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if user == nil || bcrypt.CompareHashAndPassword([]byte(user.PassphraseHash), []byte(body.Passphrase)) != nil {
+		http.Error(w, "invalid username or passphrase", http.StatusUnauthorized)
+		return
+	}
+	sess, err := store.GlobalUsers.CreateSession(user.ID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	auth.SetSessionCookie(w, sess.Token)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"username": user.Username})
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie("combatapp_session"); err == nil && c.Value != "" {
+		store.GlobalUsers.DeleteSession(c.Value)
+	}
+	auth.ClearSessionCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	user, err := store.GlobalUsers.GetUserByID(userID)
+	if err != nil || user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	pcs, err := store.Global.ListPCsByOwner(userID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if pcs == nil {
+		pcs = []store.PC{}
+	}
+	rooms, err := store.GlobalRooms.ListByOwner(userID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if rooms == nil {
+		rooms = []store.RoomSummary{}
+	}
+	memberships, err := store.GlobalMemberships.ListByUser(userID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if memberships == nil {
+		memberships = []store.RoomMembership{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"user":         map[string]string{"username": user.Username, "display_name": user.DisplayName},
+		"rooms":        rooms,
+		"pcs":          pcs,
+		"recent_rooms": memberships,
+	})
+}
+
+// --- PCs ---
+
+type pcPayload struct {
+	Name             string `json:"name"`
+	MaxHP            int    `json:"max_hp"`
+	SharesInitiative bool   `json:"shares_initiative"`
+}
+
+func CreatePC(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var body pcPayload
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if body.Name == "" || body.MaxHP <= 0 {
+		http.Error(w, "name and max_hp required", http.StatusBadRequest)
+		return
+	}
+	pc, err := store.Global.CreatePC(userID, body.Name, body.MaxHP)
+	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
+	json.NewEncoder(w).Encode(pc)
+}
+
+func UpdatePC(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id := r.PathValue("id")
+	existing, err := store.Global.GetPCByID(id)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if existing == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if existing.OwnerUserID != userID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	var body pcPayload
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if body.Name == "" || body.MaxHP <= 0 {
+		http.Error(w, "name and max_hp required", http.StatusBadRequest)
+		return
+	}
+	if err := store.Global.UpdatePC(id, body.Name, body.MaxHP); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+type pcResponse struct {
+	PC         *store.PC  `json:"pc"`
+	Companions []store.PC `json:"companions"`
+}
+
+func GetPC(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id := r.PathValue("id")
+	pc, err := store.Global.GetPCByID(id)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if pc == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if pc.OwnerUserID != userID {
+		http.NotFound(w, r)
+		return
+	}
+	companions, err := store.Global.GetCompanionsByParentID(id)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if companions == nil {
+		companions = []store.PC{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(pcResponse{PC: pc, Companions: companions})
+}
+
+func CreateCompanion(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ResolveUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	parentID := r.PathValue("id")
+	parent, err := store.Global.GetPCByID(parentID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if parent == nil || parent.OwnerUserID != userID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	var body pcPayload
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if body.Name == "" || body.MaxHP <= 0 {
+		http.Error(w, "name and max_hp required", http.StatusBadRequest)
+		return
+	}
+	companion, err := store.Global.CreateCompanion(parentID, userID, body.Name, body.MaxHP, body.SharesInitiative)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(companion)
 }
 
 func UpsertMonster(w http.ResponseWriter, r *http.Request) {
@@ -219,36 +459,4 @@ func StreamMonsterPDF(w http.ResponseWriter, r *http.Request) {
 	defer rc.Close()
 	w.Header().Set("Content-Type", "application/pdf")
 	io.Copy(w, rc)
-}
-
-type profileResponse struct {
-	Profile    *store.Profile  `json:"profile"`
-	Companions []store.Profile `json:"companions"`
-}
-
-func GetEntity(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("name")
-	if name == "" {
-		http.Error(w, "name required", http.StatusBadRequest)
-		return
-	}
-	profile, err := store.Global.GetEntityByName(name)
-	if err != nil {
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if profile == nil {
-		http.NotFound(w, r)
-		return
-	}
-	companions, err := store.Global.GetCompanionsByParent(name)
-	if err != nil {
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if companions == nil {
-		companions = []store.Profile{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(profileResponse{Profile: profile, Companions: companions})
 }

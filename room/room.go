@@ -18,9 +18,15 @@ const idChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 type Entity struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`
-	Type             string   `json:"type"` // player | creature | companion
+	Type             string   `json:"type"` // pc | creature | companion
 	OwnerID          string   `json:"owner_id,omitempty"`
 	SessionID        string   `json:"session_id,omitempty"`
+	// PCID is the Mongo PC/companion document this entity was instantiated from
+	// (empty for creatures and for ad-hoc companions added via add_companion).
+	// Used to match a reconnecting pc_id back to its entity, to resolve
+	// refresh_from_profile lookups without relying on (no-longer-unique) Name,
+	// and by the frontend to identify "which entity is mine" after connecting.
+	PCID             string   `json:"pc_id,omitempty"`
 	MaxHP            int      `json:"max_hp"`
 	CurrentHP        int      `json:"current_hp"`
 	TempHP           int      `json:"temp_hp"`
@@ -49,9 +55,11 @@ type Client struct {
 	mu        sync.Mutex
 	Conn      *websocket.Conn
 	Role      string // dm | player
+	UserID    string // authenticated user id, resolved from the session cookie
+	PCID      string // the PC this connection is playing, for role=player
 	Name      string
 	SessionID string
-	MaxHP     int // populated from profile on join; 0 means no profile loaded
+	MaxHP     int // resolved server-side from the owned PC; 0 means no PC loaded
 }
 
 func (c *Client) WriteJSON(v any) error {
@@ -68,11 +76,11 @@ func (c *Client) WritePing() error {
 
 // Room holds live combat state and all active WebSocket connections.
 type Room struct {
-	mu      sync.RWMutex
-	State   RoomState
-	DMToken string
-	Clients map[string]*Client // session_id → *Client
-	dirty   bool               // true if state has changed since the last persisted snapshot
+	mu          sync.RWMutex
+	State       RoomState
+	OwnerUserID string
+	Clients     map[string]*Client // session_id → *Client
+	dirty       bool               // true if state has changed since the last persisted snapshot
 }
 
 // sortEntities always re-sorts State.Entities descending by initiative.
@@ -107,8 +115,11 @@ func (r *Room) sortEntities() {
 	}
 }
 
-// isDM returns true if the session exists and has the DM role.
-func (r *Room) isDM(sessionID string) bool {
+// isOwner returns true if the session exists and has the DM role. Ownership
+// (session's UserID == Room.OwnerUserID) was already verified once, at
+// connect time, in ValidateAndRegister — a session can only ever hold
+// Role=="dm" if that check passed, so re-checking it here is unnecessary.
+func (r *Room) isOwner(sessionID string) bool {
 	c, ok := r.Clients[sessionID]
 	return ok && c.Role == "dm"
 }
@@ -120,14 +131,14 @@ func (r *Room) isDM(sessionID string) bool {
 func (r *Room) StartCombat(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 	if r.State.IsStarted {
 		return errors.New("already started")
 	}
 	for _, e := range r.State.Entities {
-		if (e.Type == "player" || e.Type == "companion") && e.Initiative == nil {
+		if (e.Type == "pc" || e.Type == "companion") && e.Initiative == nil {
 			return errors.New("all players and companions must have initiative set before starting combat")
 		}
 	}
@@ -151,7 +162,7 @@ func (r *Room) StartCombat(sessionID string) error {
 func (r *Room) NextTurn(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 	if !r.State.IsStarted {
@@ -184,7 +195,7 @@ func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 	for i := range quantity {
@@ -224,7 +235,7 @@ func (r *Room) AddCreature(sessionID, name string, maxHP int, initiativeModifier
 func (r *Room) RemoveEntity(sessionID, entityID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 	idx := -1
@@ -254,7 +265,7 @@ func (r *Room) RemoveEntity(sessionID, entityID string) error {
 func (r *Room) RemoveDeadCreatures(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 
@@ -287,34 +298,34 @@ func (r *Room) RemoveDeadCreatures(sessionID string) error {
 	return nil
 }
 
-// EndCombat terminates the active encounter: removes all creature entities, retains players
-// and companions whose owner player entity still exists, and resets combat state fields.
+// EndCombat terminates the active encounter: removes all creature entities, retains PCs
+// and companions whose owner PC entity still exists, and resets combat state fields.
 func (r *Room) EndCombat(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 	if !r.State.IsStarted {
 		return errors.New("combat not started")
 	}
 
-	// Pass 1: collect surviving player IDs.
-	playerIDs := make(map[string]bool)
+	// Pass 1: collect surviving PC IDs.
+	pcIDs := make(map[string]bool)
 	for _, e := range r.State.Entities {
-		if e.Type == "player" {
-			playerIDs[e.ID] = true
+		if e.Type == "pc" {
+			pcIDs[e.ID] = true
 		}
 	}
 
-	// Pass 2: keep players and companions with a live owner; discard everything else.
+	// Pass 2: keep PCs and companions with a live owner; discard everything else.
 	survivors := make([]Entity, 0, len(r.State.Entities))
 	for _, e := range r.State.Entities {
 		switch e.Type {
-		case "player":
+		case "pc":
 			survivors = append(survivors, e)
 		case "companion":
-			if playerIDs[e.OwnerID] {
+			if pcIDs[e.OwnerID] {
 				survivors = append(survivors, e)
 			}
 		}
@@ -335,7 +346,7 @@ func (r *Room) EndCombat(sessionID string) error {
 func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempHP, initiative int, conditions []string, dead bool) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if !r.isDM(sessionID) {
+	if !r.isOwner(sessionID) {
 		return errors.New("unauthorized")
 	}
 	for i := range r.State.Entities {
@@ -374,7 +385,8 @@ func (r *Room) DMUpdateEntity(sessionID, entityID, name string, currentHP, tempH
 
 // --- Player-initiated methods (Epic 2) ---
 
-// SetupCharacter creates a player entity for the given session using max_hp from the client's profile.
+// SetupCharacter creates a PC entity for the given session using max_hp resolved
+// server-side (from the owned PC document) at connect time.
 func (r *Room) SetupCharacter(sessionID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -384,7 +396,7 @@ func (r *Room) SetupCharacter(sessionID string) error {
 		return errors.New("session not found or not a player")
 	}
 	if c.MaxHP <= 0 {
-		return errors.New("no profile loaded for this session")
+		return errors.New("no PC loaded for this session")
 	}
 	for _, e := range r.State.Entities {
 		if e.SessionID == sessionID {
@@ -394,8 +406,10 @@ func (r *Room) SetupCharacter(sessionID string) error {
 	r.State.Entities = append(r.State.Entities, Entity{
 		ID:         newToken(8),
 		Name:       c.Name,
-		Type:       "player",
+		Type:       "pc",
+		OwnerID:    "",
 		SessionID:  sessionID,
+		PCID:       c.PCID,
 		MaxHP:      c.MaxHP,
 		CurrentHP:  c.MaxHP,
 		Initiative: nil,
@@ -406,26 +420,65 @@ func (r *Room) SetupCharacter(sessionID string) error {
 	return nil
 }
 
-// SetInitiative sets the player entity's initiative and propagates to shared companions.
+// InstantiateCompanionsFromPC creates a companion entity for each of the given
+// stored companion documents, owned by the PC entity for sessionID. Called by
+// the WS handler immediately after SetupCharacter succeeds, replacing the
+// previous client-driven add_companion auto-load.
+func (r *Room) InstantiateCompanionsFromPC(sessionID string, companions []store.PC) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var ownerID string
+	for _, e := range r.State.Entities {
+		if e.SessionID == sessionID && e.Type == "pc" {
+			ownerID = e.ID
+			break
+		}
+	}
+	if ownerID == "" {
+		return errors.New("PC entity not found; complete character setup first")
+	}
+	for _, cp := range companions {
+		r.State.Entities = append(r.State.Entities, Entity{
+			ID:               newToken(8),
+			Name:             cp.Name,
+			Type:             "companion",
+			OwnerID:          ownerID,
+			PCID:             cp.ID,
+			MaxHP:            cp.MaxHP,
+			CurrentHP:        cp.MaxHP,
+			Initiative:       nil,
+			SharesInitiative: cp.SharesInitiative,
+			Conditions:       []string{},
+			Dead:             false,
+		})
+	}
+	if len(companions) > 0 {
+		r.sortEntities()
+	}
+	return nil
+}
+
+// SetInitiative sets the PC entity's initiative and propagates to shared companions.
 func (r *Room) SetInitiative(sessionID string, initiative int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var playerEntityID string
+	var pcEntityID string
 	for i := range r.State.Entities {
 		e := &r.State.Entities[i]
-		if e.SessionID == sessionID && e.Type == "player" {
+		if e.SessionID == sessionID && e.Type == "pc" {
 			e.Initiative = &initiative
-			playerEntityID = e.ID
+			pcEntityID = e.ID
 			break
 		}
 	}
-	if playerEntityID == "" {
-		return errors.New("player entity not found; complete character setup first")
+	if pcEntityID == "" {
+		return errors.New("PC entity not found; complete character setup first")
 	}
 	for i := range r.State.Entities {
 		e := &r.State.Entities[i]
-		if e.Type == "companion" && e.OwnerID == playerEntityID && e.SharesInitiative {
+		if e.Type == "companion" && e.OwnerID == pcEntityID && e.SharesInitiative {
 			e.Initiative = &initiative
 		}
 	}
@@ -475,7 +528,8 @@ func (r *Room) UpdateEntity(sessionID, entityID string, currentHP, tempHP int, c
 	return errors.New("entity not found")
 }
 
-// AddCompanion creates a companion entity owned by the given player session.
+// AddCompanion creates an ad-hoc companion entity owned by the given player session
+// (the in-room "Add Summon/Pet" flow; not linked to any stored PC document).
 // initiative may be nil (not yet set).
 func (r *Room) AddCompanion(sessionID, name string, maxHP int, sharesInitiative bool, initiative *int) error {
 	if maxHP <= 0 || name == "" {
@@ -486,13 +540,13 @@ func (r *Room) AddCompanion(sessionID, name string, maxHP int, sharesInitiative 
 
 	ownerID := ""
 	for _, e := range r.State.Entities {
-		if e.SessionID == sessionID && e.Type == "player" {
+		if e.SessionID == sessionID && e.Type == "pc" {
 			ownerID = e.ID
 			break
 		}
 	}
 	if ownerID == "" {
-		return errors.New("player entity not found; complete character setup first")
+		return errors.New("PC entity not found; complete character setup first")
 	}
 	r.State.Entities = append(r.State.Entities, Entity{
 		ID:               newToken(8),
@@ -510,8 +564,9 @@ func (r *Room) AddCompanion(sessionID, name string, maxHP int, sharesInitiative 
 	return nil
 }
 
-// RefreshFromProfile re-fetches the player's MongoDB profile and updates max_hp
-// for the player entity and all linked companions in this room.
+// RefreshFromProfile re-fetches the player's owned PC document (via the
+// connection's stored PCID) and updates max_hp for the PC entity and all
+// linked companion entities (matched by their own stored PCID) in this room.
 func (r *Room) RefreshFromProfile(sessionID string, st *store.Store) error {
 	r.mu.RLock()
 	c, ok := r.Clients[sessionID]
@@ -520,44 +575,44 @@ func (r *Room) RefreshFromProfile(sessionID string, st *store.Store) error {
 		return errors.New("session not found or not a player")
 	}
 
-	profile, err := st.GetEntityByName(c.Name)
+	pc, err := st.GetPCByID(c.PCID)
 	if err != nil {
 		return err
 	}
-	if profile == nil {
-		return errors.New("profile not found")
+	if pc == nil {
+		return errors.New("PC not found")
 	}
-	companions, err := st.GetCompanionsByParent(c.Name)
+	companions, err := st.GetCompanionsByParentID(c.PCID)
 	if err != nil {
 		return err
 	}
 
 	companionMaxHP := make(map[string]int, len(companions))
 	for _, cp := range companions {
-		companionMaxHP[cp.Name] = cp.MaxHP
+		companionMaxHP[cp.ID] = cp.MaxHP
 	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	var playerEntityID string
+	var pcEntityID string
 	for i := range r.State.Entities {
 		e := &r.State.Entities[i]
-		if e.SessionID == sessionID && e.Type == "player" {
-			e.MaxHP = profile.MaxHP
+		if e.SessionID == sessionID && e.Type == "pc" {
+			e.MaxHP = pc.MaxHP
 			if e.CurrentHP > e.MaxHP {
 				e.CurrentHP = e.MaxHP
 			}
-			playerEntityID = e.ID
+			pcEntityID = e.ID
 			break
 		}
 	}
-	if playerEntityID == "" {
-		return errors.New("player entity not in room")
+	if pcEntityID == "" {
+		return errors.New("PC entity not in room")
 	}
 	for i := range r.State.Entities {
 		e := &r.State.Entities[i]
-		if e.Type == "companion" && e.OwnerID == playerEntityID {
-			if newMax, ok := companionMaxHP[e.Name]; ok {
+		if e.Type == "companion" && e.OwnerID == pcEntityID && e.PCID != "" {
+			if newMax, ok := companionMaxHP[e.PCID]; ok {
 				e.MaxHP = newMax
 				if e.CurrentHP > e.MaxHP {
 					e.CurrentHP = e.MaxHP
@@ -569,21 +624,26 @@ func (r *Room) RefreshFromProfile(sessionID string, st *store.Store) error {
 }
 
 // ValidateAndRegister validates a join attempt and registers the client.
-// maxHP is used for player sessions to store the profile value; pass 0 for DM sessions.
-func (r *Room) ValidateAndRegister(role, dmToken, name string, conn *websocket.Conn, maxHP int) (*Client, int, string) {
+// For role=dm, userID must match the room's OwnerUserID (verified by the caller's
+// earlier authentication step, but re-checked here as the source of truth).
+// For role=player, pcID/name/maxHP are resolved server-side by the caller from
+// the owned PC document before calling this.
+func (r *Room) ValidateAndRegister(role, userID, pcID, name string, maxHP int, conn *websocket.Conn) (*Client, int, string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if role == "dm" && dmToken != r.DMToken {
-		return nil, 4003, "invalid dm token"
+	if role == "dm" && userID != r.OwnerUserID {
+		return nil, 4003, "not the room owner"
 	}
-	if role == "player" && r.isNameTaken(name) {
-		return nil, 4009, "name already taken"
+	if role == "player" && r.isPCActive(pcID) {
+		return nil, 4009, "PC already active in this room"
 	}
 
 	c := &Client{
 		Conn:      conn,
 		Role:      role,
+		UserID:    userID,
+		PCID:      pcID,
 		Name:      name,
 		SessionID: newToken(8),
 		MaxHP:     maxHP,
@@ -592,7 +652,7 @@ func (r *Room) ValidateAndRegister(role, dmToken, name string, conn *websocket.C
 
 	if role == "player" {
 		for i := range r.State.Entities {
-			if r.State.Entities[i].Name == name && r.State.Entities[i].Type == "player" {
+			if r.State.Entities[i].PCID == pcID && r.State.Entities[i].Type == "pc" {
 				r.State.Entities[i].SessionID = c.SessionID
 				break
 			}
@@ -631,9 +691,9 @@ func (r *Room) Summary() (roomID, edition string, isCombatActive bool) {
 	return r.State.RoomID, r.State.Edition, r.State.IsStarted
 }
 
-func (r *Room) isNameTaken(name string) bool {
+func (r *Room) isPCActive(pcID string) bool {
 	for _, c := range r.Clients {
-		if c.Role == "player" && c.Name == name {
+		if c.Role == "player" && c.PCID == pcID {
 			return true
 		}
 	}
@@ -680,7 +740,7 @@ func (r *Room) snapshot() store.RoomSnapshot {
 	entities := make([]store.RoomEntitySnapshot, len(r.State.Entities))
 	for i, e := range r.State.Entities {
 		connected := false
-		if e.Type == "player" && e.SessionID != "" {
+		if e.Type == "pc" && e.SessionID != "" {
 			_, connected = r.Clients[e.SessionID]
 		}
 		entities[i] = store.RoomEntitySnapshot{
@@ -688,6 +748,7 @@ func (r *Room) snapshot() store.RoomSnapshot {
 			Name:               e.Name,
 			Type:               e.Type,
 			OwnerID:            e.OwnerID,
+			PCID:               e.PCID,
 			MaxHP:              e.MaxHP,
 			CurrentHP:          e.CurrentHP,
 			TempHP:             e.TempHP,
@@ -705,7 +766,7 @@ func (r *Room) snapshot() store.RoomSnapshot {
 	}
 	return store.RoomSnapshot{
 		RoomID:             r.State.RoomID,
-		DMToken:            r.DMToken,
+		OwnerUserID:        r.OwnerUserID,
 		IsCombatActive:     r.State.IsStarted,
 		CurrentRound:       r.State.Round,
 		ActiveTurnEntityID: r.activeEntityID(),
@@ -738,9 +799,8 @@ type Registry struct {
 
 var Global = &Registry{rooms: make(map[string]*Room)}
 
-// CreateRoom generates a unique room ID and DM token, registers the room, and returns both.
-func (reg *Registry) CreateRoom(edition string) (roomID, dmToken string) {
-	dmToken = newToken(4)
+// CreateRoom generates a unique room ID, registers the room as owned by ownerUserID, and returns the ID.
+func (reg *Registry) CreateRoom(edition, ownerUserID string) (roomID string) {
 	reg.mu.Lock()
 	defer reg.mu.Unlock()
 	for {
@@ -750,9 +810,9 @@ func (reg *Registry) CreateRoom(edition string) (roomID, dmToken string) {
 		}
 	}
 	reg.rooms[roomID] = &Room{
-		State:   RoomState{RoomID: roomID, Edition: edition, Entities: []Entity{}},
-		DMToken: dmToken,
-		Clients: make(map[string]*Client),
+		State:       RoomState{RoomID: roomID, Edition: edition, Entities: []Entity{}},
+		OwnerUserID: ownerUserID,
+		Clients:     make(map[string]*Client),
 	}
 	return
 }
@@ -817,6 +877,7 @@ func inflateRoom(snap store.RoomSnapshot) *Room {
 			Name:               e.Name,
 			Type:               e.Type,
 			OwnerID:            e.OwnerID,
+			PCID:               e.PCID,
 			MaxHP:              e.MaxHP,
 			CurrentHP:          e.CurrentHP,
 			TempHP:             e.TempHP,
@@ -839,8 +900,8 @@ func inflateRoom(snap store.RoomSnapshot) *Room {
 			Round:     snap.CurrentRound,
 			Entities:  entities,
 		},
-		DMToken: snap.DMToken,
-		Clients: make(map[string]*Client),
+		OwnerUserID: snap.OwnerUserID,
+		Clients:     make(map[string]*Client),
 	}
 	rm.State.ActiveIndex = rm.resolveActiveIndex(snap.ActiveTurnEntityID)
 	return rm

@@ -44,12 +44,10 @@ type MonsterHit struct {
 // fatal — Typesense is a best-effort search layer, not the source of truth.
 func InitTypesense() {
 	url := os.Getenv("TYPESENSE_URL")
-	if url == "" {
-		url = "http://192.168.0.94:8108"
-	}
 	apiKey := os.Getenv("TYPESENSE_API_KEY")
-	if apiKey == "" {
-		apiKey = "xyz"
+	if url == "" || apiKey == "" {
+		log.Printf("typesense: TYPESENSE_URL/TYPESENSE_API_KEY not fully set, skipping init")
+		return
 	}
 
 	client := typesense.NewClient(

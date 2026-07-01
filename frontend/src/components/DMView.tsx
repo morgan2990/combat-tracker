@@ -426,14 +426,13 @@ const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: 1
 interface DMViewProps {
   roomState: RoomState
   sendMessage: (msg: object) => void
-  dmToken: string
 }
 
-export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
+export function DMView({ roomState, sendMessage }: DMViewProps) {
   const navigate = useNavigate()
   const { entities, active_index, is_started, round } = roomState
   const hasDeadCreatures = entities.some(e => e.dead && e.type === 'creature')
-  const pendingInitiative = entities.filter(e => (e.type === 'player' || e.type === 'companion') && e.initiative === null)
+  const pendingInitiative = entities.filter(e => (e.type === 'pc' || e.type === 'companion') && e.initiative === null)
   const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [openDrawerEntityId, setOpenDrawerEntityId] = useState<string | null>(null)
 
@@ -461,7 +460,6 @@ export function DMView({ roomState, sendMessage, dmToken }: DMViewProps) {
       {/* Room info bar */}
       <div style={{ display: 'flex', gap: 20, marginBottom: 16, padding: '8px 12px', background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, fontSize: 13, flexWrap: 'wrap' }}>
         <span><span style={{ color: '#7878a0' }}>Room Code: </span><strong style={{ letterSpacing: 1, color: '#d4d4e8' }}>{roomState.room_id}</strong></span>
-        <span><span style={{ color: '#7878a0' }}>DM Token: </span><strong style={{ fontFamily: 'monospace', color: '#d4d4e8' }}>{dmToken}</strong></span>
       </div>
 
       {/* Combat controls */}
