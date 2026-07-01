@@ -19,7 +19,7 @@
 
 - [x] 4.1 `npx tsc --noEmit` in `frontend/` to confirm no type errors
 - [x] 4.2 `go build ./...` from the repo root to confirm the backend compiles (also `go test ./...`: only the same pre-existing unrelated `TestSnapshotConnectedStatus` failure from prior sessions)
-- [ ] 4.3 Manual check via dev server: create 2 custom monsters in different editions, confirm the Add Creature form and Encounter Builder each show only the current-edition one in "My Creatures", confirm clicking one populates/stages it correctly, and confirm search still works unaffected
+- [x] 4.3 Manual check via dev server: create 2 custom monsters in different editions, confirm the Add Creature form and Encounter Builder each show only the current-edition one in "My Creatures", confirm clicking one populates/stages it correctly, and confirm search still works unaffected
 
 ## 5. Spec sync
 
