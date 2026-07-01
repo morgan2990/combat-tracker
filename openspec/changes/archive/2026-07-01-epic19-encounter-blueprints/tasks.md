@@ -45,7 +45,7 @@
 
 - [x] 8.1 `npx tsc --noEmit` in `frontend/` to confirm no type errors
 - [x] 8.2 `go build ./...` from the repo root to confirm the backend compiles (also `go vet ./...` clean, and `go test ./...` shows only the same pre-existing unrelated `TestSnapshotConnectedStatus` failure from prior sessions)
-- [ ] 8.3 Manual check via dev server: create an encounter with an official + a custom monster group, verify it appears on the Dashboard, edit it, then open a room of the matching edition and inject it — confirm the right quantities/aliases spawn; delete the referenced custom monster and re-inject the same encounter, confirming that group is skipped and the rest still spawns
+- [x] 8.3 Manual check via dev server: create an encounter with an official + a custom monster group, verify it appears on the Dashboard, edit it, then open a room of the matching edition and inject it — confirm the right quantities/aliases spawn; delete the referenced custom monster and re-inject the same encounter, confirming that group is skipped and the rest still spawns
 
 ## 9. Spec sync
 
