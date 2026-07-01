@@ -107,3 +107,13 @@ The system SHALL maintain the following invariants:
 - A creature with nil `Initiative` after `StartCombat` means nil `InitiativeModifier` — the DM must set initiative manually.
 - `InitiativeRoll` is non-nil if and only if the initiative was auto-rolled (not manually set).
 - The `dm_update_entity` handler MUST NOT modify `InitiativeRoll` — if the DM overrides an initiative value, the raw roll is preserved for tooltip reference.
+
+#### Scenario: Creature with no modifier remains manual after StartCombat
+- **GIVEN** a creature has nil `InitiativeModifier`
+- **WHEN** `StartCombat` runs
+- **THEN** the creature's `Initiative` remains nil, requiring the DM to set it manually
+
+#### Scenario: DM override preserves the original roll
+- **GIVEN** a creature has a non-nil `InitiativeRoll` from an auto-roll
+- **WHEN** the DM sends `dm_update_entity` with a different `initiative` value
+- **THEN** `Initiative` is updated to the DM's value but `InitiativeRoll` is left unchanged

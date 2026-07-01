@@ -50,6 +50,8 @@ Extends `MonsterForm.tsx` with a required edition selector and an optional initi
 
 ### Requirement: JSON Payload Shape
 
+The JSON submission path SHALL include `initiative_modifier` in the payload only when the form field was filled in, and SHALL omit the key entirely when it was left blank.
+
 When `initiative_modifier` is provided:
 ```json
 { "name": "...", "edition": "5e", "max_hp": 30, "initiative_modifier": 2 }
@@ -59,6 +61,14 @@ When `initiative_modifier` is blank:
 ```json
 { "name": "...", "edition": "5e", "max_hp": 30 }
 ```
+
+#### Scenario: Payload shape with a modifier
+- **WHEN** the user submits the form with an initiative modifier value entered
+- **THEN** the JSON payload includes `edition`, `max_hp`, and `initiative_modifier` as sibling keys
+
+#### Scenario: Payload shape without a modifier
+- **WHEN** the user submits the form with the initiative modifier field left blank
+- **THEN** the JSON payload includes `edition` and `max_hp` but omits the `initiative_modifier` key entirely
 
 ### Requirement: Multipart PDF Upload Path
 

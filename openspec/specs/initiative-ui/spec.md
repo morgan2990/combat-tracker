@@ -97,6 +97,14 @@ initiative_roll?: number | null
 
 Both fields are optional (`?`) so existing WS payloads without these fields do not require a type cast.
 
+#### Scenario: Type accepts a payload with both fields
+- **WHEN** a `RoomState` payload includes an entity with numeric `initiative_modifier` and `initiative_roll`
+- **THEN** the `Entity` type accepts the payload without a cast or compile error
+
+#### Scenario: Type accepts a payload with both fields omitted
+- **WHEN** a `RoomState` payload omits `initiative_modifier` and `initiative_roll` for an entity (e.g. a PC)
+- **THEN** the `Entity` type still accepts the payload, with both fields resolving to `undefined`
+
 ### Requirement: Start Combat Button Disabled Pending Initiative
 
 The DM view SHALL disable the "Start Combat" button whenever at least one `pc` or `companion` entity in the room has `initiative === null`, matching the server's `start_combat` validation rule. A disabled button SHALL NOT send the `start_combat` message when clicked.

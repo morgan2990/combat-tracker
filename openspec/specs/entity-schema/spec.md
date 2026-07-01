@@ -73,6 +73,16 @@ InitiativeModifier *int `bson:"initiative_modifier,omitempty" json:"initiative_m
 - Nil means the modifier was never set (custom monster with blank form).
 - Non-nil (including 0) means the modifier is known.
 
+#### Scenario: Custom monster saved without a modifier
+- **GIVEN** a custom monster form is submitted with the initiative modifier field left blank
+- **WHEN** the monster is saved to the store
+- **THEN** `Monster.InitiativeModifier` is nil
+
+#### Scenario: Custom monster saved with a zero modifier
+- **GIVEN** a custom monster form is submitted with an initiative modifier of `0`
+- **WHEN** the monster is saved to the store
+- **THEN** `Monster.InitiativeModifier` is a non-nil pointer to `0`, distinguishable from "never set"
+
 ### Requirement: Frontend Entity Type Fields
 
 The `Entity` interface in `types.ts` SHALL include two new nullable fields:
@@ -83,6 +93,14 @@ initiative_roll: number | null
 ```
 
 Both fields MAY be absent in older payloads; consumers MUST treat a missing field as null.
+
+#### Scenario: Fields present on a rolled creature
+- **WHEN** a `RoomState` payload includes a creature entity with non-null `initiative_modifier` and `initiative_roll`
+- **THEN** frontend consumers SHALL be able to render the roll breakdown (e.g. "d20: 14 +2 = 16")
+
+#### Scenario: Fields absent from an older payload
+- **WHEN** a `RoomState` payload omits `initiative_modifier` or `initiative_roll` for an entity
+- **THEN** frontend consumers SHALL treat the missing field as `null`, not throw or render `undefined`
 
 ### Requirement: Entity Struct Display Name Field
 
