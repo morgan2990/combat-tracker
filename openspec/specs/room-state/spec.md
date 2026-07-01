@@ -19,7 +19,7 @@ The system SHALL represent each room's combat state using the following structur
 Each Entity SHALL have:
 - `id` (string): UUID, assigned at creation
 - `name` (string): display name
-- `type` (string): one of `pc`, `creature`, `companion`
+- `type` (string): one of `pc`, `creature`, `companion`, `lair_action`
 - `owner_id` (string): for companions, the `id` of the owning PC entity; empty otherwise
 - `session_id` (string): the WS connection identifier for PC-type entities; empty for creatures
 - `max_hp` (int)
@@ -43,7 +43,7 @@ Each Entity SHALL have:
 
 #### Scenario: Entities sorted after any addition or DM initiative change
 - **WHEN** any entity is added to `State.Entities`, or a DM changes an entity's initiative
-- **THEN** the server SHALL sort `State.Entities` in descending order by `initiative` using a stable sort; if `is_started` is true the server SHALL also update `active_index` to the new position of the entity that was active before the sort
+- **THEN** the server SHALL sort `State.Entities` in descending order by `initiative` using a stable sort; if `is_started` is true the server SHALL also update `active_index` to the new position of the entity that was active before the sort; entities of `type: "lair_action"` are additionally subject to the tie-break rule defined in the `lair-actions` capability
 
 #### Scenario: Active entity tracked by ID across re-sorts
 - **WHEN** a re-sort occurs while `is_started` is true
@@ -144,3 +144,11 @@ The client application SHALL determine what data to display based on the connect
 #### Scenario: Hidden and pre-combat masking compose without conflict
 - **WHEN** a player-role client evaluates an entity that is both `type: "creature"` with `is_started: false`, and separately has `is_hidden: true`
 - **THEN** the entity remains omitted from the player view under either condition; toggling `is_hidden` to `false` does not reveal the entity while `is_started` is still `false`, and starting combat does not reveal an entity that still has `is_hidden: true`
+
+#### Scenario: Lair actions default to hidden, independent of combat state
+- **WHEN** a `lair_action` entity is created via `add_lair_action`
+- **THEN** it is created with `is_hidden: true`; because its `type` is not `"creature"`, the pre-combat blanket-hide from the "Player does not see staged creatures before combat starts" scenario does not apply to it, and `is_hidden` alone governs whether a player-role client can see it, regardless of `is_started`
+
+#### Scenario: DM reveals a lair action to players
+- **WHEN** the DM toggles `is_hidden` to `false` on a `lair_action` entity via `toggle_entity_visibility`
+- **THEN** player-role clients SHALL render that entity on their next broadcast, subject to the same row-rendering rules (no HP/status UI) defined in the `lair-actions` capability

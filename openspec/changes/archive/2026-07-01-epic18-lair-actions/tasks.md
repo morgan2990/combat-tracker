@@ -33,7 +33,7 @@
 
 - [x] 6.1 `npx tsc --noEmit` in `frontend/` to confirm no type errors
 - [x] 6.2 `go build ./...` from the repo root to confirm the backend compiles (also ran `go test ./...`: same pre-existing `TestSnapshotConnectedStatus` failure as prior sessions, unrelated to this change)
-- [ ] 6.3 Manual check via dev server: add a lair action, confirm it's invisible to a connected player until the DM toggles it visible; confirm its row in the DM Panel has no HP/condition/Kill-Revive UI but does have Remove, initiative, name/alias editors, and the visibility toggle; add a creature that also rolls/sets initiative 20 and confirm the lair action sorts after it regardless of which was added first
+- [x] 6.3 Manual check via dev server: add a lair action, confirm it's invisible to a connected player until the DM toggles it visible; confirm its row in the DM Panel has no HP/condition/Kill-Revive UI but does have Remove, initiative, name/alias editors, and the visibility toggle; add a creature that also rolls/sets initiative 20 and confirm the lair action sorts after it regardless of which was added first
 
 ## 7. Spec sync
 
