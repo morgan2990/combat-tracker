@@ -150,7 +150,7 @@ export default function App() {
     if (!roomState) return null
 
     if (role === 'dm') {
-      return <DMView roomState={roomState} sendMessage={sendMessage} />
+      return <DMView roomState={roomState} sendMessage={sendMessage} onBackToDashboard={backToDashboard} />
     }
 
     return (
@@ -159,6 +159,7 @@ export default function App() {
         myEntityId={myEntityId}
         needsInitiative={needsInitiative}
         sendMessage={sendMessage}
+        onBackToDashboard={backToDashboard}
       />
     )
   }

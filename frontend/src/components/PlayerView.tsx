@@ -181,9 +181,10 @@ interface PlayerViewProps {
   myEntityId: string | null
   needsInitiative: boolean
   sendMessage: (msg: object) => void
+  onBackToDashboard: () => void
 }
 
-export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage }: PlayerViewProps) {
+export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage, onBackToDashboard }: PlayerViewProps) {
   const [showCompanionForm, setShowCompanionForm] = useState(false)
   const { entities, active_index, is_started, round } = roomState
 
@@ -195,6 +196,12 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <button
+          onClick={onBackToDashboard}
+          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+        >
+          ← Dashboard
+        </button>
         <h2 style={{ margin: 0 }}>⚔ Combat Tracker</h2>
         {is_started && <span style={{ fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
       </div>

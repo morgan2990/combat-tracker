@@ -435,9 +435,10 @@ const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: 1
 interface DMViewProps {
   roomState: RoomState
   sendMessage: (msg: object) => void
+  onBackToDashboard: () => void
 }
 
-export function DMView({ roomState, sendMessage }: DMViewProps) {
+export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProps) {
   const { entities, active_index, is_started, round } = roomState
   const hasDeadCreatures = entities.some(e => e.dead && e.type === 'creature')
   const pendingInitiative = entities.filter(e => (e.type === 'pc' || e.type === 'companion') && e.initiative === null)
@@ -453,6 +454,12 @@ export function DMView({ roomState, sendMessage }: DMViewProps) {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <button
+          onClick={onBackToDashboard}
+          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+        >
+          ← Dashboard
+        </button>
         <h2 style={{ margin: 0 }}>⚔ DM Panel</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {is_started && <span style={{ fontSize: 18, fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
