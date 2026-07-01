@@ -40,6 +40,7 @@ type Entity struct {
 	InitiativeModifier  *int     `json:"initiative_modifier,omitempty"`
 	InitiativeRoll      *int     `json:"initiative_roll,omitempty"`
 	DisplayName         string   `json:"display_name,omitempty"`
+	IsHidden            bool     `json:"is_hidden"`
 }
 
 type RoomState struct {
@@ -264,6 +265,24 @@ func (r *Room) RemoveEntity(sessionID, entityID string) error {
 		}
 	}
 	return nil
+}
+
+// ToggleEntityVisibility flips the IsHidden flag on the given entity.
+func (r *Room) ToggleEntityVisibility(sessionID, entityID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.isOwner(sessionID) {
+		return errors.New("unauthorized")
+	}
+	for i := range r.State.Entities {
+		e := &r.State.Entities[i]
+		if e.ID != entityID {
+			continue
+		}
+		e.IsHidden = !e.IsHidden
+		return nil
+	}
+	return errors.New("entity not found")
 }
 
 // RemoveDeadCreatures removes all entities with dead==true and type=="creature".
@@ -773,6 +792,7 @@ func (r *Room) snapshot() store.RoomSnapshot {
 			InitiativeModifier: e.InitiativeModifier,
 			InitiativeRoll:     e.InitiativeRoll,
 			DisplayName:        e.DisplayName,
+			IsHidden:           e.IsHidden,
 			Connected:          connected,
 		}
 	}
@@ -903,6 +923,7 @@ func inflateRoom(snap store.RoomSnapshot) *Room {
 			InitiativeModifier: e.InitiativeModifier,
 			InitiativeRoll:     e.InitiativeRoll,
 			DisplayName:        e.DisplayName,
+			IsHidden:           e.IsHidden,
 		}
 	}
 	rm := &Room{

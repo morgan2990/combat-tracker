@@ -32,6 +32,7 @@ type RoomEntitySnapshot struct {
 	InitiativeModifier *int     `bson:"initiative_modifier,omitempty"  json:"initiative_modifier,omitempty"`
 	InitiativeRoll     *int     `bson:"initiative_roll,omitempty"      json:"initiative_roll,omitempty"`
 	DisplayName        string   `bson:"display_name,omitempty"         json:"display_name,omitempty"`
+	IsHidden           bool     `bson:"is_hidden"                      json:"is_hidden"`
 	Connected          bool     `bson:"connected"                      json:"connected"`
 }
 

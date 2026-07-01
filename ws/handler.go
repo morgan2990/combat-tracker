@@ -63,6 +63,10 @@ type removeEntityMsg struct {
 	EntityID string `json:"entity_id"`
 }
 
+type toggleEntityVisibilityMsg struct {
+	EntityID string `json:"entity_id"`
+}
+
 type dmUpdateEntityMsg struct {
 	EntityID    string   `json:"entity_id"`
 	Name        string   `json:"name"`
@@ -261,6 +265,16 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 
 	case "remove_dead_creatures":
 		if err := rm.RemoveDeadCreatures(c.SessionID); err == nil {
+			rm.BroadcastState()
+			rm.MarkDirty()
+		}
+
+	case "toggle_entity_visibility":
+		var msg toggleEntityVisibilityMsg
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			return
+		}
+		if err := rm.ToggleEntityVisibility(c.SessionID, msg.EntityID); err == nil {
 			rm.BroadcastState()
 			rm.MarkDirty()
 		}

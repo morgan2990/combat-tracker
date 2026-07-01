@@ -18,6 +18,7 @@ export interface Entity {
   reference_url?: string
   pdf_object_key?: string
   display_name?: string
+  is_hidden: boolean
 }
 
 export interface RoomState {

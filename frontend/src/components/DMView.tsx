@@ -107,7 +107,7 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
     <div style={{ borderBottom: '1px solid #2e2e48' }}>
       {/* Main row */}
       <div
-        style={{ padding: '10px 14px', background: rowBg, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+        style={{ padding: '10px 14px', background: rowBg, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: entity.is_hidden ? 0.5 : 1 }}
         onClick={() => setExpanded(e => !e)}
       >
         <span style={{ width: 16, color: '#e67e22', flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
@@ -122,6 +122,15 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
               style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
             >
               📋
+            </button>
+          )}
+          {entity.type === 'creature' && (
+            <button
+              onClick={e => { e.stopPropagation(); sendMessage({ type: 'toggle_entity_visibility', entity_id: entity.id }) }}
+              title={entity.is_hidden ? 'Hidden from players — click to reveal' : 'Visible to players — click to hide'}
+              style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+            >
+              {entity.is_hidden ? '🙈' : '👁'}
             </button>
           )}
           {vitalState === 'dead' && <span style={{ marginLeft: 6, fontSize: 11, color: '#e74c3c' }}>💀 Dead</span>}

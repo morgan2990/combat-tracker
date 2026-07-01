@@ -190,7 +190,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
 
   const myEntity = entities.find(e => e.id === myEntityId)
   const myCompanions = entities.filter(e => e.type === 'companion' && e.owner_id === myEntityId)
-  const visibleEntities = is_started ? entities : entities.filter(e => e.type !== 'creature')
+  const visibleEntities = entities.filter(e => (is_started || e.type !== 'creature') && !e.is_hidden)
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
