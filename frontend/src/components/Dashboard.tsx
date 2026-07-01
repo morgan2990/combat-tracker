@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import type { MeResponse } from '../types'
+import type { MeResponse, CustomMonster } from '../types'
 
 interface DashboardProps {
   me: MeResponse
@@ -16,6 +16,23 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
 
   const [joinRoomCode, setJoinRoomCode] = useState('')
   const [selectedPcId, setSelectedPcId] = useState(me.pcs[0]?.id ?? '')
+
+  const [myMonsters, setMyMonsters] = useState<CustomMonster[]>([])
+
+  useEffect(() => {
+    fetch('/api/monsters/custom')
+      .then(res => res.ok ? res.json() : [])
+      .then((data: CustomMonster[]) => setMyMonsters(data))
+      .catch(() => setMyMonsters([]))
+  }, [])
+
+  async function handleDeleteMonster(id: string) {
+    if (!window.confirm('Delete this monster? This cannot be undone.')) return
+    const res = await fetch(`/api/monsters/custom/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    if (res.ok) {
+      setMyMonsters(prev => prev.filter(m => m.id !== id))
+    }
+  }
 
   async function handleCreateRoom() {
     setCreating(true)
@@ -93,6 +110,23 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
               </button>
             </div>
             {createError && <div style={errorStyle}>{createError}</div>}
+
+            <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>My Monsters</div>
+            {myMonsters.length === 0 && (
+              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No custom monsters yet.</div>
+            )}
+            {myMonsters.map(m => (
+              <div key={m.id} style={listRow}>
+                <span>
+                  {m.name}
+                  {m.private && <span style={{ marginLeft: 8, fontSize: 11, color: '#7878a0' }}>● private</span>}
+                </span>
+                <span style={{ display: 'flex', gap: 8 }}>
+                  <Link to={`/monsters/custom/${m.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                  <button onClick={() => handleDeleteMonster(m.id)} style={deleteBtn}>Delete</button>
+                </span>
+              </div>
+            ))}
             <Link to="/monsters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
               + New Monster
             </Link>
@@ -182,6 +216,11 @@ const listRow: React.CSSProperties = {
 const actionBtn: React.CSSProperties = {
   padding: '5px 12px', fontSize: 12, cursor: 'pointer',
   background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4,
+}
+
+const deleteBtn: React.CSSProperties = {
+  fontSize: 12, cursor: 'pointer', padding: 0,
+  background: 'none', color: '#e74c3c', border: 'none',
 }
 
 const logoutBtn: React.CSSProperties = {

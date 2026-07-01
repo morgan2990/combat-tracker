@@ -55,6 +55,11 @@ func Init() error {
 	if err := ensureMonsterIndex(ctx, monstersCol); err != nil {
 		return err
 	}
+	customMonstersCol := db.Collection("custom_monsters")
+	GlobalCustomMonsters = CustomMonsterStore{col: customMonstersCol}
+	if err := ensureCustomMonsterIndex(ctx, customMonstersCol); err != nil {
+		return err
+	}
 	roomsCol := db.Collection("rooms")
 	GlobalRooms = RoomStore{col: roomsCol}
 	if err := ensureRoomIndex(ctx, roomsCol); err != nil {
@@ -75,6 +80,17 @@ func Init() error {
 }
 
 func ensurePCIndex(ctx context.Context, col *mongo.Collection) error {
+	_, err := col.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	return err
+}
+
+// ensureCustomMonsterIndex ensures a unique index on id (no index on
+// {name, edition} — unlike official monsters, custom monster names are not
+// unique across owners, so no such constraint should exist here).
+func ensureCustomMonsterIndex(ctx context.Context, col *mongo.Collection) error {
 	_, err := col.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "id", Value: 1}},
 		Options: options.Index().SetUnique(true),

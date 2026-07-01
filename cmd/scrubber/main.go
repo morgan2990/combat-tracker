@@ -109,9 +109,6 @@ func main() {
 			return
 		}
 		switch outcome {
-		case store.UpsertSkippedCustomProtected:
-			// Logged by UpsertMonster itself; not counted as processed.
-			return
 		case store.UpsertInserted:
 			inserted++
 		case store.UpsertUpdated:

@@ -61,3 +61,30 @@ func StreamPDF(name string) (io.ReadCloser, error) {
 	}
 	return obj, nil
 }
+
+// UploadCustomMonsterPDF and StreamCustomMonsterPDF key objects by the
+// custom monster's id rather than its name, since custom monster names are
+// not unique across owners (two DMs' same-named PDFs would otherwise
+// overwrite each other under the name-keyed scheme official monsters use).
+func UploadCustomMonsterPDF(id string, r io.Reader, size int64) error {
+	if globalMinio.client == nil {
+		return errors.New("minio not initialized")
+	}
+	key := "custom-monsters/" + id + ".pdf"
+	_, err := globalMinio.client.PutObject(context.Background(), globalMinio.bucket, key, r, size, minio.PutObjectOptions{
+		ContentType: "application/pdf",
+	})
+	return err
+}
+
+func StreamCustomMonsterPDF(id string) (io.ReadCloser, error) {
+	if globalMinio.client == nil {
+		return nil, errors.New("minio not initialized")
+	}
+	key := "custom-monsters/" + id + ".pdf"
+	obj, err := globalMinio.client.GetObject(context.Background(), globalMinio.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}

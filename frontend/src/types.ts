@@ -33,6 +33,23 @@ export interface MonsterSearchHit {
   name: string
   max_hp: number
   initiative_modifier: number | null
+  is_custom: boolean
+  owner_display_name?: string
+}
+
+export interface CustomMonster {
+  id: string
+  name: string
+  edition: string
+  max_hp: number
+  initiative_modifier: number | null
+  is_custom: boolean
+  private: boolean
+  owner_id: string
+  owner_display_name: string
+  source_type?: string
+  reference_url?: string
+  pdf_object_key?: string
 }
 
 export type Role = 'dm' | 'player'

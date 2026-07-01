@@ -1,40 +1,67 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 type SourceType = 'none' | 'url' | 'pdf'
 
 export function MonsterForm() {
   const navigate = useNavigate()
+  const { id } = useParams<{ id?: string }>()
+  const editing = Boolean(id)
+
   const [name, setName] = useState('')
   const [maxHP, setMaxHP] = useState('')
   const [edition, setEdition] = useState<'5e' | '5.5e'>('5e')
   const [initiativeModifier, setInitiativeModifier] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
   const [sourceType, setSourceType] = useState<SourceType>('none')
   const [referenceURL, setReferenceURL] = useState('')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(editing)
+  const [submitting, setSubmitting] = useState(false)
+
+  // In edit mode, load the existing custom monster.
+  useEffect(() => {
+    if (!id) return
+    fetch(`/api/monsters/custom/${encodeURIComponent(id)}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data) return
+        setName(data.name)
+        setMaxHP(String(data.max_hp))
+        setEdition(data.edition)
+        setInitiativeModifier(data.initiative_modifier != null ? String(data.initiative_modifier) : '')
+        setIsPrivate(Boolean(data.private))
+        if (data.source_type === 'url' || data.source_type === 'pdf') {
+          setSourceType(data.source_type)
+          setReferenceURL(data.reference_url ?? '')
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [id])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    setLoading(true)
+    setSubmitting(true)
 
     try {
       let res: Response
-      if (sourceType === 'pdf' && pdfFile) {
+      if (!editing && sourceType === 'pdf' && pdfFile) {
         const form = new FormData()
         form.append('name', name.trim())
         form.append('max_hp', maxHP)
         form.append('edition', edition)
         form.append('source_type', 'pdf')
         form.append('pdf', pdfFile)
+        form.append('private', String(isPrivate))
         if (initiativeModifier.trim() !== '') form.append('initiative_modifier', initiativeModifier.trim())
         res = await fetch('/api/monsters', { method: 'POST', body: form })
       } else {
-        const body: Record<string, unknown> = { name: name.trim(), max_hp: parseInt(maxHP, 10), edition }
+        const body: Record<string, unknown> = { name: name.trim(), max_hp: parseInt(maxHP, 10), edition, private: isPrivate }
         if (sourceType === 'url' && referenceURL.trim()) {
           body.source_type = 'url'
           body.reference_url = referenceURL.trim()
@@ -42,8 +69,8 @@ export function MonsterForm() {
         if (initiativeModifier.trim() !== '') {
           body.initiative_modifier = parseInt(initiativeModifier.trim(), 10)
         }
-        res = await fetch('/api/monsters', {
-          method: 'POST',
+        res = await fetch(editing ? `/api/monsters/custom/${encodeURIComponent(id!)}` : '/api/monsters', {
+          method: editing ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
@@ -52,13 +79,19 @@ export function MonsterForm() {
       if (res.status === 413) { setError('PDF file is too large (max 20 MB).'); return }
       if (!res.ok) { setError(`Error: ${await res.text()}`); return }
 
-      setSaved(true)
+      if (editing) {
+        navigate('/')
+      } else {
+        setSaved(true)
+      }
     } catch {
       setError('Network error. Is the server running?')
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
+
+  if (loading) return null
 
   if (saved) {
     return (
@@ -66,7 +99,7 @@ export function MonsterForm() {
         <div style={{ fontSize: 20, marginBottom: 16, color: '#27ae60' }}>Monster saved!</div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button
-            onClick={() => { setName(''); setMaxHP(''); setEdition('5e'); setInitiativeModifier(''); setSourceType('none'); setReferenceURL(''); setPdfFile(null); setSaved(false) }}
+            onClick={() => { setName(''); setMaxHP(''); setEdition('5e'); setInitiativeModifier(''); setIsPrivate(false); setSourceType('none'); setReferenceURL(''); setPdfFile(null); setSaved(false) }}
             style={btnStyle('#2e2e48')}
           >
             Add Another
@@ -79,7 +112,7 @@ export function MonsterForm() {
 
   return (
     <div style={{ maxWidth: 480, margin: '40px auto', padding: 24 }}>
-      <h2 style={{ marginTop: 0 }}>Register Monster</h2>
+      <h2 style={{ marginTop: 0 }}>{editing ? 'Edit Monster' : 'Register Monster'}</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         <label style={labelStyle}>
@@ -139,10 +172,25 @@ export function MonsterForm() {
           />
         </label>
 
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#d4d4e8', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={isPrivate}
+            onChange={e => setIsPrivate(e.target.checked)}
+          />
+          Mark as Private Campaign Content
+          <span
+            title="Private monsters are only visible to you — in your dashboard and your active rooms. Other DMs won't see them, even in search."
+            style={{ cursor: 'help', color: '#7878a0' }}
+          >
+            ⓘ
+          </span>
+        </label>
+
         <div style={labelStyle}>
           <span style={labelText}>Statblock Reference</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            {(['none', 'url', 'pdf'] as SourceType[]).map(t => (
+            {(editing ? ['none', 'url'] as SourceType[] : ['none', 'url', 'pdf'] as SourceType[]).map(t => (
               <button
                 key={t}
                 type="button"
@@ -174,7 +222,7 @@ export function MonsterForm() {
           </label>
         )}
 
-        {sourceType === 'pdf' && (
+        {sourceType === 'pdf' && !editing && (
           <label style={labelStyle}>
             <span style={labelText}>PDF File (max 20 MB)</span>
             <input
@@ -186,14 +234,20 @@ export function MonsterForm() {
           </label>
         )}
 
+        {sourceType === 'pdf' && editing && (
+          <div style={{ fontSize: 12, color: '#7878a0' }}>
+            PDF statblock uploaded at creation — replacing it isn't supported here.
+          </div>
+        )}
+
         {error && <div style={{ color: '#e74c3c', fontSize: 13 }}>{error}</div>}
 
         <button
           type="submit"
-          disabled={loading}
-          style={btnStyle('#e67e22', loading)}
+          disabled={submitting}
+          style={btnStyle('#e67e22', submitting)}
         >
-          {loading ? 'Saving…' : 'Save Monster'}
+          {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Save Monster'}
         </button>
       </form>
     </div>

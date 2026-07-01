@@ -301,7 +301,10 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
     setMaxHP(String(hit.max_hp))
 
     try {
-      const res = await fetch(`/api/monsters/${encodeURIComponent(hit.name)}`)
+      const url = hit.is_custom
+        ? `/api/monsters/custom/${encodeURIComponent(hit.id)}`
+        : `/api/monsters/${encodeURIComponent(hit.name)}`
+      const res = await fetch(url)
       if (!res.ok) { setMonsterRef(null); return }
       const m = await res.json() as { source_type?: string; reference_url?: string; pdf_object_key?: string; initiative_modifier?: number | null }
       setMonsterRef({
@@ -375,7 +378,14 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
                   borderBottom: '1px solid #2e2e48',
                 }}
               >
-                <span style={{ color: '#d4d4e8' }}>{hit.name}</span>
+                <span style={{ color: '#d4d4e8' }}>
+                  {hit.name}
+                  {hit.is_custom && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: '#e67e22' }}>
+                      by {hit.owner_display_name ?? 'unknown'}
+                    </span>
+                  )}
+                </span>
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ fontSize: 10, color: '#3498db', border: '1px solid #3498db', borderRadius: 3, padding: '1px 5px' }}>
                     {edition || '5e'}

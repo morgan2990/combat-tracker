@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -31,48 +30,35 @@ type MonsterStore struct {
 
 var GlobalMonsters MonsterStore
 
-// shouldPreserveCustom reports whether a non-custom write should be skipped
-// to avoid overwriting an existing DM-customized document.
-func shouldPreserveCustom(existingIsCustom, incomingIsCustom bool) bool {
-	return existingIsCustom && !incomingIsCustom
-}
-
 // UpsertOutcome describes what UpsertMonster actually did.
 type UpsertOutcome int
 
 const (
 	UpsertInserted UpsertOutcome = iota
 	UpsertUpdated
-	UpsertSkippedCustomProtected
 )
 
-// UpsertMonster writes m to MongoDB keyed by {name, edition} and mirrors it
-// into Typesense on a best-effort basis. It returns the resulting document
-// (with its MongoDB id populated) whether m was inserted fresh or replaced
-// an existing document.
+// UpsertMonster writes m (an official, scrubber-sourced monster) to MongoDB
+// keyed by {name, edition} and mirrors it into Typesense on a best-effort
+// basis. It returns the resulting document (with its MongoDB id populated)
+// whether m was inserted fresh or replaced an existing document.
 //
-// A non-custom write (m.IsCustom == false, i.e. scrubber-sourced) targeting
-// a {name, edition} pair whose existing document is already custom
-// (IsCustom == true) is skipped to preserve the DM's customization; the
-// existing document is returned unchanged with UpsertSkippedCustomProtected.
+// This collection only ever holds official monsters (is_custom: false);
+// DM-authored monsters live in the separate custom_monsters collection
+// (see CustomMonsterStore), so there is no cross-write collision to guard
+// against here.
 func (s *MonsterStore) UpsertMonster(m Monster) (Monster, UpsertOutcome, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	filter := bson.M{"name": m.Name, "edition": m.Edition}
 
 	outcome := UpsertUpdated
-	if !m.IsCustom {
-		var existing Monster
-		err := s.col.FindOne(ctx, filter).Decode(&existing)
-		switch {
-		case err == nil && shouldPreserveCustom(existing.IsCustom, m.IsCustom):
-			log.Printf("monster upsert skipped: %q (%s) is custom, preserving over non-custom write", m.Name, m.Edition)
-			return existing, UpsertSkippedCustomProtected, nil
-		case errors.Is(err, mongo.ErrNoDocuments):
-			outcome = UpsertInserted
-		case err != nil:
-			return Monster{}, 0, err
-		}
+	count, err := s.col.CountDocuments(ctx, filter)
+	if err != nil {
+		return Monster{}, 0, err
+	}
+	if count == 0 {
+		outcome = UpsertInserted
 	}
 
 	opts := options.FindOneAndReplace().SetUpsert(true).SetReturnDocument(options.After)
@@ -87,10 +73,12 @@ func (s *MonsterStore) UpsertMonster(m Monster) (Monster, UpsertOutcome, error) 
 }
 
 // SearchMonsters performs a typo-tolerant, prefix-matching, edition-filtered
-// search against the Typesense monsters index. Returns an empty slice (not
-// an error) if Typesense is unreachable.
-func (s *MonsterStore) SearchMonsters(query, edition string) ([]MonsterHit, error) {
-	return searchTypesenseMonsters(query, edition)
+// search against the Typesense monsters index, scoped to what requesterID is
+// allowed to see (official monsters, public custom monsters, and their own
+// private custom monsters). Returns an empty slice (not an error) if
+// Typesense is unreachable.
+func (s *MonsterStore) SearchMonsters(query, edition, requesterID string) ([]MonsterHit, error) {
+	return searchTypesenseMonsters(query, edition, requesterID)
 }
 
 func (s *MonsterStore) GetMonsterByName(name string) (*Monster, error) {

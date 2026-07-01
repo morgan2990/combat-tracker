@@ -194,6 +194,7 @@ export default function App() {
       <Route path="/characters/new" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
       <Route path="/characters/:id/edit" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
       <Route path="/monsters/new" element={<MonsterForm />} />
+      <Route path="/monsters/custom/:id/edit" element={<MonsterForm />} />
       <Route
         path="/room"
         element={status === 'idle' ? <Navigate to="/" replace /> : <GameView />}
