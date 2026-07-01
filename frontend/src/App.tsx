@@ -30,7 +30,6 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false)
   const [status, setStatus] = useState<AppStatus>('idle')
   const [role, setRole] = useState<Role>('player')
-  const [myPcId, setMyPcId] = useState<string | null>(null)
   const [myEntityId, setMyEntityId] = useState<string | null>(null)
   const [needsInitiative, setNeedsInitiative] = useState(false)
   const [roomState, setRoomState] = useState<RoomState | null>(null)
@@ -75,7 +74,6 @@ export default function App() {
 
     ws.onopen = () => {
       setRole(selectedRole)
-      setMyPcId(pcId ?? null)
 
       if (selectedRole === 'player') {
         ws.send(JSON.stringify({ type: 'setup_character' }))
@@ -120,7 +118,6 @@ export default function App() {
     wsRef.current?.close()
     setRoomState(null)
     setMyEntityId(null)
-    setMyPcId(null)
     setNeedsInitiative(false)
     setStatusSync('idle')
     refreshMe()
