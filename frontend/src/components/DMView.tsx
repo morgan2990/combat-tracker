@@ -9,6 +9,7 @@ import { useLayoutTier } from '../hooks/useLayoutTier'
 import { CustomMonsterPillList } from './CustomMonsterPillList'
 import { ConditionToggles } from './ConditionToggles'
 import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
+import { fetchJSON } from '../fetchJSON'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -309,10 +310,7 @@ const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(
     // Only fetched here when this tier renders the list inline; at
     // tablet/desktop tiers DMNavColumn fetches and displays it instead.
     if (!showMyCreaturesInline) { setMyCreatures([]); return }
-    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((data: CustomMonster[]) => setMyCreatures(data))
-      .catch(() => setMyCreatures([]))
+    fetchJSON<CustomMonster[]>(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`, []).then(setMyCreatures)
   }, [edition, showMyCreaturesInline])
 
   function selectCustomMonster(m: CustomMonster) {

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import type { EncounterMonster, MonsterSearchHit, CustomMonster } from '../types'
+import type { EncounterMonster, MonsterSearchHit, CustomMonster, Encounter } from '../types'
 import { useLayoutTier } from '../hooks/useLayoutTier'
 import { CustomMonsterList } from './CustomMonsterList'
 import { CustomMonsterPillList } from './CustomMonsterPillList'
+import { fetchJSON } from '../fetchJSON'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -30,24 +31,19 @@ export function EncounterForm() {
   const [myCreatures, setMyCreatures] = useState<CustomMonster[]>([])
 
   useEffect(() => {
-    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((data: CustomMonster[]) => setMyCreatures(data))
-      .catch(() => setMyCreatures([]))
+    fetchJSON<CustomMonster[]>(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`, []).then(setMyCreatures)
   }, [edition])
 
   // In edit mode, load the existing encounter.
   useEffect(() => {
     if (!id) return
-    fetch(`/api/encounters/${encodeURIComponent(id)}`)
-      .then(res => res.ok ? res.json() : null)
+    fetchJSON<Encounter | null>(`/api/encounters/${encodeURIComponent(id)}`, null)
       .then(data => {
         if (!data) return
         setName(data.name)
-        setEdition(data.edition)
+        setEdition(data.edition as '5e' | '5.5e')
         setMonsters(data.monsters ?? [])
       })
-      .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
 

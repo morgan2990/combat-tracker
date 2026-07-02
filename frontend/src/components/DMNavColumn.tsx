@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CustomMonster, Encounter } from '../types'
 import { CustomMonsterList, sectionHeading, emptyText, navItem } from './CustomMonsterList'
+import { fetchJSON } from '../fetchJSON'
 
 interface DMNavColumnProps {
   sendMessage: (msg: object) => void
@@ -16,17 +17,11 @@ export function DMNavColumn({ sendMessage, edition, onSelectCustomMonster }: DMN
   const [myCreatures, setMyCreatures] = useState<CustomMonster[]>([])
 
   useEffect(() => {
-    fetch(`/api/encounters?edition=${encodeURIComponent(edition)}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((data: Encounter[]) => setEncounters(data))
-      .catch(() => setEncounters([]))
+    fetchJSON<Encounter[]>(`/api/encounters?edition=${encodeURIComponent(edition)}`, []).then(setEncounters)
   }, [edition])
 
   useEffect(() => {
-    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((data: CustomMonster[]) => setMyCreatures(data))
-      .catch(() => setMyCreatures([]))
+    fetchJSON<CustomMonster[]>(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`, []).then(setMyCreatures)
   }, [edition])
 
   function inject(encounterId: string) {

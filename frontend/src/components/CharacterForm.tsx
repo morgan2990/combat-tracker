@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { PC } from '../types'
+import { fetchJSON } from '../fetchJSON'
 
 interface CompanionRow {
   name: string
@@ -33,15 +34,13 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
   // In edit mode, load the existing PC and its companions.
   useEffect(() => {
     if (!id) return
-    fetch(`/api/pcs/${encodeURIComponent(id)}`)
-      .then(res => res.ok ? res.json() : null)
+    fetchJSON<{ pc: PC; companions: PC[] } | null>(`/api/pcs/${encodeURIComponent(id)}`, null)
       .then(data => {
         if (!data) return
         setCharName(data.pc.name)
         setMaxHP(String(data.pc.max_hp))
-        setExistingCompanions(data.companions as PC[])
+        setExistingCompanions(data.companions)
       })
-      .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
 

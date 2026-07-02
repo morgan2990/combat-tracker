@@ -33,9 +33,9 @@
 
 ## 7. Frontend: shared fetchJSON helper
 
-- [ ] 7.1 Introduce a `fetchJSON<T>(url, fallback)` helper that only wraps the fetch/parse/fallback mechanics, returning a result callers still branch on for their own error-surfacing behavior.
-- [ ] 7.2 Replace the ~10 hand-rolled call sites across `DMNavColumn.tsx`, `Dashboard.tsx`, `DMView.tsx`, `EncounterForm.tsx`, `CharacterForm.tsx`, and `MonsterForm.tsx` one file at a time, preserving each site's current fallback/error-surfacing behavior.
-- [ ] 7.3 Run `tsc -b` and `oxlint` after each file to confirm no regressions.
+- [x] 7.1 Introduced `fetchJSON<T>(url, fallback)` in `frontend/src/fetchJSON.ts`, wrapping only the fetch/parse/fallback mechanics.
+- [x] 7.2 Replaced 9 of the ~10 hand-rolled call sites (`Dashboard.tsx` x2, `DMNavColumn.tsx` x2, `DMView.tsx` x1, `EncounterForm.tsx` x2, `CharacterForm.tsx` x1, `MonsterForm.tsx` x1). Left `DMView.tsx`'s `EncounterTemplatesControl` fetch (its dropdown-open handler) untouched: it has a real behavioral asymmetry — on a network error it does *not* set `loaded=true` (so the next dropdown-open retries), but on an HTTP error it does — which `fetchJSON` can't preserve since it collapses both failure modes into one fallback return.
+- [x] 7.3 Ran `tsc -b`/`oxlint` after the conversions (all clean) and verified end-to-end via Playwright: Dashboard's monster/encounter lists, MonsterForm/CharacterForm/EncounterForm edit-mode prefill, and DMNavColumn/DMView's creature lists all load correctly.
 
 ## 8. Frontend: shared segmented-toggle component
 

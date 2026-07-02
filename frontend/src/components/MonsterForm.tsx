@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import type { CustomMonster } from '../types'
+import { fetchJSON } from '../fetchJSON'
 
 type SourceType = 'none' | 'url' | 'pdf'
 
@@ -25,13 +27,12 @@ export function MonsterForm() {
   // In edit mode, load the existing custom monster.
   useEffect(() => {
     if (!id) return
-    fetch(`/api/custom-monsters/${encodeURIComponent(id)}`)
-      .then(res => res.ok ? res.json() : null)
+    fetchJSON<CustomMonster | null>(`/api/custom-monsters/${encodeURIComponent(id)}`, null)
       .then(data => {
         if (!data) return
         setName(data.name)
         setMaxHP(String(data.max_hp))
-        setEdition(data.edition)
+        setEdition(data.edition as '5e' | '5.5e')
         setInitiativeModifier(data.initiative_modifier != null ? String(data.initiative_modifier) : '')
         setIsPrivate(Boolean(data.private))
         if (data.source_type === 'url' || data.source_type === 'pdf') {
@@ -39,7 +40,6 @@ export function MonsterForm() {
           setReferenceURL(data.reference_url ?? '')
         }
       })
-      .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
 
