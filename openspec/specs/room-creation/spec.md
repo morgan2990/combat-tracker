@@ -8,7 +8,7 @@ Defines how DMs create new combat rooms and how room state is stored. A room is 
 
 ### Requirement: DM can create a combat room
 
-The system SHALL provide a `POST /api/rooms` endpoint, available only to authenticated users, that creates a new combat room owned by the requesting user and returns a unique room ID. The request body MAY include an optional `edition` field (`"5e"` or `"5.5e"`); if omitted or invalid, the server SHALL default to `"5e"`.
+The system SHALL provide a `POST /api/rooms` endpoint, available only to authenticated users, that creates a new combat room owned by the requesting user and returns a unique room ID. The request body MAY include an optional `edition` field (`"5e"` or `"5.5e"`); if the body is valid JSON but the `edition` field is omitted or not a recognized value, the server SHALL default to `"5e"`. If the request body is not valid JSON, the server SHALL respond with HTTP 400 and SHALL NOT create a room.
 
 #### Scenario: Successful room creation with edition
 - **WHEN** an authenticated client sends `POST /api/rooms` with body `{ "edition": "5.5e" }`
@@ -17,6 +17,14 @@ The system SHALL provide a `POST /api/rooms` endpoint, available only to authent
 #### Scenario: Successful room creation without edition defaults to 5e
 - **WHEN** an authenticated client sends `POST /api/rooms` with no body
 - **THEN** the server SHALL respond with HTTP 201 and `edition: "5e"` in the response
+
+#### Scenario: Successful room creation with an unrecognized edition value defaults to 5e
+- **WHEN** an authenticated client sends `POST /api/rooms` with body `{ "edition": "3e" }`
+- **THEN** the server SHALL respond with HTTP 201 and `edition: "5e"` in the response
+
+#### Scenario: Room creation rejected for a malformed request body
+- **WHEN** an authenticated client sends `POST /api/rooms` with a body that is not valid JSON
+- **THEN** the server SHALL respond with HTTP 400 and SHALL NOT create a room
 
 #### Scenario: Room creation rejected when not authenticated
 - **WHEN** a client without a valid session sends `POST /api/rooms`
