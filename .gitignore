@@ -1,5 +1,6 @@
 # Local environment config (see .env.example)
 .env
+.env.production
 
 # Go build output
 *.exe
