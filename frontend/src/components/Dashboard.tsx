@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import type { MeResponse, CustomMonster, Encounter } from '../types'
+import type { MeResponse, CustomMonster, Encounter, Party, PC, Currency } from '../types'
+import { InventoryPanel } from './InventoryPanel'
+import { CurrencyEditor } from './CurrencyEditor'
 
 interface DashboardProps {
   me: MeResponse
@@ -19,6 +21,11 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
 
   const [myMonsters, setMyMonsters] = useState<CustomMonster[]>([])
   const [myEncounters, setMyEncounters] = useState<Encounter[]>([])
+
+  const [parties, setParties] = useState<Party[]>(me.parties ?? [])
+  const [newPartyName, setNewPartyName] = useState('')
+  const [creatingParty, setCreatingParty] = useState(false)
+  const [inventoryPcId, setInventoryPcId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/custom-monsters')
@@ -71,6 +78,37 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   function handleJoinNewRoom() {
     if (!joinRoomCode.trim() || !selectedPcId) return
     onJoinAsPlayer(joinRoomCode.trim().toUpperCase(), selectedPcId)
+  }
+
+  async function handleCreateParty() {
+    if (!newPartyName.trim()) return
+    setCreatingParty(true)
+    try {
+      const res = await fetch('/api/parties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newPartyName.trim() }),
+      })
+      if (res.ok) {
+        const created: Party = await res.json()
+        setParties(prev => [...prev, created])
+        setNewPartyName('')
+      }
+    } finally {
+      setCreatingParty(false)
+    }
+  }
+
+  async function handleUpdateParty(partyId: string, memberPCIDs: string[], currency: Currency) {
+    const res = await fetch(`/api/parties/${encodeURIComponent(partyId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_pc_ids: memberPCIDs, currency }),
+    })
+    if (res.ok) {
+      const updated: Party = await res.json()
+      setParties(prev => prev.map(p => p.id === updated.id ? updated : p))
+    }
   }
 
   return (
@@ -178,12 +216,48 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
             {me.pcs.map(pc => (
               <div key={pc.id} style={listRow}>
                 <span>{pc.name} <span style={{ color: '#5a5a78', fontSize: 11 }}>{pc.max_hp} HP</span></span>
-                <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                <span style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setInventoryPcId(pc.id)}
+                    style={{ fontSize: 12, cursor: 'pointer', padding: 0, background: 'none', color: '#3498db', border: 'none' }}
+                  >
+                    Inventory
+                  </button>
+                  <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                </span>
               </div>
             ))}
             <Link to="/characters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
               + New Character
             </Link>
+
+            <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>My Parties</div>
+            {parties.length === 0 && (
+              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No parties yet.</div>
+            )}
+            {parties.map(party => (
+              <PartyCard
+                key={party.id}
+                party={party}
+                myPcs={me.pcs}
+                onUpdate={(memberPCIDs, currency) => handleUpdateParty(party.id, memberPCIDs, currency)}
+              />
+            ))}
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <input
+                value={newPartyName}
+                onChange={e => setNewPartyName(e.target.value)}
+                placeholder="Party name"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                onClick={handleCreateParty}
+                disabled={creatingParty || !newPartyName.trim()}
+                style={primaryBtn(creatingParty || !newPartyName.trim())}
+              >
+                {creatingParty ? 'Creating…' : '+ New Party'}
+              </button>
+            </div>
 
             {me.recent_rooms.length > 0 && (
               <>
@@ -229,6 +303,79 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {inventoryPcId && (
+        <InventoryPanel pcId={inventoryPcId} onClose={() => setInventoryPcId(null)} />
+      )}
+    </div>
+  )
+}
+
+interface PartyCardProps {
+  party: Party
+  myPcs: PC[]
+  onUpdate: (memberPCIDs: string[], currency: Currency) => void
+}
+
+function PartyCard({ party, myPcs, onUpdate }: PartyCardProps) {
+  const [currency, setCurrency] = useState<Currency>(party.currency)
+
+  useEffect(() => { setCurrency(party.currency) }, [party.currency])
+
+  const [addPcId, setAddPcId] = useState('')
+  const availablePcs = myPcs.filter(pc => !party.member_pc_ids.includes(pc.id))
+
+  function memberName(pcId: string): string {
+    return myPcs.find(pc => pc.id === pcId)?.name ?? pcId
+  }
+
+  function addMember() {
+    if (!addPcId) return
+    onUpdate([...party.member_pc_ids, addPcId], party.currency)
+    setAddPcId('')
+  }
+
+  function removeMember(pcId: string) {
+    onUpdate(party.member_pc_ids.filter(id => id !== pcId), party.currency)
+  }
+
+  function saveCurrency() {
+    onUpdate(party.member_pc_ids, currency)
+  }
+
+  return (
+    <div style={{ ...panelStyle, marginBottom: 10 }}>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>{party.name}</div>
+
+      {party.member_pc_ids.length === 0 && (
+        <div style={{ fontSize: 12, color: '#5a5a78', marginBottom: 8 }}>No members yet.</div>
+      )}
+      {party.member_pc_ids.map(pcId => (
+        <div key={pcId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '4px 0' }}>
+          <span>{memberName(pcId)}</span>
+          <button onClick={() => removeMember(pcId)} style={deleteBtn}>Remove</button>
+        </div>
+      ))}
+
+      {availablePcs.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <select value={addPcId} onChange={e => setAddPcId(e.target.value)} style={selectStyle}>
+            <option value="">Add character…</option>
+            {availablePcs.map(pc => (
+              <option key={pc.id} value={pc.id}>{pc.name}</option>
+            ))}
+          </select>
+          <button onClick={addMember} disabled={!addPcId} style={actionBtn}>Add</button>
+        </div>
+      )}
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 12, color: '#7878a0', marginBottom: 4 }}>Pooled Currency</div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <CurrencyEditor currency={currency} onChange={setCurrency} inputWidth={50} />
+          <button onClick={saveCurrency} style={actionBtn}>Save</button>
         </div>
       </div>
     </div>
