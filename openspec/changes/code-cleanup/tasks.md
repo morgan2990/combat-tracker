@@ -1,8 +1,8 @@
 ## 1. Backend: split api/handler.go by domain
 
-- [ ] 1.1 Move `CreateRoom` and other auth handlers (`SignUp`, `Login`, `Logout`) into `api/auth.go`; move remaining room handlers into `api/rooms.go`. No logic changes.
-- [ ] 1.2 Move PC/companion handlers into `api/pcs.go`, party handlers into `api/parties.go`, custom-monster handlers into `api/custom_monsters.go`, encounter handlers into `api/encounters.go`, leaving official-monster/search handlers in `api/handler.go` (or a `api/monsters.go` if it's a cleaner split once the others are out).
-- [ ] 1.3 Run `go build ./...` and `go vet ./...` to confirm the split compiles with no behavior change.
+- [x] 1.1 Move `CreateRoom`/`GetRoom` into `api/rooms.go`; move `SignUp`/`Login`/`Logout`/`Me` into `api/auth.go`. No logic changes.
+- [x] 1.2 Move PC/companion handlers into `api/pcs.go`, party handlers into `api/parties.go`, custom-monster handlers into `api/custom_monsters.go`, encounter handlers into `api/encounters.go`, official-monster/search handlers into `api/monsters.go`. `api/handler.go` removed (empty after the split).
+- [x] 1.3 Run `go build ./...` and `go vet ./...` to confirm the split compiles with no behavior change.
 
 ## 2. Backend: shared request helpers
 
