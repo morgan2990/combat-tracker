@@ -1,10 +1,8 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"combatapp/auth"
 	"combatapp/store"
 )
 
@@ -17,14 +15,12 @@ type pcPayload struct {
 }
 
 func CreatePC(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	var body pcPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Name == "" || body.MaxHP <= 0 {
@@ -36,14 +32,12 @@ func CreatePC(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(pc)
+	writeJSON(w, http.StatusOK, pc)
 }
 
 func UpdatePC(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -61,8 +55,7 @@ func UpdatePC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body pcPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Name == "" || body.MaxHP <= 0 {
@@ -86,9 +79,8 @@ type pcResponse struct {
 }
 
 func GetPC(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -113,14 +105,12 @@ func GetPC(w http.ResponseWriter, r *http.Request) {
 	if companions == nil {
 		companions = []store.PC{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(pcResponse{PC: pc, Companions: companions})
+	writeJSON(w, http.StatusOK, pcResponse{PC: pc, Companions: companions})
 }
 
 func CreateCompanion(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	parentID := r.PathValue("id")
@@ -134,8 +124,7 @@ func CreateCompanion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body pcPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Name == "" || body.MaxHP <= 0 {
@@ -147,6 +136,5 @@ func CreateCompanion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(companion)
+	writeJSON(w, http.StatusOK, companion)
 }

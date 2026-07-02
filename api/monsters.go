@@ -1,11 +1,9 @@
 package api
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 
-	"combatapp/auth"
 	"combatapp/store"
 )
 
@@ -29,14 +27,12 @@ func GetMonster(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(m)
+	writeJSON(w, http.StatusOK, m)
 }
 
 func SearchMonsters(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	q := r.URL.Query().Get("q")
@@ -57,8 +53,7 @@ func SearchMonsters(w http.ResponseWriter, r *http.Request) {
 	if hits == nil {
 		hits = []store.MonsterHit{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(hits)
+	writeJSON(w, http.StatusOK, hits)
 }
 
 func StreamMonsterPDF(w http.ResponseWriter, r *http.Request) {

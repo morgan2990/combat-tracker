@@ -1,10 +1,8 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"combatapp/auth"
 	"combatapp/store"
 )
 
@@ -15,13 +13,11 @@ type partyPayload struct {
 }
 
 func CreateParty(w http.ResponseWriter, r *http.Request) {
-	if _, ok := auth.ResolveUserID(r); !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	if _, ok := requireUser(w, r); !ok {
 		return
 	}
 	var body partyPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Name == "" {
@@ -33,13 +29,11 @@ func CreateParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
+	writeJSON(w, http.StatusOK, p)
 }
 
 func GetParty(w http.ResponseWriter, r *http.Request) {
-	if _, ok := auth.ResolveUserID(r); !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	if _, ok := requireUser(w, r); !ok {
 		return
 	}
 	id := r.PathValue("id")
@@ -52,8 +46,7 @@ func GetParty(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
+	writeJSON(w, http.StatusOK, p)
 }
 
 // UpdateParty saves membership and pooled-currency changes. A requester may
@@ -62,9 +55,8 @@ func GetParty(w http.ResponseWriter, r *http.Request) {
 // owner can add/remove members or adjust the pooled currency, mirroring how
 // a real table's shared purse works.
 func UpdateParty(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -78,8 +70,7 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body partyPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Currency.IsNegative() {
@@ -102,6 +93,5 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(saved)
+	writeJSON(w, http.StatusOK, saved)
 }

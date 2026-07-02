@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"combatapp/auth"
@@ -16,8 +15,7 @@ type authPayload struct {
 
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	var body authPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Username == "" || body.Passphrase == "" {
@@ -40,14 +38,12 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	auth.SetSessionCookie(w, sess.Token)
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"username": user.Username})
+	writeJSON(w, http.StatusCreated, map[string]string{"username": user.Username})
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
 	var body authPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	user, err := store.GlobalUsers.GetUserByUsername(body.Username)
@@ -65,8 +61,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	auth.SetSessionCookie(w, sess.Token)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"username": user.Username})
+	writeJSON(w, http.StatusOK, map[string]string{"username": user.Username})
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
@@ -78,9 +73,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func Me(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	user, err := store.GlobalUsers.GetUserByID(userID)
@@ -124,8 +118,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	if parties == nil {
 		parties = []store.Party{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"user":         map[string]string{"username": user.Username, "display_name": user.DisplayName},
 		"rooms":        rooms,
 		"pcs":          pcs,

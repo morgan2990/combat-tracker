@@ -6,9 +6,9 @@
 
 ## 2. Backend: shared request helpers
 
-- [ ] 2.1 Add `requireUser(w, r) (userID string, ok bool)`, `decodeJSON(w, r, &body) bool`, and `writeJSON(w, status, v)` helpers (in `api/` alongside the split handler files).
-- [ ] 2.2 Replace the repeated auth-check / decode-or-400 / encode-with-status boilerplate in each handler with calls to the new helpers, one file at a time, verifying `go build ./...` after each file.
-- [ ] 2.3 Confirm the `"database error"` 500 response text and status codes are unchanged at every call site after the swap.
+- [x] 2.1 Add `requireUser(w, r) (userID string, ok bool)`, `decodeJSON(w, r, &body) bool`, and `writeJSON(w, status, v)` helpers (in `api/` alongside the split handler files).
+- [x] 2.2 Replace the repeated auth-check / decode-or-400 / encode-with-status boilerplate in each handler with calls to the new helpers, one file at a time, verifying `go build ./...` after each file. `CreateRoom` intentionally left untouched by `decodeJSON` (its lenient decode-swallow behavior is out of scope, tracked by `review-create-room-json-handling`). `SignUp`'s response now gets a `Content-Type: application/json` header via `writeJSON` that it previously lacked (every sibling handler already set it) — a header-only normalization, not a status/body change.
+- [x] 2.3 Confirm the `"database error"` 500 response text and status codes are unchanged at every call site after the swap (38 occurrences, matching the pre-change count).
 
 ## 3. Backend: consolidate ID generation and edition validation
 

@@ -1,10 +1,8 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
-	"combatapp/auth"
 	"combatapp/store"
 )
 
@@ -13,14 +11,12 @@ func validEncounterEdition(edition string) bool {
 }
 
 func CreateEncounter(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	var e store.Encounter
-	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &e) {
 		return
 	}
 	if e.Name == "" {
@@ -37,14 +33,12 @@ func CreateEncounter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(saved)
+	writeJSON(w, http.StatusOK, saved)
 }
 
 func GetEncounter(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -61,14 +55,12 @@ func GetEncounter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(e)
+	writeJSON(w, http.StatusOK, e)
 }
 
 func UpdateEncounter(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -86,8 +78,7 @@ func UpdateEncounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body store.Encounter
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Name == "" {
@@ -104,14 +95,12 @@ func UpdateEncounter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(saved)
+	writeJSON(w, http.StatusOK, saved)
 }
 
 func DeleteEncounter(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -136,9 +125,8 @@ func DeleteEncounter(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListMyEncounters(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	edition := r.URL.Query().Get("edition")
@@ -150,6 +138,5 @@ func ListMyEncounters(w http.ResponseWriter, r *http.Request) {
 	if encounters == nil {
 		encounters = []store.Encounter{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(encounters)
+	writeJSON(w, http.StatusOK, encounters)
 }

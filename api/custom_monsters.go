@@ -1,20 +1,17 @@
 package api
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"combatapp/auth"
 	"combatapp/store"
 )
 
 func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	user, err := store.GlobalUsers.GetUserByID(userID)
@@ -80,14 +77,12 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(saved)
+		writeJSON(w, http.StatusOK, saved)
 		return
 	}
 
 	var m store.CustomMonster
-	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &m) {
 		return
 	}
 	if m.Name == "" || m.MaxHP <= 0 {
@@ -105,14 +100,12 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(saved)
+	writeJSON(w, http.StatusOK, saved)
 }
 
 func GetCustomMonster(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -129,14 +122,12 @@ func GetCustomMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(m)
+	writeJSON(w, http.StatusOK, m)
 }
 
 func UpdateCustomMonster(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -154,8 +145,7 @@ func UpdateCustomMonster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body store.CustomMonster
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	if body.Name == "" || body.MaxHP <= 0 {
@@ -174,14 +164,12 @@ func UpdateCustomMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(saved)
+	writeJSON(w, http.StatusOK, saved)
 }
 
 func DeleteCustomMonster(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
@@ -206,9 +194,8 @@ func DeleteCustomMonster(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListMyCustomMonsters(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	edition := r.URL.Query().Get("edition")
@@ -220,14 +207,12 @@ func ListMyCustomMonsters(w http.ResponseWriter, r *http.Request) {
 	if monsters == nil {
 		monsters = []store.CustomMonster{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(monsters)
+	writeJSON(w, http.StatusOK, monsters)
 }
 
 func StreamCustomMonsterPDF(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.ResolveUserID(r)
+	userID, ok := requireUser(w, r)
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	id := r.PathValue("id")
