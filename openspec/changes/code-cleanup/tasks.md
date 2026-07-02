@@ -44,9 +44,9 @@
 
 ## 9. Frontend: consolidate label/field style constants
 
-- [ ] 9.1 Introduce a shared module for `labelStyle`/`labelText`/`fieldStyle`, picking the majority value where the 6 current sites differ (e.g. 12px over 11px label text).
-- [ ] 9.2 Update the 6 form components to use the shared constants.
-- [ ] 9.3 Screenshot the affected forms before/after to confirm the value normalization isn't visually disruptive.
+- [x] 9.1 Introduced `frontend/src/formFieldStyles.ts` with `labelStyle`/`labelText` only (majority values: `gap: 4`/`fontSize: 12`, from `EncounterForm`/`MonsterForm`, over `DMView`'s `gap: 2`/`fontSize: 11`). Scope narrowed from the original "6 components, 3 constants" framing after inspection: `fieldStyle` is NOT shared — `DMView`'s inline flex-row form relies on its `fieldStyle`'s fixed `width: 120` for 2 of its fields (verified via call sites), while `EncounterForm`/`MonsterForm`'s single-column forms use `width: '100%'`; unifying it would either break DMView's layout or require every DMView field to override it, which isn't a real consolidation. `CompanionForm.tsx`/`CharacterForm.tsx` share their own distinct `labelStyle` (a single combined style with `marginBottom`/`fontWeight` baked in, no separate `labelText`) and `LoginScreen.tsx` has only a standalone `labelText` — neither matches the 3-constant shape, so folding them in would mean restructuring their JSX rather than swapping a reference; left out of scope.
+- [x] 9.2 Updated `DMView.tsx`, `EncounterForm.tsx`, `MonsterForm.tsx` (the 3 sites that actually share the `labelStyle`/`labelText` shape) to use the shared constants; each keeps its own local `fieldStyle`.
+- [x] 9.3 Screenshotted DMView's in-room panel after the change — layout intact, 1px label-size/gap difference not visually disruptive.
 
 ## 10. Verify
 

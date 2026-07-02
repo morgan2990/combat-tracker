@@ -10,6 +10,7 @@ import { CustomMonsterPillList } from './CustomMonsterPillList'
 import { ConditionToggles } from './ConditionToggles'
 import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
 import { fetchJSON } from '../fetchJSON'
+import { labelStyle, labelText } from '../formFieldStyles'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -508,8 +509,6 @@ const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(
   )
 })
 
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 }
-const labelText: React.CSSProperties = { fontSize: 11, color: '#7878a0' }
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: 120 }
 
 interface EncounterTemplatesControlProps {

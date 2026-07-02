@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { CustomMonster } from '../types'
 import { fetchJSON } from '../fetchJSON'
 import { EditionToggle } from './EditionToggle'
+import { labelStyle, labelText } from '../formFieldStyles'
 
 type SourceType = 'none' | 'url' | 'pdf'
 
@@ -238,8 +239,6 @@ export function MonsterForm() {
   )
 }
 
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 }
-const labelText: React.CSSProperties = { fontSize: 12, color: '#7878a0' }
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: '100%', boxSizing: 'border-box' }
 function btnStyle(bg: string, disabled = false): React.CSSProperties {
   return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: 4, cursor: disabled ? 'default' : 'pointer' }
