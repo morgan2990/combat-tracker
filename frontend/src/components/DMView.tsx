@@ -6,17 +6,14 @@ import { StatblockColumn } from './StatblockColumn'
 import { DMNavColumn } from './DMNavColumn'
 import { InventoryPanel } from './InventoryPanel'
 import { useLayoutTier } from '../hooks/useLayoutTier'
+import { CustomMonsterPillList } from './CustomMonsterPillList'
+import { ConditionToggles } from './ConditionToggles'
+import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
+import { fetchJSON } from '../fetchJSON'
+import { labelStyle, labelText } from '../formFieldStyles'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
-
-const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
-
-function entityVitalState(entity: Entity): 'dead' | 'unconscious' | 'alive' {
-  if (entity.dead) return 'dead'
-  if (entity.current_hp === 0) return 'unconscious'
-  return 'alive'
-}
 
 function parseHP(input: string, current: number, max: number): number {
   const s = input.trim()
@@ -99,14 +96,9 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenInventory
     sendUpdate({ conditions: next })
   }
 
-  const vitalState = entity.type === 'lair_action' ? 'alive' : entityVitalState(entity)
-  const rowBg =
-    vitalState === 'dead'        ? '#141414' :
-    vitalState === 'unconscious' ? '#1a1608' :
-    isActive                     ? '#1f1508' : '#1a1a2c'
-  const textColor =
-    vitalState === 'dead'        ? '#585858' :
-    vitalState === 'unconscious' ? '#9090a0' : '#d4d4e8'
+  const vitalState = entity.type === 'lair_action' ? 'alive' : entityVitalState(entity.dead, entity.current_hp)
+  const rowBg = vitalRowBg(vitalState, isActive)
+  const textColor = vitalTextColor(vitalState)
 
   return (
     <div style={{ borderBottom: '1px solid #2e2e48' }}>
@@ -249,25 +241,8 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenInventory
 
           {/* Condition toggles */}
           {entity.type !== 'lair_action' && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {CONDITIONS.map(cond => {
-                const active = entity.conditions.includes(cond)
-                return (
-                  <button
-                    key={cond}
-                    onClick={() => toggleCondition(cond)}
-                    style={{
-                      padding: '3px 9px', fontSize: 12, borderRadius: 12, border: '1px solid',
-                      borderColor: active ? '#e74c3c' : '#2e2e48',
-                      background: active ? '#2a0808' : '#1a1a2c',
-                      color: active ? '#e74c3c' : '#8888aa',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {cond}
-                  </button>
-                )
-              })}
+            <div style={{ marginBottom: 12 }}>
+              <ConditionToggles conditions={entity.conditions} onToggle={toggleCondition} />
             </div>
           )}
 
@@ -336,10 +311,7 @@ const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(
     // Only fetched here when this tier renders the list inline; at
     // tablet/desktop tiers DMNavColumn fetches and displays it instead.
     if (!showMyCreaturesInline) { setMyCreatures([]); return }
-    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((data: CustomMonster[]) => setMyCreatures(data))
-      .catch(() => setMyCreatures([]))
+    fetchJSON<CustomMonster[]>(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`, []).then(setMyCreatures)
   }, [edition, showMyCreaturesInline])
 
   function selectCustomMonster(m: CustomMonster) {
@@ -448,21 +420,7 @@ const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(
       {showMyCreaturesInline && myCreatures.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <div style={labelText}>My Creatures</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            {myCreatures.map(m => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => selectCustomMonster(m)}
-                style={{
-                  padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 12,
-                  border: '1px solid #2e2e48', background: '#1a1a2c', color: '#d4d4e8',
-                }}
-              >
-                {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
-              </button>
-            ))}
-          </div>
+          <CustomMonsterPillList monsters={myCreatures} onSelect={selectCustomMonster} />
         </div>
       )}
       <div style={{ position: 'relative', marginBottom: 8, maxWidth: 240 }}>
@@ -551,8 +509,6 @@ const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(
   )
 })
 
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 }
-const labelText: React.CSSProperties = { fontSize: 11, color: '#7878a0' }
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: 120 }
 
 interface EncounterTemplatesControlProps {

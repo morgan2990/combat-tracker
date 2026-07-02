@@ -3,14 +3,8 @@ import type { FormEvent } from 'react'
 import type { Entity, RoomState } from '../types'
 import { CompanionForm } from './CompanionForm'
 import { InventoryPanel } from './InventoryPanel'
-
-const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
-
-function entityVitalState(dead: boolean, currentHP: number): 'dead' | 'unconscious' | 'alive' {
-  if (dead) return 'dead'
-  if (currentHP === 0) return 'unconscious'
-  return 'alive'
-}
+import { ConditionToggles } from './ConditionToggles'
+import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
 
 function hpLabel(current: number, max: number): string {
   if (max === 0) return 'Unknown'
@@ -106,29 +100,7 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
       </div>
 
       {/* Condition toggles */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {CONDITIONS.map(cond => {
-          const active = entity.conditions.includes(cond)
-          return (
-            <button
-              key={cond}
-              onClick={() => toggleCondition(cond)}
-              style={{
-                padding: '4px 10px',
-                fontSize: 12,
-                borderRadius: 12,
-                border: '1px solid',
-                borderColor: active ? '#e74c3c' : '#2e2e48',
-                background: active ? '#2a0808' : '#1a1a2c',
-                color: active ? '#e74c3c' : '#8888aa',
-                cursor: 'pointer',
-              }}
-            >
-              {cond}
-            </button>
-          )
-        })}
-      </div>
+      <ConditionToggles conditions={entity.conditions} onToggle={toggleCondition} />
     </div>
   )
 }
@@ -233,14 +205,8 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
           const isLairAction = entity.type === 'lair_action'
           const vitalState = (isCreature || isLairAction) ? 'alive' : entityVitalState(entity.dead, entity.current_hp)
 
-          const rowBg =
-            vitalState === 'dead'        ? '#141414' :
-            vitalState === 'unconscious' ? '#1a1608' :
-            isActive                     ? '#1f1508' :
-            isMe                         ? '#0f1a2c' : '#1a1a2c'
-          const textColor =
-            vitalState === 'dead'        ? '#585858' :
-            vitalState === 'unconscious' ? '#9090a0' : '#d4d4e8'
+          const rowBg = vitalRowBg(vitalState, isActive, isMe)
+          const textColor = vitalTextColor(vitalState)
 
           return (
             <div

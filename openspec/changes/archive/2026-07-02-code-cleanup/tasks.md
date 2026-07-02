@@ -1,0 +1,55 @@
+## 1. Backend: split api/handler.go by domain
+
+- [x] 1.1 Move `CreateRoom`/`GetRoom` into `api/rooms.go`; move `SignUp`/`Login`/`Logout`/`Me` into `api/auth.go`. No logic changes.
+- [x] 1.2 Move PC/companion handlers into `api/pcs.go`, party handlers into `api/parties.go`, custom-monster handlers into `api/custom_monsters.go`, encounter handlers into `api/encounters.go`, official-monster/search handlers into `api/monsters.go`. `api/handler.go` removed (empty after the split).
+- [x] 1.3 Run `go build ./...` and `go vet ./...` to confirm the split compiles with no behavior change.
+
+## 2. Backend: shared request helpers
+
+- [x] 2.1 Add `requireUser(w, r) (userID string, ok bool)`, `decodeJSON(w, r, &body) bool`, and `writeJSON(w, status, v)` helpers (in `api/` alongside the split handler files).
+- [x] 2.2 Replace the repeated auth-check / decode-or-400 / encode-with-status boilerplate in each handler with calls to the new helpers, one file at a time, verifying `go build ./...` after each file. `CreateRoom` intentionally left untouched by `decodeJSON` (its lenient decode-swallow behavior is out of scope, tracked by `review-create-room-json-handling`). `SignUp`'s response now gets a `Content-Type: application/json` header via `writeJSON` that it previously lacked (every sibling handler already set it) — a header-only normalization, not a status/body change.
+- [x] 2.3 Confirm the `"database error"` 500 response text and status codes are unchanged at every call site after the swap (38 occurrences, matching the pre-change count).
+
+## 3. Backend: consolidate ID generation and edition validation
+
+- [x] 3.1 Introduce a single `NewID(n int) string` helper (random hex ID generator, in `store/user.go`) and update `store/custom_monster.go`, `store/encounter.go`, `store/mongo.go`, `store/party.go`, `room/room.go`, and `api/custom_monsters.go` to call it with 8 bytes, matching every prior call site's byte length. `room/room.go`'s local `newToken` removed (was already byte-identical logic).
+- [x] 3.2 Introduce `isValidEdition`/`requireValidEdition`/`resolveEditionOrDefault` in `api/helpers.go` and update all 6 call sites (`rooms.go`, `custom_monsters.go` x3, `monsters.go`, `encounters.go` x2) to use them — `CreateRoom` keeps its default-to-5e policy via `resolveEditionOrDefault`, every other endpoint keeps its reject-with-400 policy via `requireValidEdition`. `encounters.go`'s local `validEncounterEdition` removed.
+- [x] 3.3 Run `go build ./...` and `go vet ./...` to confirm no behavior change.
+
+## 4. Backend: formatting sweep
+
+- [x] 4.1 Ran `gofmt -l .`; most flagged files use CRLF line endings, which makes `gofmt -d`/`gofmt -w` treat every line as changed (line-ending normalization noise, not real formatting issues) — running `gofmt -w` on those would silently convert them to LF repo-wide, well outside this task's scope. Instead: hand-realigned `room/room.go`'s `Entity` struct fields to match gofmt's actual output (verified by running gofmt on the struct in isolation), preserving the file's CRLF; ran `gofmt -w` on `store/user.go` (LF-only, genuinely small diff — `User`/`Session` struct field alignment).
+
+## 5. Frontend: finish My Creatures quick-pick extraction
+
+- [x] 5.1 The tablet/desktop row-list was already shared via `CustomMonsterList`/`DMNavColumn` from the prior change — `DMView.tsx`'s `AddCreatureForm` never rendered a row-list itself (that's `DMNavColumn`'s job, elsewhere in the layout), only the phone-tier pill. Extracted the pill row markup into `CustomMonsterPillList.tsx` and used it in both `EncounterForm.tsx`'s phone branch and `AddCreatureForm`, removing the duplicated pill JSX from both. Each caller keeps its own "My Creatures" label wrapper (styling drift between them is task 9's scope).
+- [x] 5.2 Manually verified via Playwright: `EncounterForm` at phone width renders the pill and clicking adds to the staging list; `DMView`'s in-room `AddCreatureForm` at phone width renders the pill and clicking populates the Name/Max HP fields — both unchanged from before the extraction.
+
+## 6. Frontend: shared entity vital-state and condition helpers
+
+- [x] 6.1 Extracted `CONDITIONS`, `entityVitalState(dead, currentHP)`, `vitalRowBg(vitalState, isActive, isMe?)`, and `vitalTextColor(vitalState)` into `frontend/src/entityVitals.ts`. `entityVitalState` standardized on `PlayerView`'s primitive-based signature (`dead`, `currentHP`) rather than `DMView`'s Entity-object one, since it's the more general shape; `DMView`'s call site updated to `entityVitalState(entity.dead, entity.current_hp)`. `vitalRowBg` takes an `isMe` parameter (defaulting false) to preserve `PlayerView`'s extra highlight branch that `DMView` doesn't have — not unified away, since it's a real behavioral difference.
+- [x] 6.2 Extracted `ConditionToggles` (`frontend/src/components/ConditionToggles.tsx`) — the flex-wrap row of condition-toggle buttons — used by both `DMView.tsx`'s `EntityRow` and `PlayerView.tsx`. Button padding normalized to `4px 10px` (was `3px 9px` in DMView, `4px 10px` in PlayerView) — a 1px visual normalization, not a pure no-op. Each caller keeps its own outer wrapper spacing (DMView's `marginBottom: 12`, PlayerView's none).
+- [x] 6.3 Verified via Playwright: DM side — added a creature, toggled "Prone" (condition tag rendered correctly), killed it (dead-state row: dark background, grayed text, "💀 Dead" indicator, all correct). Player side — joined the room with a PC, toggled "Stunned" (active-state red border/background rendered correctly). Screenshots confirm no regression.
+
+## 7. Frontend: shared fetchJSON helper
+
+- [x] 7.1 Introduced `fetchJSON<T>(url, fallback)` in `frontend/src/fetchJSON.ts`, wrapping only the fetch/parse/fallback mechanics.
+- [x] 7.2 Replaced 9 of the ~10 hand-rolled call sites (`Dashboard.tsx` x2, `DMNavColumn.tsx` x2, `DMView.tsx` x1, `EncounterForm.tsx` x2, `CharacterForm.tsx` x1, `MonsterForm.tsx` x1). Left `DMView.tsx`'s `EncounterTemplatesControl` fetch (its dropdown-open handler) untouched: it has a real behavioral asymmetry — on a network error it does *not* set `loaded=true` (so the next dropdown-open retries), but on an HTTP error it does — which `fetchJSON` can't preserve since it collapses both failure modes into one fallback return.
+- [x] 7.3 Ran `tsc -b`/`oxlint` after the conversions (all clean) and verified end-to-end via Playwright: Dashboard's monster/encounter lists, MonsterForm/CharacterForm/EncounterForm edit-mode prefill, and DMNavColumn/DMView's creature lists all load correctly.
+
+## 8. Frontend: shared segmented-toggle component
+
+- [x] 8.1 Extracted `EditionToggle` (`frontend/src/components/EditionToggle.tsx`) — the byte-identical "5e"/"5.5e" button row — used by both `EncounterForm.tsx` and `MonsterForm.tsx`. Each caller keeps its own label wrapper.
+- [x] 8.2 Verified via Playwright screenshots: both pickers render and toggle selection identically to before.
+
+## 9. Frontend: consolidate label/field style constants
+
+- [x] 9.1 Introduced `frontend/src/formFieldStyles.ts` with `labelStyle`/`labelText` only (majority values: `gap: 4`/`fontSize: 12`, from `EncounterForm`/`MonsterForm`, over `DMView`'s `gap: 2`/`fontSize: 11`). Scope narrowed from the original "6 components, 3 constants" framing after inspection: `fieldStyle` is NOT shared — `DMView`'s inline flex-row form relies on its `fieldStyle`'s fixed `width: 120` for 2 of its fields (verified via call sites), while `EncounterForm`/`MonsterForm`'s single-column forms use `width: '100%'`; unifying it would either break DMView's layout or require every DMView field to override it, which isn't a real consolidation. `CompanionForm.tsx`/`CharacterForm.tsx` share their own distinct `labelStyle` (a single combined style with `marginBottom`/`fontWeight` baked in, no separate `labelText`) and `LoginScreen.tsx` has only a standalone `labelText` — neither matches the 3-constant shape, so folding them in would mean restructuring their JSX rather than swapping a reference; left out of scope.
+- [x] 9.2 Updated `DMView.tsx`, `EncounterForm.tsx`, `MonsterForm.tsx` (the 3 sites that actually share the `labelStyle`/`labelText` shape) to use the shared constants; each keeps its own local `fieldStyle`.
+- [x] 9.3 Screenshotted DMView's in-room panel after the change — layout intact, 1px label-size/gap difference not visually disruptive.
+
+## 10. Verify
+
+- [x] 10.1 `tsc -b` and `oxlint` clean (same 4 pre-existing warnings as before this change, no new ones).
+- [x] 10.2 `go build ./...` and `go vet ./...` clean.
+- [x] 10.3 Smoke-tested via Playwright: signed up as DM, created a room, added a creature via search and via the "My Creatures" row-list, started combat; signed up as a player with a PC, joined the room, confirmed the tracker rendered. Separately verified `InventoryPanel` (Add Item, currency fields, Save) opens and works correctly — not touched by this change, confirmed as a sanity check. No console/page errors across any of it.

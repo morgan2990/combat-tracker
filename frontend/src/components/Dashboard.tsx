@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { MeResponse, CustomMonster, Encounter, Party, PC, Currency } from '../types'
 import { InventoryPanel } from './InventoryPanel'
 import { CurrencyEditor } from './CurrencyEditor'
+import { fetchJSON } from '../fetchJSON'
 
 interface DashboardProps {
   me: MeResponse
@@ -28,17 +29,11 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   const [inventoryPcId, setInventoryPcId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/custom-monsters')
-      .then(res => res.ok ? res.json() : [])
-      .then((data: CustomMonster[]) => setMyMonsters(data))
-      .catch(() => setMyMonsters([]))
+    fetchJSON<CustomMonster[]>('/api/custom-monsters', []).then(setMyMonsters)
   }, [])
 
   useEffect(() => {
-    fetch('/api/encounters')
-      .then(res => res.ok ? res.json() : [])
-      .then((data: Encounter[]) => setMyEncounters(data))
-      .catch(() => setMyEncounters([]))
+    fetchJSON<Encounter[]>('/api/encounters', []).then(setMyEncounters)
   }, [])
 
   async function handleDeleteMonster(id: string) {

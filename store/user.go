@@ -17,20 +17,20 @@ const sessionTouchDebounce = 5 * time.Minute
 
 // User is a self-serve account: a username/passphrase pair that owns Rooms and PCs.
 type User struct {
-	ID              string    `bson:"id"               json:"id"`
-	Username        string    `bson:"username"         json:"username"`
-	PassphraseHash  string    `bson:"passphrase_hash"  json:"-"`
-	DisplayName     string    `bson:"display_name"     json:"display_name"`
-	CreatedAt       time.Time `bson:"created_at"       json:"created_at"`
+	ID             string    `bson:"id"               json:"id"`
+	Username       string    `bson:"username"         json:"username"`
+	PassphraseHash string    `bson:"passphrase_hash"  json:"-"`
+	DisplayName    string    `bson:"display_name"     json:"display_name"`
+	CreatedAt      time.Time `bson:"created_at"       json:"created_at"`
 }
 
 // Session is a DB-backed login session, identified by an opaque token carried in a cookie.
 type Session struct {
-	Token     string    `bson:"token"        json:"token"`
-	UserID    string    `bson:"user_id"      json:"user_id"`
-	CreatedAt time.Time `bson:"created_at"   json:"created_at"`
+	Token      string    `bson:"token"        json:"token"`
+	UserID     string    `bson:"user_id"      json:"user_id"`
+	CreatedAt  time.Time `bson:"created_at"   json:"created_at"`
 	LastSeenAt time.Time `bson:"last_seen_at" json:"last_seen_at"`
-	ExpiresAt time.Time `bson:"expires_at"   json:"expires_at"`
+	ExpiresAt  time.Time `bson:"expires_at"   json:"expires_at"`
 }
 
 type UserStore struct {
@@ -59,7 +59,7 @@ func (s *UserStore) CreateUser(username, passphraseHash string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	u := User{
-		ID:             newID(),
+		ID:             NewID(8),
 		Username:       username,
 		PassphraseHash: passphraseHash,
 		DisplayName:    username,
@@ -110,7 +110,7 @@ func (s *UserStore) CreateSession(userID string) (*Session, error) {
 	defer cancel()
 	now := time.Now()
 	sess := Session{
-		Token:      newID(),
+		Token:      NewID(8),
 		UserID:     userID,
 		CreatedAt:  now,
 		LastSeenAt: now,
@@ -159,8 +159,11 @@ func (s *UserStore) DeleteSession(token string) error {
 	return err
 }
 
-func newID() string {
-	b := make([]byte, 8)
+// NewID generates a random hex-encoded id of the given byte length. Exported
+// so callers outside store (e.g. room, api) can pre-generate ids using the
+// same scheme, instead of each maintaining their own random-id generator.
+func NewID(n int) string {
+	b := make([]byte, n)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }

@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import type { CustomMonster } from '../types'
+import { fetchJSON } from '../fetchJSON'
+import { EditionToggle } from './EditionToggle'
+import { labelStyle, labelText } from '../formFieldStyles'
 
 type SourceType = 'none' | 'url' | 'pdf'
 
@@ -25,13 +29,12 @@ export function MonsterForm() {
   // In edit mode, load the existing custom monster.
   useEffect(() => {
     if (!id) return
-    fetch(`/api/custom-monsters/${encodeURIComponent(id)}`)
-      .then(res => res.ok ? res.json() : null)
+    fetchJSON<CustomMonster | null>(`/api/custom-monsters/${encodeURIComponent(id)}`, null)
       .then(data => {
         if (!data) return
         setName(data.name)
         setMaxHP(String(data.max_hp))
-        setEdition(data.edition)
+        setEdition(data.edition as '5e' | '5.5e')
         setInitiativeModifier(data.initiative_modifier != null ? String(data.initiative_modifier) : '')
         setIsPrivate(Boolean(data.private))
         if (data.source_type === 'url' || data.source_type === 'pdf') {
@@ -39,7 +42,6 @@ export function MonsterForm() {
           setReferenceURL(data.reference_url ?? '')
         }
       })
-      .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
 
@@ -141,24 +143,7 @@ export function MonsterForm() {
 
         <div style={labelStyle}>
           <span style={labelText}>Edition</span>
-          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-            {(['5e', '5.5e'] as const).map(ed => (
-              <button
-                key={ed}
-                type="button"
-                onClick={() => setEdition(ed)}
-                style={{
-                  padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
-                  border: '1px solid',
-                  borderColor: edition === ed ? '#3498db' : '#2e2e48',
-                  background: edition === ed ? '#0d1f38' : '#1a1a2c',
-                  color: edition === ed ? '#3498db' : '#8888aa',
-                }}
-              >
-                {ed}
-              </button>
-            ))}
-          </div>
+          <EditionToggle edition={edition} onChange={setEdition} />
         </div>
 
         <label style={labelStyle}>
@@ -254,8 +239,6 @@ export function MonsterForm() {
   )
 }
 
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 }
-const labelText: React.CSSProperties = { fontSize: 12, color: '#7878a0' }
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: '100%', boxSizing: 'border-box' }
 function btnStyle(bg: string, disabled = false): React.CSSProperties {
   return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: 4, cursor: disabled ? 'default' : 'pointer' }

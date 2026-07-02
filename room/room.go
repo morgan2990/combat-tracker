@@ -2,7 +2,6 @@ package room
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -16,31 +15,31 @@ import (
 const idChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 type Entity struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Type             string   `json:"type"` // pc | creature | companion
-	OwnerID          string   `json:"owner_id,omitempty"`
-	SessionID        string   `json:"session_id,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"` // pc | creature | companion
+	OwnerID   string `json:"owner_id,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
 	// PCID is the Mongo PC/companion document this entity was instantiated from
 	// (empty for creatures and for ad-hoc companions added via add_companion).
 	// Used to match a reconnecting pc_id back to its entity, to resolve
 	// refresh_from_profile lookups without relying on (no-longer-unique) Name,
 	// and by the frontend to identify "which entity is mine" after connecting.
-	PCID             string   `json:"pc_id,omitempty"`
-	MaxHP            int      `json:"max_hp"`
-	CurrentHP        int      `json:"current_hp"`
-	TempHP           int      `json:"temp_hp"`
-	Initiative       *int     `json:"initiative"`
-	SharesInitiative bool     `json:"shares_initiative"`
-	Conditions       []string `json:"conditions"`
-	Dead             bool     `json:"dead"`
-	SourceType       string   `json:"source_type,omitempty"`
-	ReferenceURL     string   `json:"reference_url,omitempty"`
-	PDFObjectKey        string   `json:"pdf_object_key,omitempty"`
-	InitiativeModifier  *int     `json:"initiative_modifier,omitempty"`
-	InitiativeRoll      *int     `json:"initiative_roll,omitempty"`
-	DisplayName         string   `json:"display_name,omitempty"`
-	IsHidden            bool     `json:"is_hidden"`
+	PCID               string   `json:"pc_id,omitempty"`
+	MaxHP              int      `json:"max_hp"`
+	CurrentHP          int      `json:"current_hp"`
+	TempHP             int      `json:"temp_hp"`
+	Initiative         *int     `json:"initiative"`
+	SharesInitiative   bool     `json:"shares_initiative"`
+	Conditions         []string `json:"conditions"`
+	Dead               bool     `json:"dead"`
+	SourceType         string   `json:"source_type,omitempty"`
+	ReferenceURL       string   `json:"reference_url,omitempty"`
+	PDFObjectKey       string   `json:"pdf_object_key,omitempty"`
+	InitiativeModifier *int     `json:"initiative_modifier,omitempty"`
+	InitiativeRoll     *int     `json:"initiative_roll,omitempty"`
+	DisplayName        string   `json:"display_name,omitempty"`
+	IsHidden           bool     `json:"is_hidden"`
 }
 
 type RoomState struct {
@@ -237,7 +236,7 @@ func (r *Room) appendCreatureGroup(name string, maxHP int, initiativeModifier *i
 			init = &total
 		}
 		r.State.Entities = append(r.State.Entities, Entity{
-			ID:                 newToken(8),
+			ID:                 store.NewID(8),
 			Name:               entityName,
 			Type:               "creature",
 			MaxHP:              maxHP,
@@ -384,7 +383,7 @@ func (r *Room) AddLairAction(sessionID string) error {
 	}
 	initiative := 20
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:         newToken(8),
+		ID:         store.NewID(8),
 		Name:       "Lair Action",
 		Type:       "lair_action",
 		Initiative: &initiative,
@@ -508,7 +507,7 @@ func (r *Room) SetupCharacter(sessionID string) error {
 		}
 	}
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:         newToken(8),
+		ID:         store.NewID(8),
 		Name:       c.Name,
 		Type:       "pc",
 		OwnerID:    "",
@@ -544,7 +543,7 @@ func (r *Room) InstantiateCompanionsFromPC(sessionID string, companions []store.
 	}
 	for _, cp := range companions {
 		r.State.Entities = append(r.State.Entities, Entity{
-			ID:               newToken(8),
+			ID:               store.NewID(8),
 			Name:             cp.Name,
 			Type:             "companion",
 			OwnerID:          ownerID,
@@ -653,7 +652,7 @@ func (r *Room) AddCompanion(sessionID, name string, maxHP int, sharesInitiative 
 		return errors.New("PC entity not found; complete character setup first")
 	}
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:               newToken(8),
+		ID:               store.NewID(8),
 		Name:             name,
 		Type:             "companion",
 		OwnerID:          ownerID,
@@ -749,7 +748,7 @@ func (r *Room) ValidateAndRegister(role, userID, pcID, name string, maxHP int, c
 		UserID:    userID,
 		PCID:      pcID,
 		Name:      name,
-		SessionID: newToken(8),
+		SessionID: store.NewID(8),
 		MaxHP:     maxHP,
 	}
 	r.Clients[c.SessionID] = c
@@ -1022,12 +1021,6 @@ func newRoomID() string {
 		b[i] = idChars[n.Int64()]
 	}
 	return string(b)
-}
-
-func newToken(byteLen int) string {
-	b := make([]byte, byteLen)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 func rollD20() int {

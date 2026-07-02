@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import type { EncounterMonster, MonsterSearchHit, CustomMonster } from '../types'
+import type { EncounterMonster, MonsterSearchHit, CustomMonster, Encounter } from '../types'
 import { useLayoutTier } from '../hooks/useLayoutTier'
 import { CustomMonsterList } from './CustomMonsterList'
+import { CustomMonsterPillList } from './CustomMonsterPillList'
+import { EditionToggle } from './EditionToggle'
+import { fetchJSON } from '../fetchJSON'
+import { labelStyle, labelText } from '../formFieldStyles'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -29,24 +33,19 @@ export function EncounterForm() {
   const [myCreatures, setMyCreatures] = useState<CustomMonster[]>([])
 
   useEffect(() => {
-    fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((data: CustomMonster[]) => setMyCreatures(data))
-      .catch(() => setMyCreatures([]))
+    fetchJSON<CustomMonster[]>(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`, []).then(setMyCreatures)
   }, [edition])
 
   // In edit mode, load the existing encounter.
   useEffect(() => {
     if (!id) return
-    fetch(`/api/encounters/${encodeURIComponent(id)}`)
-      .then(res => res.ok ? res.json() : null)
+    fetchJSON<Encounter | null>(`/api/encounters/${encodeURIComponent(id)}`, null)
       .then(data => {
         if (!data) return
         setName(data.name)
-        setEdition(data.edition)
+        setEdition(data.edition as '5e' | '5.5e')
         setMonsters(data.monsters ?? [])
       })
-      .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
 
@@ -155,45 +154,14 @@ export function EncounterForm() {
 
         <div style={labelStyle}>
           <span style={labelText}>Edition</span>
-          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-            {(['5e', '5.5e'] as const).map(ed => (
-              <button
-                key={ed}
-                type="button"
-                onClick={() => setEdition(ed)}
-                style={{
-                  padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
-                  border: '1px solid',
-                  borderColor: edition === ed ? '#3498db' : '#2e2e48',
-                  background: edition === ed ? '#0d1f38' : '#1a1a2c',
-                  color: edition === ed ? '#3498db' : '#8888aa',
-                }}
-              >
-                {ed}
-              </button>
-            ))}
-          </div>
+          <EditionToggle edition={edition} onChange={setEdition} />
         </div>
 
         {tier === 'phone' ? (
           myCreatures.length > 0 && (
             <div>
               <span style={labelText}>My Creatures</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                {myCreatures.map(m => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => addCustomMonster(m)}
-                    style={{
-                      padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 12,
-                      border: '1px solid #2e2e48', background: '#1a1a2c', color: '#d4d4e8',
-                    }}
-                  >
-                    {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
-                  </button>
-                ))}
-              </div>
+              <CustomMonsterPillList monsters={myCreatures} onSelect={addCustomMonster} />
             </div>
           )
         ) : (
@@ -282,8 +250,6 @@ export function EncounterForm() {
   )
 }
 
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 }
-const labelText: React.CSSProperties = { fontSize: 12, color: '#7878a0' }
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: '100%', boxSizing: 'border-box' }
 function btnStyle(bg: string, disabled = false): React.CSSProperties {
   return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: 4, cursor: disabled ? 'default' : 'pointer' }
