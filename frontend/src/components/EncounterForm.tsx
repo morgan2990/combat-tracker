@@ -5,6 +5,7 @@ import type { EncounterMonster, MonsterSearchHit, CustomMonster, Encounter } fro
 import { useLayoutTier } from '../hooks/useLayoutTier'
 import { CustomMonsterList } from './CustomMonsterList'
 import { CustomMonsterPillList } from './CustomMonsterPillList'
+import { EditionToggle } from './EditionToggle'
 import { fetchJSON } from '../fetchJSON'
 
 const SEARCH_MIN_CHARS = 3
@@ -152,24 +153,7 @@ export function EncounterForm() {
 
         <div style={labelStyle}>
           <span style={labelText}>Edition</span>
-          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-            {(['5e', '5.5e'] as const).map(ed => (
-              <button
-                key={ed}
-                type="button"
-                onClick={() => setEdition(ed)}
-                style={{
-                  padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
-                  border: '1px solid',
-                  borderColor: edition === ed ? '#3498db' : '#2e2e48',
-                  background: edition === ed ? '#0d1f38' : '#1a1a2c',
-                  color: edition === ed ? '#3498db' : '#8888aa',
-                }}
-              >
-                {ed}
-              </button>
-            ))}
-          </div>
+          <EditionToggle edition={edition} onChange={setEdition} />
         </div>
 
         {tier === 'phone' ? (
