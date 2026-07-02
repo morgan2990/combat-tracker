@@ -41,8 +41,7 @@ func SearchMonsters(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "q and edition are required", http.StatusBadRequest)
 		return
 	}
-	if edition != "5e" && edition != "5.5e" {
-		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+	if !requireValidEdition(w, edition) {
 		return
 	}
 	hits, err := store.GlobalMonsters.SearchMonsters(q, edition, userID)

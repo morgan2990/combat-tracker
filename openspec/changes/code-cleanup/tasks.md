@@ -12,9 +12,9 @@
 
 ## 3. Backend: consolidate ID generation and edition validation
 
-- [ ] 3.1 Introduce a single `NewID(n int) string` helper (random hex ID generator) and update `store/user.go`, `store/custom_monster.go`, and `room/room.go` to call it, preserving each site's current byte length.
-- [ ] 3.2 Introduce a shared edition-validation helper that takes an explicit policy parameter (default-to-5e vs. reject-with-400), and update the ~6 call sites to use it, preserving each endpoint's current behavior exactly.
-- [ ] 3.3 Run `go build ./...` and `go vet ./...` to confirm no behavior change.
+- [x] 3.1 Introduce a single `NewID(n int) string` helper (random hex ID generator, in `store/user.go`) and update `store/custom_monster.go`, `store/encounter.go`, `store/mongo.go`, `store/party.go`, `room/room.go`, and `api/custom_monsters.go` to call it with 8 bytes, matching every prior call site's byte length. `room/room.go`'s local `newToken` removed (was already byte-identical logic).
+- [x] 3.2 Introduce `isValidEdition`/`requireValidEdition`/`resolveEditionOrDefault` in `api/helpers.go` and update all 6 call sites (`rooms.go`, `custom_monsters.go` x3, `monsters.go`, `encounters.go` x2) to use them — `CreateRoom` keeps its default-to-5e policy via `resolveEditionOrDefault`, every other endpoint keeps its reject-with-400 policy via `requireValidEdition`. `encounters.go`'s local `validEncounterEdition` removed.
+- [x] 3.3 Run `go build ./...` and `go vet ./...` to confirm no behavior change.
 
 ## 4. Backend: formatting sweep
 

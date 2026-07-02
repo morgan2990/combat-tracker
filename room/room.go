@@ -2,7 +2,6 @@ package room
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -237,7 +236,7 @@ func (r *Room) appendCreatureGroup(name string, maxHP int, initiativeModifier *i
 			init = &total
 		}
 		r.State.Entities = append(r.State.Entities, Entity{
-			ID:                 newToken(8),
+			ID:                 store.NewID(8),
 			Name:               entityName,
 			Type:               "creature",
 			MaxHP:              maxHP,
@@ -384,7 +383,7 @@ func (r *Room) AddLairAction(sessionID string) error {
 	}
 	initiative := 20
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:         newToken(8),
+		ID:         store.NewID(8),
 		Name:       "Lair Action",
 		Type:       "lair_action",
 		Initiative: &initiative,
@@ -508,7 +507,7 @@ func (r *Room) SetupCharacter(sessionID string) error {
 		}
 	}
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:         newToken(8),
+		ID:         store.NewID(8),
 		Name:       c.Name,
 		Type:       "pc",
 		OwnerID:    "",
@@ -544,7 +543,7 @@ func (r *Room) InstantiateCompanionsFromPC(sessionID string, companions []store.
 	}
 	for _, cp := range companions {
 		r.State.Entities = append(r.State.Entities, Entity{
-			ID:               newToken(8),
+			ID:               store.NewID(8),
 			Name:             cp.Name,
 			Type:             "companion",
 			OwnerID:          ownerID,
@@ -653,7 +652,7 @@ func (r *Room) AddCompanion(sessionID, name string, maxHP int, sharesInitiative 
 		return errors.New("PC entity not found; complete character setup first")
 	}
 	r.State.Entities = append(r.State.Entities, Entity{
-		ID:               newToken(8),
+		ID:               store.NewID(8),
 		Name:             name,
 		Type:             "companion",
 		OwnerID:          ownerID,
@@ -749,7 +748,7 @@ func (r *Room) ValidateAndRegister(role, userID, pcID, name string, maxHP int, c
 		UserID:    userID,
 		PCID:      pcID,
 		Name:      name,
-		SessionID: newToken(8),
+		SessionID: store.NewID(8),
 		MaxHP:     maxHP,
 	}
 	r.Clients[c.SessionID] = c
@@ -1022,12 +1021,6 @@ func newRoomID() string {
 		b[i] = idChars[n.Int64()]
 	}
 	return string(b)
-}
-
-func newToken(byteLen int) string {
-	b := make([]byte, byteLen)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 func rollD20() int {

@@ -17,10 +17,7 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 		Edition string `json:"edition"`
 	}
 	json.NewDecoder(r.Body).Decode(&body) //nolint — empty body is fine
-	edition := body.Edition
-	if edition != "5e" && edition != "5.5e" {
-		edition = "5e"
-	}
+	edition := resolveEditionOrDefault(body.Edition)
 	roomID := room.Global.CreateRoom(edition, userID)
 	if rm, ok := room.Global.GetRoom(roomID); ok {
 		go rm.PersistNow(&store.GlobalRooms)

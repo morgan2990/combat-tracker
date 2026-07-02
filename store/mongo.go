@@ -175,7 +175,7 @@ func (s *Store) CreatePC(ownerUserID, name string, maxHP int) (*PC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	p := PC{
-		ID:          newID(),
+		ID:          NewID(8),
 		OwnerUserID: ownerUserID,
 		Name:        name,
 		Type:        "pc",
@@ -225,7 +225,7 @@ func (s *Store) CreateCompanion(parentPCID, ownerUserID, name string, maxHP int,
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	p := PC{
-		ID:               newID(),
+		ID:               NewID(8),
 		OwnerUserID:      ownerUserID,
 		Name:             name,
 		Type:             "companion",

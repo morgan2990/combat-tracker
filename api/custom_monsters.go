@@ -41,11 +41,10 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "name and max_hp required", http.StatusBadRequest)
 			return
 		}
-		if edition != "5e" && edition != "5.5e" {
-			http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+		if !requireValidEdition(w, edition) {
 			return
 		}
-		id := store.NewID()
+		id := store.NewID(8)
 		m := store.CustomMonster{
 			ID:               id,
 			Name:             name,
@@ -89,8 +88,7 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
-	if m.Edition != "5e" && m.Edition != "5.5e" {
-		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+	if !requireValidEdition(w, m.Edition) {
 		return
 	}
 	m.OwnerID = userID
@@ -152,8 +150,7 @@ func UpdateCustomMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
-	if body.Edition != "5e" && body.Edition != "5.5e" {
-		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+	if !requireValidEdition(w, body.Edition) {
 		return
 	}
 	body.OwnerID = existing.OwnerID

@@ -34,3 +34,29 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
 }
+
+// isValidEdition reports whether s is a supported edition value.
+func isValidEdition(s string) bool {
+	return s == "5e" || s == "5.5e"
+}
+
+// requireValidEdition writes a 400 and returns false if edition isn't a
+// supported value.
+func requireValidEdition(w http.ResponseWriter, edition string) bool {
+	if !isValidEdition(edition) {
+		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+// resolveEditionOrDefault returns edition if it's a supported value,
+// otherwise "5e". Used by CreateRoom, which is intentionally lenient about
+// the edition field (see openspec/specs/room-creation/spec.md) rather than
+// rejecting an invalid/omitted value like every other endpoint does.
+func resolveEditionOrDefault(edition string) string {
+	if !isValidEdition(edition) {
+		return "5e"
+	}
+	return edition
+}

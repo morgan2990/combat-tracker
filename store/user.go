@@ -59,7 +59,7 @@ func (s *UserStore) CreateUser(username, passphraseHash string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	u := User{
-		ID:             newID(),
+		ID:             NewID(8),
 		Username:       username,
 		PassphraseHash: passphraseHash,
 		DisplayName:    username,
@@ -110,7 +110,7 @@ func (s *UserStore) CreateSession(userID string) (*Session, error) {
 	defer cancel()
 	now := time.Now()
 	sess := Session{
-		Token:      newID(),
+		Token:      NewID(8),
 		UserID:     userID,
 		CreatedAt:  now,
 		LastSeenAt: now,
@@ -159,8 +159,11 @@ func (s *UserStore) DeleteSession(token string) error {
 	return err
 }
 
-func newID() string {
-	b := make([]byte, 8)
+// NewID generates a random hex-encoded id of the given byte length. Exported
+// so callers outside store (e.g. room, api) can pre-generate ids using the
+// same scheme, instead of each maintaining their own random-id generator.
+func NewID(n int) string {
+	b := make([]byte, n)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }

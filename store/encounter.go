@@ -47,7 +47,7 @@ func (s *EncounterStore) CreateEncounter(e Encounter) (Encounter, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if e.ID == "" {
-		e.ID = newID()
+		e.ID = NewID(8)
 	}
 	if _, err := s.col.InsertOne(ctx, e); err != nil {
 		return Encounter{}, err

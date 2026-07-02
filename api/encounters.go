@@ -6,10 +6,6 @@ import (
 	"combatapp/store"
 )
 
-func validEncounterEdition(edition string) bool {
-	return edition == "5e" || edition == "5.5e"
-}
-
 func CreateEncounter(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -23,8 +19,7 @@ func CreateEncounter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	if !validEncounterEdition(e.Edition) {
-		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+	if !requireValidEdition(w, e.Edition) {
 		return
 	}
 	e.OwnerID = userID
@@ -85,8 +80,7 @@ func UpdateEncounter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	if !validEncounterEdition(body.Edition) {
-		http.Error(w, "edition must be \"5e\" or \"5.5e\"", http.StatusBadRequest)
+	if !requireValidEdition(w, body.Edition) {
 		return
 	}
 	body.OwnerID = existing.OwnerID
