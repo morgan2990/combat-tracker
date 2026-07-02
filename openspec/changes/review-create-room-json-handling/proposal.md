@@ -1,24 +1,21 @@
 ## Why
 
-`CreateRoom` (`api/handler.go`) currently swallows a malformed-JSON request body (`json.NewDecoder(r.Body).Decode(&body)` with the error ignored) and proceeds with a zero-value body, which happens to resolve to the spec'd `"5e"` default edition (`openspec/specs/room-creation/spec.md`). Every other handler in `api/handler.go` returns HTTP 400 `"invalid json"` on a decode failure. This is scoped separately from `code-cleanup` because changing it would alter `CreateRoom`'s observable behavior for malformed request bodies — a product decision, not a pure refactor.
+`CreateRoom` (`api/rooms.go`) currently swallows a malformed-JSON request body (`json.NewDecoder(r.Body).Decode(&body)` with the error ignored) and proceeds with a zero-value body, which happens to resolve to the spec'd `"5e"` default edition (`openspec/specs/room-creation/spec.md`). Every other handler in `api/` returns HTTP 400 `"invalid json"` on a decode failure, via the shared `decodeJSON` helper (`api/helpers.go`). This inconsistency was flagged during the `code-cleanup` change and deliberately left as a product decision rather than folded into that refactor.
 
 ## What Changes
 
-This proposal does not pre-decide the outcome. When picked up, it should:
-- Confirm whether `CreateRoom`'s current leniency (accepting a malformed body and falling back to defaults) is intentional or an oversight.
-- If it should be tightened to match sibling handlers (reject malformed JSON with 400), update `room-creation`'s spec accordingly — this would be a **Modified Capability**, not an internal-only refactor, since it changes an observable response for malformed requests.
-- If the leniency is intentional (e.g. to keep room creation maximally permissive for clients), no code change is needed — document the decision so it isn't re-flagged as an inconsistency in a future cleanup pass.
+- `CreateRoom` rejects a malformed-JSON request body with HTTP 400 `"invalid json"`, matching every other endpoint, instead of silently falling back to a zero-value body.
+- `CreateRoom` switches to the shared `decodeJSON` helper for this, removing its `//nolint` decode-error suppression.
+- An omitted `edition` field (valid JSON, just no `edition` key, e.g. `{}` or an empty body) continues to default to `"5e"` — this proposal only changes behavior for a body that fails to parse as JSON at all, not the existing "omitted or invalid edition value" leniency.
 
 ## Capabilities
 
-### New Capabilities
-(none)
-
 ### Modified Capabilities
-- `room-creation`: possibly modified, pending the decision above — `CreateRoom`'s handling of a malformed (non-JSON) request body may change from silently defaulting to rejecting with HTTP 400, to match every other handler's behavior.
+- `room-creation`: `CreateRoom`'s handling of a malformed (non-JSON) request body changes from silently defaulting to `"5e"` to rejecting with HTTP 400 `"invalid json"`.
 
 ## Impact
 
-- `api/handler.go`'s `CreateRoom` handler, if changed.
-- `openspec/specs/room-creation/spec.md`, if the behavior changes.
-- No data model changes.
+- `api/rooms.go`'s `CreateRoom` handler.
+- `openspec/specs/room-creation/spec.md`.
+- Closes GitHub issue #8.
+- No data model changes. No change to the "omitted/invalid edition value in an otherwise-valid body" behavior (still defaults to `"5e"`).
