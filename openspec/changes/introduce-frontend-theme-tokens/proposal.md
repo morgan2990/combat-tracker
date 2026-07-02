@@ -1,14 +1,13 @@
 ## Why
 
-No shared theme or design-token module exists anywhere in `frontend/src/`. The same handful of hex colors (`#7878a0`, `#1a1a2c`, `#2e2e48`, `#d4d4e8`, `#454568`, `#e67e22`, `#e74c3c`, `#27ae60`, `#3498db`) and spacing/border-radius values are redefined inline across all 17 component files (~250 occurrences). This is scoped separately from `code-cleanup` because it's a large, purely mechanical pass better done as an independent change, rather than bundled with smaller extractions.
+No shared theme or design-token module exists anywhere in `frontend/src/`. ~297 inline hex-color literals are scattered across 24 component/utility files. Ten colors — the app's core text/border/background/status palette — account for the large majority of that repetition; the remaining ~30 distinct colors are single-purpose (e.g. `entityVitals.ts`'s dead/unconscious/active row-color functions) or coincidental value matches with no shared design meaning.
 
 ## What Changes
 
-- Introduce a shared theme/design-token module (e.g. `frontend/src/theme.ts`) with named constants for the repeated colors, spacing, and border-radius values.
-- Replace the inline hex-literal/spacing usages across the 17 component files with references to the shared constants.
-- Pure internal refactor — no visual or behavioral change intended; exact scope (which values become tokens, naming convention) to be defined when this change is picked up.
-
-This is a placeholder proposal capturing the need; scope and specifics are to be defined when this change is picked up.
+- `frontend/src/theme.ts` exports `color` (10 named tokens: `textPrimary`, `textSecondary`, `textMuted`, `border`, `bgPanel`, `bgCard`, `accent`, `danger`, `info`, `success`) and `radius` (3 named tokens: `sm` (4px), `md` (6px), `pill` (12px)).
+- Every exact-match occurrence of those 10 hex values and 3 border-radius values across `frontend/src/` is replaced with a reference to the corresponding token, including composite CSS shorthand strings (e.g. `'1px solid #2e2e48'` becomes a template literal using `color.border`).
+- Colors and radii outside that set of 10+3 are deliberately left as inline literals — see Impact for why.
+- Pure internal refactor — every replaced value is byte-identical to what it replaced, so there is no visual change.
 
 ## Capabilities
 
@@ -16,9 +15,10 @@ This is a placeholder proposal capturing the need; scope and specifics are to be
 (none — this is internal frontend structure, not an application capability)
 
 ### Modified Capabilities
-(none identified yet — to be determined when scoped)
+(none — no requirement-level behavior or visual output changes)
 
 ## Impact
 
-- All 17 files under `frontend/src/components/` that currently hand-roll color/spacing literals.
+- 24 files across `frontend/src/` and `frontend/src/components/` gain an import from the new `theme.ts` and have their matching literals replaced.
+- **Deliberately not touched**: colors that are single-purpose and already centralized (e.g. `entityVitals.ts`'s `vitalRowBg`/`vitalTextColor` dead/unconscious/active-turn colors — pulling those into shared tokens would create false coupling between an intentionally-scoped vital-state palette and the general UI palette), and colors that coincidentally share a hex value across two unrelated components (e.g. `#1a1608` is both `entityVitals.ts`'s "unconscious" row background and, separately, `PlayerView.tsx`'s "set your initiative" prompt background — forcing these into one shared token would make changing one accidentally change the other).
 - No API, data model, or backend changes.
