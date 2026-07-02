@@ -72,6 +72,19 @@ export interface Encounter {
 
 export type Role = 'dm' | 'player'
 
+export interface Item {
+  name: string
+  quantity: number
+}
+
+export interface Currency {
+  pp: number
+  gp: number
+  ep: number
+  sp: number
+  cp: number
+}
+
 export interface PC {
   id: string
   owner_user_id: string
@@ -80,6 +93,15 @@ export interface PC {
   max_hp: number
   parent_pc_id?: string
   shares_initiative: boolean
+  items: Item[]
+  currency: Currency
+}
+
+export interface Party {
+  id: string
+  name: string
+  member_pc_ids: string[]
+  currency: Currency
 }
 
 export interface RoomSummary {
@@ -100,4 +122,5 @@ export interface MeResponse {
   rooms: RoomSummary[]
   pcs: PC[]
   recent_rooms: RoomMembership[]
+  parties: Party[]
 }
