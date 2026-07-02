@@ -8,6 +8,7 @@ import { CustomMonsterPillList } from './CustomMonsterPillList'
 import { EditionToggle } from './EditionToggle'
 import { fetchJSON } from '../fetchJSON'
 import { labelStyle, labelText } from '../formFieldStyles'
+import { color, radius } from '../theme'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -182,7 +183,7 @@ export function EncounterForm() {
           {showDropdown && results.length > 0 && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-              background: '#1a1a38', border: '1px solid #2e2e48', borderRadius: 4,
+              background: '#1a1a38', border: `1px solid ${color.border}`, borderRadius: radius.sm,
               marginTop: 2, maxHeight: 220, overflowY: 'auto',
             }}>
               {results.map(hit => (
@@ -192,18 +193,18 @@ export function EncounterForm() {
                   style={{
                     padding: '8px 10px', cursor: 'pointer', display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
-                    borderBottom: '1px solid #2e2e48',
+                    borderBottom: `1px solid ${color.border}`,
                   }}
                 >
-                  <span style={{ color: '#d4d4e8' }}>
+                  <span style={{ color: color.textPrimary }}>
                     {hit.name}
                     {hit.is_custom && (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: '#e67e22' }}>
+                      <span style={{ marginLeft: 6, fontSize: 11, color: color.accent }}>
                         by {hit.owner_display_name ?? 'unknown'}
                       </span>
                     )}
                   </span>
-                  <span style={{ color: '#7878a0' }}>{hit.max_hp} HP</span>
+                  <span style={{ color: color.textSecondary }}>{hit.max_hp} HP</span>
                 </div>
               ))}
             </div>
@@ -213,11 +214,11 @@ export function EncounterForm() {
         <div style={labelStyle}>
           <span style={labelText}>Monster Groups</span>
           {monsters.length === 0 && (
-            <div style={{ fontSize: 13, color: '#5a5a78' }}>No monsters added yet.</div>
+            <div style={{ fontSize: 13, color: color.textMuted }}>No monsters added yet.</div>
           )}
           {monsters.map((m, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #2e2e48' }}>
-              <span style={{ flex: 1, fontSize: 13, color: '#d4d4e8' }}>{m.name}</span>
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${color.border}` }}>
+              <span style={{ flex: 1, fontSize: 13, color: color.textPrimary }}>{m.name}</span>
               <input
                 type="number"
                 min={1}
@@ -231,17 +232,17 @@ export function EncounterForm() {
                 placeholder="Alias (optional)"
                 style={{ ...fieldStyle, width: 140 }}
               />
-              <button type="button" onClick={() => removeGroup(i)} style={btnStyle('#2e2e48')}>Remove</button>
+              <button type="button" onClick={() => removeGroup(i)} style={btnStyle(color.border)}>Remove</button>
             </div>
           ))}
         </div>
 
-        {error && <div style={{ color: '#e74c3c', fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ color: color.danger, fontSize: 13 }}>{error}</div>}
 
         <button
           type="submit"
           disabled={submitting}
-          style={btnStyle('#e67e22', submitting)}
+          style={btnStyle(color.accent, submitting)}
         >
           {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Save Encounter'}
         </button>
@@ -252,5 +253,5 @@ export function EncounterForm() {
 
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: '100%', boxSizing: 'border-box' }
 function btnStyle(bg: string, disabled = false): React.CSSProperties {
-  return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: 4, cursor: disabled ? 'default' : 'pointer' }
+  return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: radius.sm, cursor: disabled ? 'default' : 'pointer' }
 }

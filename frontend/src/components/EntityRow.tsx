@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Entity } from '../types'
 import { ConditionToggles } from './ConditionToggles'
 import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
+import { color, radius } from '../theme'
 
 function parseHP(input: string, current: number, max: number): number {
   const s = input.trim()
@@ -89,13 +90,13 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
   const textColor = vitalTextColor(vitalState)
 
   return (
-    <div style={{ borderBottom: '1px solid #2e2e48' }}>
+    <div style={{ borderBottom: `1px solid ${color.border}` }}>
       {/* Main row */}
       <div
         style={{ padding: '10px 14px', background: rowBg, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: entity.is_hidden ? 0.5 : 1 }}
         onClick={() => setExpanded(e => !e)}
       >
-        <span style={{ width: 16, color: '#e67e22', flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
+        <span style={{ width: 16, color: color.accent, flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontWeight: 600, color: textColor }}>
             {entity.display_name ? `${entity.display_name} (${entity.name})` : entity.name}
@@ -104,7 +105,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
             <button
               onClick={e => { e.stopPropagation(); onOpenInventory(entity.pc_id!) }}
               title="View inventory"
-              style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+              style={{ marginLeft: 6, background: 'none', border: 'none', color: color.textSecondary, cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
             >
               🎒
             </button>
@@ -113,7 +114,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
             <button
               onClick={e => { e.stopPropagation(); onStatblock() }}
               title="View statblock"
-              style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+              style={{ marginLeft: 6, background: 'none', border: 'none', color: color.textSecondary, cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
             >
               📋
             </button>
@@ -122,16 +123,16 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
             <button
               onClick={e => { e.stopPropagation(); sendMessage({ type: 'toggle_entity_visibility', entity_id: entity.id }) }}
               title={entity.is_hidden ? 'Hidden from players — click to reveal' : 'Visible to players — click to hide'}
-              style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+              style={{ marginLeft: 6, background: 'none', border: 'none', color: color.textSecondary, cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
             >
               {entity.is_hidden ? '🙈' : '👁'}
             </button>
           )}
-          {vitalState === 'dead' && <span style={{ marginLeft: 6, fontSize: 11, color: '#e74c3c' }}>💀 Dead</span>}
-          {vitalState === 'unconscious' && <span style={{ marginLeft: 6, fontSize: 11, color: '#e67e22' }}>😵 Unconscious</span>}
+          {vitalState === 'dead' && <span style={{ marginLeft: 6, fontSize: 11, color: color.danger }}>💀 Dead</span>}
+          {vitalState === 'unconscious' && <span style={{ marginLeft: 6, fontSize: 11, color: color.accent }}>😵 Unconscious</span>}
           <span style={{ marginLeft: 6, fontSize: 11, color: '#454568' }}>{entity.type}</span>
           {entity.conditions.length > 0 && (
-            <div style={{ fontSize: 11, color: '#e67e22', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: color.accent, marginTop: 2 }}>
               {entity.conditions.join(' · ')}
             </div>
           )}
@@ -139,29 +140,29 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
         {entity.type !== 'lair_action' && (
           <div style={{ fontSize: 13, color: textColor, flexShrink: 0, textAlign: 'right' }}>
             {entity.current_hp}/{entity.max_hp} HP
-            {entity.temp_hp > 0 && <span style={{ color: '#3498db' }}> +{entity.temp_hp}</span>}
+            {entity.temp_hp > 0 && <span style={{ color: color.info }}> +{entity.temp_hp}</span>}
           </div>
         )}
         <div
-          style={{ fontSize: 12, color: '#7878a0', width: 36, textAlign: 'right', flexShrink: 0, cursor: entity.initiative_roll != null ? 'help' : 'default' }}
+          style={{ fontSize: 12, color: color.textSecondary, width: 36, textAlign: 'right', flexShrink: 0, cursor: entity.initiative_roll != null ? 'help' : 'default' }}
           title={entity.initiative_roll != null && entity.initiative_modifier != null
             ? `d20: ${entity.initiative_roll} ${entity.initiative_modifier >= 0 ? '+' : ''}${entity.initiative_modifier} = ${entity.initiative}`
             : undefined}
         >
           {entity.initiative != null ? entity.initiative : '--'}
         </div>
-        <span style={{ fontSize: 11, color: '#5a5a78', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 11, color: color.textMuted, flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
       </div>
 
       {/* Expanded edit panel */}
       {expanded && (
-        <div style={{ padding: '12px 16px 16px 16px', background: '#161626', borderTop: '1px solid #2e2e48' }}>
+        <div style={{ padding: '12px 16px 16px 16px', background: color.bgCard, borderTop: `1px solid ${color.border}` }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
 
             {/* HP smart input */}
             {entity.type !== 'lair_action' && (
               <div>
-                <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>HP (+5, -12, or 20)</div>
+                <div style={{ fontSize: 11, color: color.textSecondary, marginBottom: 4 }}>HP (+5, -12, or 20)</div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input
                     type="text"
@@ -178,7 +179,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
 
             {/* Initiative */}
             <div>
-              <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>Initiative</div>
+              <div style={{ fontSize: 11, color: color.textSecondary, marginBottom: 4 }}>Initiative</div>
               <div style={{ display: 'flex', gap: 4 }}>
                 <input
                   type="number"
@@ -194,7 +195,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
             {/* Creature name (creatures and lair actions) */}
             {(entity.type === 'creature' || entity.type === 'lair_action') && (
               <div>
-                <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>Name</div>
+                <div style={{ fontSize: 11, color: color.textSecondary, marginBottom: 4 }}>Name</div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input
                     type="text"
@@ -211,7 +212,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
             {/* Creature alias (creatures and lair actions) */}
             {(entity.type === 'creature' || entity.type === 'lair_action') && (
               <div>
-                <div style={{ fontSize: 11, color: '#7878a0', marginBottom: 4 }}>Alias</div>
+                <div style={{ fontSize: 11, color: color.textSecondary, marginBottom: 4 }}>Alias</div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input
                     type="text"
@@ -243,8 +244,8 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
                   : sendUpdate({ dead: true, current_hp: 0 })}
                 style={{
                   padding: '6px 14px', fontSize: 13, cursor: 'pointer',
-                  background: entity.dead ? '#27ae60' : '#e74c3c',
-                  color: '#fff', border: 'none', borderRadius: 4,
+                  background: entity.dead ? color.success : color.danger,
+                  color: '#fff', border: 'none', borderRadius: radius.sm,
                 }}
               >
                 {entity.dead ? 'Revive' : 'Kill'}
@@ -252,7 +253,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
             )}
             <button
               onClick={() => sendMessage({ type: 'remove_entity', entity_id: entity.id })}
-              style={{ padding: '6px 14px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+              style={{ padding: '6px 14px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
             >
               Remove
             </button>
@@ -265,5 +266,5 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
 
 const actionBtn: React.CSSProperties = {
   padding: '6px 10px', fontSize: 13, cursor: 'pointer',
-  background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4,
+  background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm,
 }

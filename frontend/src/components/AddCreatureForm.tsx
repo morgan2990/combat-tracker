@@ -4,6 +4,7 @@ import type { MonsterSearchHit, CustomMonster } from '../types'
 import { CustomMonsterPillList } from './CustomMonsterPillList'
 import { fetchJSON } from '../fetchJSON'
 import { labelStyle, labelText } from '../formFieldStyles'
+import { color, radius } from '../theme'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -165,7 +166,7 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
         {showDropdown && results.length > 0 && (
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-            background: '#1a1a38', border: '1px solid #2e2e48', borderRadius: 4,
+            background: '#1a1a38', border: `1px solid ${color.border}`, borderRadius: radius.sm,
             marginTop: 2, maxHeight: 220, overflowY: 'auto',
           }}>
             {results.map(hit => (
@@ -175,22 +176,22 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
                 style={{
                   padding: '8px 10px', cursor: 'pointer', display: 'flex',
                   justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
-                  borderBottom: '1px solid #2e2e48',
+                  borderBottom: `1px solid ${color.border}`,
                 }}
               >
-                <span style={{ color: '#d4d4e8' }}>
+                <span style={{ color: color.textPrimary }}>
                   {hit.name}
                   {hit.is_custom && (
-                    <span style={{ marginLeft: 6, fontSize: 11, color: '#e67e22' }}>
+                    <span style={{ marginLeft: 6, fontSize: 11, color: color.accent }}>
                       by {hit.owner_display_name ?? 'unknown'}
                     </span>
                   )}
                 </span>
                 <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 10, color: '#3498db', border: '1px solid #3498db', borderRadius: 3, padding: '1px 5px' }}>
+                  <span style={{ fontSize: 10, color: color.info, border: `1px solid ${color.info}`, borderRadius: 3, padding: '1px 5px' }}>
                     {edition || '5e'}
                   </span>
-                  <span style={{ color: '#7878a0' }}>{hit.max_hp} HP</span>
+                  <span style={{ color: color.textSecondary }}>{hit.max_hp} HP</span>
                 </span>
               </div>
             ))}
@@ -227,9 +228,9 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
           />
         </label>
         {monsterRef && monsterRef.source_type && (
-          <span style={{ fontSize: 11, color: '#27ae60', alignSelf: 'center', paddingBottom: 2 }}>statblock ready</span>
+          <span style={{ fontSize: 11, color: color.success, alignSelf: 'center', paddingBottom: 2 }}>statblock ready</span>
         )}
-        <button type="submit" style={{ padding: '8px 16px', fontSize: 14, alignSelf: 'flex-end', background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        <button type="submit" style={{ padding: '8px 16px', fontSize: 14, alignSelf: 'flex-end', background: color.accent, color: '#fff', border: 'none', borderRadius: radius.sm, cursor: 'pointer' }}>
           Add Creature
         </button>
       </form>

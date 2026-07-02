@@ -4,6 +4,7 @@ import type { MeResponse, CustomMonster, Encounter, Party, PC, Currency } from '
 import { InventoryPanel } from './InventoryPanel'
 import { CurrencyEditor } from './CurrencyEditor'
 import { fetchJSON } from '../fetchJSON'
+import { color, radius } from '../theme'
 
 interface DashboardProps {
   me: MeResponse
@@ -111,7 +112,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: 24 }}>⚔ Combat Tracker</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 13, color: '#7878a0' }}>{me.user.display_name}</span>
+          <span style={{ fontSize: 13, color: color.textSecondary }}>{me.user.display_name}</span>
           <button onClick={onLogout} style={logoutBtn}>Log Out</button>
         </div>
       </div>
@@ -122,15 +123,15 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
           <h2 style={sectionTitle}>As DM</h2>
 
           <div style={panelStyle}>
-            <div style={{ fontSize: 13, color: '#7878a0', marginBottom: 8 }}>My Rooms</div>
+            <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>My Rooms</div>
             {me.rooms.length === 0 && (
-              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No rooms yet.</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No rooms yet.</div>
             )}
             {me.rooms.map(room => (
               <div key={room.room_id} style={listRow}>
                 <span>
                   {room.room_id}
-                  {room.is_combat_active && <span style={{ marginLeft: 8, fontSize: 11, color: '#e67e22' }}>● in combat</span>}
+                  {room.is_combat_active && <span style={{ marginLeft: 8, fontSize: 11, color: color.accent }}>● in combat</span>}
                 </span>
                 <button onClick={() => onOpenRoomAsDM(room.room_id)} style={actionBtn}>Open</button>
               </div>
@@ -145,10 +146,10 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
                   style={{
                     padding: '6px 10px', fontSize: 13, cursor: 'pointer',
                     fontWeight: dmEdition === ed ? 700 : 400,
-                    background: dmEdition === ed ? '#1a1a38' : '#2e2e48',
-                    color: dmEdition === ed ? '#3498db' : '#7878a0',
-                    border: dmEdition === ed ? '1px solid #3498db' : '1px solid transparent',
-                    borderRadius: 4,
+                    background: dmEdition === ed ? '#1a1a38' : color.border,
+                    color: dmEdition === ed ? color.info : color.textSecondary,
+                    border: dmEdition === ed ? `1px solid ${color.info}` : '1px solid transparent',
+                    borderRadius: radius.sm,
                   }}
                 >
                   {ed}
@@ -160,40 +161,40 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
             </div>
             {createError && <div style={errorStyle}>{createError}</div>}
 
-            <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>My Monsters</div>
+            <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>My Monsters</div>
             {myMonsters.length === 0 && (
-              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No custom monsters yet.</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No custom monsters yet.</div>
             )}
             {myMonsters.map(m => (
               <div key={m.id} style={listRow}>
                 <span>
                   {m.name}
-                  {m.private && <span style={{ marginLeft: 8, fontSize: 11, color: '#7878a0' }}>● private</span>}
+                  {m.private && <span style={{ marginLeft: 8, fontSize: 11, color: color.textSecondary }}>● private</span>}
                 </span>
                 <span style={{ display: 'flex', gap: 8 }}>
-                  <Link to={`/monsters/custom/${m.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                  <Link to={`/monsters/custom/${m.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
                   <button onClick={() => handleDeleteMonster(m.id)} style={deleteBtn}>Delete</button>
                 </span>
               </div>
             ))}
-            <Link to="/monsters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
+            <Link to="/monsters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: color.info }}>
               + New Monster
             </Link>
 
-            <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>My Encounters</div>
+            <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>My Encounters</div>
             {myEncounters.length === 0 && (
-              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No encounters yet.</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No encounters yet.</div>
             )}
             {myEncounters.map(enc => (
               <div key={enc.id} style={listRow}>
                 <span>{enc.name}</span>
                 <span style={{ display: 'flex', gap: 8 }}>
-                  <Link to={`/encounters/${enc.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                  <Link to={`/encounters/${enc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
                   <button onClick={() => handleDeleteEncounter(enc.id)} style={deleteBtn}>Delete</button>
                 </span>
               </div>
             ))}
-            <Link to="/encounters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
+            <Link to="/encounters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: color.info }}>
               + New Encounter
             </Link>
           </div>
@@ -204,31 +205,31 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
           <h2 style={sectionTitle}>As Player</h2>
 
           <div style={panelStyle}>
-            <div style={{ fontSize: 13, color: '#7878a0', marginBottom: 8 }}>My Characters</div>
+            <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>My Characters</div>
             {me.pcs.length === 0 && (
-              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No characters yet.</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No characters yet.</div>
             )}
             {me.pcs.map(pc => (
               <div key={pc.id} style={listRow}>
-                <span>{pc.name} <span style={{ color: '#5a5a78', fontSize: 11 }}>{pc.max_hp} HP</span></span>
+                <span>{pc.name} <span style={{ color: color.textMuted, fontSize: 11 }}>{pc.max_hp} HP</span></span>
                 <span style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => setInventoryPcId(pc.id)}
-                    style={{ fontSize: 12, cursor: 'pointer', padding: 0, background: 'none', color: '#3498db', border: 'none' }}
+                    style={{ fontSize: 12, cursor: 'pointer', padding: 0, background: 'none', color: color.info, border: 'none' }}
                   >
                     Inventory
                   </button>
-                  <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: '#3498db' }}>Edit</Link>
+                  <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
                 </span>
               </div>
             ))}
-            <Link to="/characters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#3498db' }}>
+            <Link to="/characters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: color.info }}>
               + New Character
             </Link>
 
-            <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>My Parties</div>
+            <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>My Parties</div>
             {parties.length === 0 && (
-              <div style={{ fontSize: 13, color: '#5a5a78', marginBottom: 12 }}>No parties yet.</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No parties yet.</div>
             )}
             {parties.map(party => (
               <PartyCard
@@ -256,12 +257,12 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
 
             {me.recent_rooms.length > 0 && (
               <>
-                <div style={{ fontSize: 13, color: '#7878a0', marginTop: 20, marginBottom: 8 }}>Recent Rooms</div>
+                <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>Recent Rooms</div>
                 {me.recent_rooms.map(rm => {
                   const pc = me.pcs.find(p => p.id === rm.last_pc_id)
                   return (
                     <div key={rm.room_id} style={listRow}>
-                      <span>{rm.room_id} <span style={{ color: '#5a5a78', fontSize: 11 }}>as {pc?.name ?? 'unknown'}</span></span>
+                      <span>{rm.room_id} <span style={{ color: color.textMuted, fontSize: 11 }}>as {pc?.name ?? 'unknown'}</span></span>
                       <button
                         onClick={() => onJoinAsPlayer(rm.room_id, rm.last_pc_id)}
                         disabled={!pc}
@@ -277,7 +278,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
 
             {me.pcs.length > 0 && (
               <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 13, color: '#7878a0', marginBottom: 8 }}>Join a new room</div>
+                <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>Join a new room</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select value={selectedPcId} onChange={e => setSelectedPcId(e.target.value)} style={selectStyle}>
                     {me.pcs.map(pc => (
@@ -345,7 +346,7 @@ function PartyCard({ party, myPcs, onUpdate }: PartyCardProps) {
       <div style={{ fontWeight: 600, marginBottom: 8 }}>{party.name}</div>
 
       {party.member_pc_ids.length === 0 && (
-        <div style={{ fontSize: 12, color: '#5a5a78', marginBottom: 8 }}>No members yet.</div>
+        <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 8 }}>No members yet.</div>
       )}
       {party.member_pc_ids.map(pcId => (
         <div key={pcId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '4px 0' }}>
@@ -367,7 +368,7 @@ function PartyCard({ party, myPcs, onUpdate }: PartyCardProps) {
       )}
 
       <div style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 12, color: '#7878a0', marginBottom: 4 }}>Pooled Currency</div>
+        <div style={{ fontSize: 12, color: color.textSecondary, marginBottom: 4 }}>Pooled Currency</div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <CurrencyEditor currency={currency} onChange={setCurrency} inputWidth={50} />
           <button onClick={saveCurrency} style={actionBtn}>Save</button>
@@ -377,34 +378,34 @@ function PartyCard({ party, myPcs, onUpdate }: PartyCardProps) {
   )
 }
 
-const sectionTitle: React.CSSProperties = { fontSize: 16, marginBottom: 10, color: '#d4d4e8' }
+const sectionTitle: React.CSSProperties = { fontSize: 16, marginBottom: 10, color: color.textPrimary }
 
 const panelStyle: React.CSSProperties = {
-  padding: '14px 16px', background: '#161626', border: '1px solid #2e2e48', borderRadius: 6,
+  padding: '14px 16px', background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md,
 }
 
 const listRow: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  padding: '8px 0', borderBottom: '1px solid #2e2e48', fontSize: 14,
+  padding: '8px 0', borderBottom: `1px solid ${color.border}`, fontSize: 14,
 }
 
 const actionBtn: React.CSSProperties = {
   padding: '5px 12px', fontSize: 12, cursor: 'pointer',
-  background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4,
+  background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm,
 }
 
 const deleteBtn: React.CSSProperties = {
   fontSize: 12, cursor: 'pointer', padding: 0,
-  background: 'none', color: '#e74c3c', border: 'none',
+  background: 'none', color: color.danger, border: 'none',
 }
 
 const logoutBtn: React.CSSProperties = {
   padding: '6px 12px', fontSize: 12, cursor: 'pointer',
-  background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4,
+  background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm,
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: '8px 10px', fontSize: 14, background: '#1a1a2c', border: '1px solid #2e2e48', borderRadius: 4, color: '#d4d4e8',
+  padding: '8px 10px', fontSize: 14, background: color.bgPanel, border: `1px solid ${color.border}`, borderRadius: radius.sm, color: color.textPrimary,
 }
 
 const selectStyle: React.CSSProperties = {
@@ -412,13 +413,13 @@ const selectStyle: React.CSSProperties = {
 }
 
 const errorStyle: React.CSSProperties = {
-  marginTop: 8, fontSize: 13, color: '#e74c3c',
+  marginTop: 8, fontSize: 13, color: color.danger,
 }
 
 function primaryBtn(disabled: boolean): React.CSSProperties {
   return {
     padding: '8px 16px', fontSize: 13, fontWeight: 700,
-    background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4,
+    background: color.success, color: '#fff', border: 'none', borderRadius: radius.sm,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.45 : 1,
   }

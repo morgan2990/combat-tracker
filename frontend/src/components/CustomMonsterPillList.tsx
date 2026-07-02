@@ -1,4 +1,5 @@
 import type { CustomMonster } from '../types'
+import { color, radius } from '../theme'
 
 interface CustomMonsterPillListProps {
   monsters: CustomMonster[]
@@ -14,11 +15,11 @@ export function CustomMonsterPillList({ monsters, onSelect }: CustomMonsterPillL
           type="button"
           onClick={() => onSelect(m)}
           style={{
-            padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 12,
-            border: '1px solid #2e2e48', background: '#1a1a2c', color: '#d4d4e8',
+            padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: radius.pill,
+            border: `1px solid ${color.border}`, background: color.bgPanel, color: color.textPrimary,
           }}
         >
-          {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
+          {m.name} <span style={{ color: color.textSecondary }}>{m.max_hp} HP</span>
         </button>
       ))}
     </div>

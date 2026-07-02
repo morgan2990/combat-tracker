@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Item, Currency } from '../types'
 import { CurrencyEditor } from './CurrencyEditor'
+import { color, radius } from '../theme'
 
 const emptyCurrency: Currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 }
 
@@ -84,7 +85,7 @@ export function InventoryPanel({ pcId, onClose }: InventoryPanelProps) {
           <button onClick={onClose} style={closeBtn}>✕</button>
         </div>
 
-        {loading && <div style={{ padding: '20px 0', color: '#7878a0', fontSize: 13 }}>Loading…</div>}
+        {loading && <div style={{ padding: '20px 0', color: color.textSecondary, fontSize: 13 }}>Loading…</div>}
 
         {!loading && loadError && <div style={errorStyle}>{loadError}</div>}
 
@@ -93,7 +94,7 @@ export function InventoryPanel({ pcId, onClose }: InventoryPanelProps) {
             <div style={{ marginBottom: 16 }}>
               <div style={sectionLabel}>Items</div>
               {items.length === 0 && (
-                <div style={{ fontSize: 13, color: '#5a5a78', padding: '6px 0' }}>No items yet.</div>
+                <div style={{ fontSize: 13, color: color.textMuted, padding: '6px 0' }}>No items yet.</div>
               )}
               {items.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
@@ -140,7 +141,7 @@ const overlayStyle: React.CSSProperties = {
 
 const panelStyle: React.CSSProperties = {
   width: 420, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto',
-  background: '#161626', border: '1px solid #2e2e48', borderRadius: 8, padding: 20,
+  background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: 8, padding: 20,
 }
 
 const headerStyle: React.CSSProperties = {
@@ -148,34 +149,34 @@ const headerStyle: React.CSSProperties = {
 }
 
 const closeBtn: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#7878a0', fontSize: 16, cursor: 'pointer', padding: 4,
+  background: 'none', border: 'none', color: color.textSecondary, fontSize: 16, cursor: 'pointer', padding: 4,
 }
 
 const sectionLabel: React.CSSProperties = {
-  fontSize: 12, color: '#7878a0', textTransform: 'uppercase', letterSpacing: '0.05em',
+  fontSize: 12, color: color.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em',
   marginBottom: 8, fontWeight: 600,
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: '6px 8px', fontSize: 13, background: '#1a1a2c', border: '1px solid #2e2e48', borderRadius: 4, color: '#d4d4e8',
+  padding: '6px 8px', fontSize: 13, background: color.bgPanel, border: `1px solid ${color.border}`, borderRadius: radius.sm, color: color.textPrimary,
 }
 
 const removeBtn: React.CSSProperties = {
-  fontSize: 12, cursor: 'pointer', padding: '4px 8px', background: 'none', color: '#e74c3c', border: '1px solid #3a1010', borderRadius: 4,
+  fontSize: 12, cursor: 'pointer', padding: '4px 8px', background: 'none', color: color.danger, border: '1px solid #3a1010', borderRadius: radius.sm,
 }
 
 const addBtn: React.CSSProperties = {
-  marginTop: 4, fontSize: 13, cursor: 'pointer', padding: '6px 12px', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4,
+  marginTop: 4, fontSize: 13, cursor: 'pointer', padding: '6px 12px', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm,
 }
 
 const errorStyle: React.CSSProperties = {
-  marginBottom: 12, fontSize: 13, color: '#e74c3c', padding: '8px 10px', background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 6,
+  marginBottom: 12, fontSize: 13, color: color.danger, padding: '8px 10px', background: '#1a0808', border: `1px solid ${color.danger}`, borderRadius: radius.md,
 }
 
 function saveBtn(disabled: boolean): React.CSSProperties {
   return {
     width: '100%', padding: '10px 0', fontSize: 14, fontWeight: 600,
-    background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4,
+    background: color.success, color: '#fff', border: 'none', borderRadius: radius.sm,
     cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1,
   }
 }

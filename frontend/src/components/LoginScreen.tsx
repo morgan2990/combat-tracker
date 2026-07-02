@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { color, radius } from '../theme'
 
 interface LoginScreenProps {
   onAuthed: () => void
@@ -41,7 +42,7 @@ export function LoginScreen({ onAuthed }: LoginScreenProps) {
     <div style={{ maxWidth: 340, margin: '100px auto', padding: 24 }}>
       <h1 style={{ marginBottom: 24, fontSize: 26, fontWeight: 700, textAlign: 'center' }}>⚔ Combat Tracker</h1>
 
-      <div style={{ display: 'flex', marginBottom: 20, borderBottom: '2px solid #2e2e48' }}>
+      <div style={{ display: 'flex', marginBottom: 20, borderBottom: `2px solid ${color.border}` }}>
         {(['login', 'signup'] as const).map(m => (
           <button
             key={m}
@@ -51,9 +52,9 @@ export function LoginScreen({ onAuthed }: LoginScreenProps) {
               flex: 1, padding: '8px 0', fontSize: 14,
               fontWeight: mode === m ? 700 : 400,
               background: 'none', border: 'none',
-              borderBottom: mode === m ? '2px solid #3498db' : '2px solid transparent',
+              borderBottom: mode === m ? `2px solid ${color.info}` : '2px solid transparent',
               marginBottom: -2, cursor: 'pointer',
-              color: mode === m ? '#3498db' : '#7878a0',
+              color: mode === m ? color.info : color.textSecondary,
             }}
           >
             {m === 'login' ? 'Log In' : 'Create Account'}
@@ -97,22 +98,22 @@ export function LoginScreen({ onAuthed }: LoginScreenProps) {
   )
 }
 
-const labelText: React.CSSProperties = { fontSize: 13, color: '#7878a0', marginBottom: 4 }
+const labelText: React.CSSProperties = { fontSize: 13, color: color.textSecondary, marginBottom: 4 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', fontSize: 16, boxSizing: 'border-box',
-  background: '#1a1a2c', border: '1px solid #2e2e48', borderRadius: 4, color: '#d4d4e8',
+  background: color.bgPanel, border: `1px solid ${color.border}`, borderRadius: radius.sm, color: color.textPrimary,
 }
 
 const errorStyle: React.CSSProperties = {
-  marginBottom: 12, padding: '8px 12px', fontSize: 13, color: '#e74c3c',
-  background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 4,
+  marginBottom: 12, padding: '8px 12px', fontSize: 13, color: color.danger,
+  background: '#1a0808', border: `1px solid ${color.danger}`, borderRadius: radius.sm,
 }
 
 function primaryBtn(disabled: boolean): React.CSSProperties {
   return {
     width: '100%', padding: '12px 0', fontSize: 15, fontWeight: 700,
-    background: '#3498db', color: '#fff', border: 'none', borderRadius: 4,
+    background: color.info, color: '#fff', border: 'none', borderRadius: radius.sm,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.45 : 1,
   }
