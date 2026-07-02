@@ -50,6 +50,6 @@
 
 ## 10. Verify
 
-- [ ] 10.1 Run `tsc -b` and `oxlint` for the full frontend.
-- [ ] 10.2 Run `go build ./...` and `go vet ./...` for the full backend.
-- [ ] 10.3 Manually smoke-test the app end-to-end (sign up, create room as DM, add creatures, join as player, view/edit inventory) to confirm no regressions across all the touched areas.
+- [x] 10.1 `tsc -b` and `oxlint` clean (same 4 pre-existing warnings as before this change, no new ones).
+- [x] 10.2 `go build ./...` and `go vet ./...` clean.
+- [x] 10.3 Smoke-tested via Playwright: signed up as DM, created a room, added a creature via search and via the "My Creatures" row-list, started combat; signed up as a player with a PC, joined the room, confirmed the tracker rendered. Separately verified `InventoryPanel` (Add Item, currency fields, Save) opens and works correctly — not touched by this change, confirmed as a sanity check. No console/page errors across any of it.
