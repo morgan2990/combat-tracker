@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { color, radius } from '../theme'
 
 interface SetupFormProps {
   myName: string
@@ -23,10 +24,10 @@ export function SetupForm({ myName, onSubmit }: SetupFormProps) {
   return (
     <div style={{ maxWidth: 360, margin: '80px auto', padding: 24 }}>
       <h2 style={{ marginBottom: 4 }}>Welcome, {myName}!</h2>
-      <p style={{ color: '#7878a0', marginTop: 0, marginBottom: 24 }}>Set up your character to join the tracker.</p>
+      <p style={{ color: color.textSecondary, marginTop: 0, marginBottom: 24 }}>Set up your character to join the tracker.</p>
       <form onSubmit={handleSubmit}>
         <label style={{ display: 'block', marginBottom: 16 }}>
-          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 14, color: '#7878a0' }}>Max HP</div>
+          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 14, color: color.textSecondary }}>Max HP</div>
           <input
             type="number"
             value={maxHP}
@@ -39,7 +40,7 @@ export function SetupForm({ myName, onSubmit }: SetupFormProps) {
           />
         </label>
         <label style={{ display: 'block', marginBottom: 24 }}>
-          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 14, color: '#7878a0' }}>Initiative</div>
+          <div style={{ marginBottom: 4, fontWeight: 600, fontSize: 14, color: color.textSecondary }}>Initiative</div>
           <input
             type="number"
             value={initiative}
@@ -56,7 +57,7 @@ export function SetupForm({ myName, onSubmit }: SetupFormProps) {
             width: '100%', padding: '12px 0', fontSize: 16,
             cursor: submitted || !maxHP ? 'not-allowed' : 'pointer',
             opacity: submitted || !maxHP ? 0.45 : 1,
-            background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 600,
+            background: color.accent, color: '#fff', border: 'none', borderRadius: radius.sm, fontWeight: 600,
           }}
         >
           {submitted ? 'Joining tracker…' : 'Enter Combat'}

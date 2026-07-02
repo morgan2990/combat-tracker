@@ -1,5 +1,6 @@
 import type { Entity } from '../types'
 import placeholderSrc from '../assets/statblock-placeholder.svg'
+import { color, radius } from '../theme'
 
 interface StatblockColumnProps {
   entity: Entity | null
@@ -13,15 +14,15 @@ export function StatblockColumn({ entity, onClose }: StatblockColumnProps) {
   return (
     <div style={{
       height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column',
-      background: '#12121e', border: '1px solid #2e2e48', borderRadius: 6, overflow: 'hidden',
+      background: '#12121e', border: `1px solid ${color.border}`, borderRadius: radius.md, overflow: 'hidden',
     }}>
       {entity ? (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #2e2e48', flexShrink: 0 }}>
-            <span style={{ fontWeight: 600, color: '#d4d4e8', fontSize: 15 }}>{entity.name}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${color.border}`, flexShrink: 0 }}>
+            <span style={{ fontWeight: 600, color: color.textPrimary, fontSize: 15 }}>{entity.name}</span>
             <button
               onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#7878a0', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
+              style={{ background: 'none', border: 'none', color: color.textSecondary, fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
             >
               ✕
             </button>

@@ -1,3 +1,4 @@
+import { color, radius } from '../theme'
 interface EditionToggleProps {
   edition: '5e' | '5.5e'
   onChange: (edition: '5e' | '5.5e') => void
@@ -12,11 +13,11 @@ export function EditionToggle({ edition, onChange }: EditionToggleProps) {
           type="button"
           onClick={() => onChange(ed)}
           style={{
-            padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
+            padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: radius.sm,
             border: '1px solid',
-            borderColor: edition === ed ? '#3498db' : '#2e2e48',
-            background: edition === ed ? '#0d1f38' : '#1a1a2c',
-            color: edition === ed ? '#3498db' : '#8888aa',
+            borderColor: edition === ed ? color.info : color.border,
+            background: edition === ed ? '#0d1f38' : color.bgPanel,
+            color: edition === ed ? color.info : '#8888aa',
           }}
         >
           {ed}

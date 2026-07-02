@@ -5,6 +5,7 @@ import type { CustomMonster } from '../types'
 import { fetchJSON } from '../fetchJSON'
 import { EditionToggle } from './EditionToggle'
 import { labelStyle, labelText } from '../formFieldStyles'
+import { color, radius } from '../theme'
 
 type SourceType = 'none' | 'url' | 'pdf'
 
@@ -98,11 +99,11 @@ export function MonsterForm() {
   if (saved) {
     return (
       <div style={{ maxWidth: 480, margin: '60px auto', padding: 24, textAlign: 'center' }}>
-        <div style={{ fontSize: 20, marginBottom: 16, color: '#27ae60' }}>Monster saved!</div>
+        <div style={{ fontSize: 20, marginBottom: 16, color: color.success }}>Monster saved!</div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button
             onClick={() => { setName(''); setMaxHP(''); setEdition('5e'); setInitiativeModifier(''); setIsPrivate(false); setSourceType('none'); setReferenceURL(''); setPdfFile(null); setSaved(false) }}
-            style={btnStyle('#2e2e48')}
+            style={btnStyle(color.border)}
           >
             Add Another
           </button>
@@ -157,7 +158,7 @@ export function MonsterForm() {
           />
         </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#d4d4e8', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: color.textPrimary, cursor: 'pointer' }}>
           <input
             type="checkbox"
             checked={isPrivate}
@@ -166,7 +167,7 @@ export function MonsterForm() {
           Mark as Private Campaign Content
           <span
             title="Private monsters are only visible to you — in your dashboard and your active rooms. Other DMs won't see them, even in search."
-            style={{ cursor: 'help', color: '#7878a0' }}
+            style={{ cursor: 'help', color: color.textSecondary }}
           >
             ⓘ
           </span>
@@ -181,11 +182,11 @@ export function MonsterForm() {
                 type="button"
                 onClick={() => setSourceType(t)}
                 style={{
-                  padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
+                  padding: '6px 14px', fontSize: 13, cursor: 'pointer', borderRadius: radius.sm,
                   border: '1px solid',
-                  borderColor: sourceType === t ? '#e67e22' : '#2e2e48',
-                  background: sourceType === t ? '#2a1a08' : '#1a1a2c',
-                  color: sourceType === t ? '#e67e22' : '#8888aa',
+                  borderColor: sourceType === t ? color.accent : color.border,
+                  background: sourceType === t ? '#2a1a08' : color.bgPanel,
+                  color: sourceType === t ? color.accent : '#8888aa',
                 }}
               >
                 {t === 'none' ? 'None' : t.toUpperCase()}
@@ -214,23 +215,23 @@ export function MonsterForm() {
               type="file"
               accept="application/pdf"
               onChange={e => setPdfFile(e.target.files?.[0] ?? null)}
-              style={{ color: '#d4d4e8' }}
+              style={{ color: color.textPrimary }}
             />
           </label>
         )}
 
         {sourceType === 'pdf' && editing && (
-          <div style={{ fontSize: 12, color: '#7878a0' }}>
+          <div style={{ fontSize: 12, color: color.textSecondary }}>
             PDF statblock uploaded at creation — replacing it isn't supported here.
           </div>
         )}
 
-        {error && <div style={{ color: '#e74c3c', fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ color: color.danger, fontSize: 13 }}>{error}</div>}
 
         <button
           type="submit"
           disabled={submitting}
-          style={btnStyle('#e67e22', submitting)}
+          style={btnStyle(color.accent, submitting)}
         >
           {submitting ? 'Saving…' : editing ? 'Save Changes' : 'Save Monster'}
         </button>
@@ -241,5 +242,5 @@ export function MonsterForm() {
 
 const fieldStyle: React.CSSProperties = { padding: '8px', fontSize: 14, width: '100%', boxSizing: 'border-box' }
 function btnStyle(bg: string, disabled = false): React.CSSProperties {
-  return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: 4, cursor: disabled ? 'default' : 'pointer' }
+  return { padding: '10px 20px', fontSize: 14, background: disabled ? '#444' : bg, color: '#fff', border: 'none', borderRadius: radius.sm, cursor: disabled ? 'default' : 'pointer' }
 }

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { PC } from '../types'
 import { fetchJSON } from '../fetchJSON'
+import { color, radius } from '../theme'
 
 interface CompanionRow {
   name: string
@@ -113,7 +114,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
   return (
     <div style={{ maxWidth: 480, margin: '40px auto', padding: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#7878a0', fontSize: 14, cursor: 'pointer', padding: 0 }}>← Back</button>
+        <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: color.textSecondary, fontSize: 14, cursor: 'pointer', padding: 0 }}>← Back</button>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{editing ? 'Edit Character' : 'Create Character'}</h1>
       </div>
 
@@ -150,8 +151,8 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
           <section style={{ ...sectionStyle, marginTop: 20 }}>
             <h3 style={sectionHeader}>Existing Companions / Pets</h3>
             {existingCompanions.map(c => (
-              <div key={c.id} style={{ fontSize: 14, padding: '6px 0', borderBottom: '1px solid #2e2e48' }}>
-                {c.name} <span style={{ color: '#5a5a78', fontSize: 12 }}>{c.max_hp} HP{c.shares_initiative ? ' · shares initiative' : ''}</span>
+              <div key={c.id} style={{ fontSize: 14, padding: '6px 0', borderBottom: `1px solid ${color.border}` }}>
+                {c.name} <span style={{ color: color.textMuted, fontSize: 12 }}>{c.max_hp} HP{c.shares_initiative ? ' · shares initiative' : ''}</span>
               </div>
             ))}
           </section>
@@ -164,18 +165,18 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
             <button
               type="button"
               onClick={addCompanionRow}
-              style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+              style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
             >
               + Add
             </button>
           </div>
 
           {newCompanions.length === 0 && (
-            <div style={{ color: '#5a5a78', fontSize: 13, padding: '8px 0' }}>No new companions.</div>
+            <div style={{ color: color.textMuted, fontSize: 13, padding: '8px 0' }}>No new companions.</div>
           )}
 
           {newCompanions.map((c, i) => (
-            <div key={i} style={{ background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, padding: 12, marginBottom: 10 }}>
+            <div key={i} style={{ background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md, padding: 12, marginBottom: 10 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <div style={{ flex: 2 }}>
                   <div style={fieldLabel}>Name</div>
@@ -212,7 +213,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
                 <button
                   type="button"
                   onClick={() => removeCompanionRow(i)}
-                  style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: 'none', color: '#e74c3c', border: '1px solid #3a1010', borderRadius: 4 }}
+                  style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: 'none', color: color.danger, border: '1px solid #3a1010', borderRadius: radius.sm }}
                 >
                   Remove
                 </button>
@@ -222,7 +223,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
         </section>
 
         {error && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 6, fontSize: 13, color: '#e74c3c' }}>
+          <div style={{ marginTop: 12, padding: '10px 12px', background: '#1a0808', border: `1px solid ${color.danger}`, borderRadius: radius.md, fontSize: 13, color: color.danger }}>
             {error}
           </div>
         )}
@@ -234,7 +235,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
             marginTop: 20, width: '100%', padding: '12px 0', fontSize: 16, fontWeight: 600,
             cursor: submitting || !charName.trim() || !maxHP ? 'not-allowed' : 'pointer',
             opacity: submitting || !charName.trim() || !maxHP ? 0.45 : 1,
-            background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4,
+            background: color.accent, color: '#fff', border: 'none', borderRadius: radius.sm,
           }}
         >
           {submitting ? 'Saving…' : 'Save Character'}
@@ -245,8 +246,8 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
 }
 
 const sectionStyle: React.CSSProperties = {
-  border: '1px solid #2e2e48',
-  borderRadius: 6,
+  border: `1px solid ${color.border}`,
+  borderRadius: radius.md,
   padding: 16,
 }
 
@@ -254,7 +255,7 @@ const sectionHeader: React.CSSProperties = {
   margin: '0 0 12px',
   fontSize: 14,
   fontWeight: 600,
-  color: '#7878a0',
+  color: color.textSecondary,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
 }
@@ -266,12 +267,12 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 12,
   fontWeight: 600,
   fontSize: 13,
-  color: '#7878a0',
+  color: color.textSecondary,
 }
 
 const fieldLabel: React.CSSProperties = {
   fontSize: 12,
-  color: '#5a5a78',
+  color: color.textMuted,
   marginBottom: 4,
   fontWeight: 600,
 }

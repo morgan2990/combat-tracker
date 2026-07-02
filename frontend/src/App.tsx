@@ -8,6 +8,7 @@ import { DMView } from './components/DMView'
 import { CharacterForm } from './components/CharacterForm'
 import { MonsterForm } from './components/MonsterForm'
 import { EncounterForm } from './components/EncounterForm'
+import { color, radius } from './theme'
 
 type AppStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
 
@@ -137,10 +138,10 @@ export default function App() {
     if (status === 'disconnected') {
       return (
         <div style={{ textAlign: 'center', marginTop: 80 }}>
-          <div style={{ fontSize: 18, marginBottom: 16, color: '#d4d4e8' }}>Disconnected from server.</div>
+          <div style={{ fontSize: 18, marginBottom: 16, color: color.textPrimary }}>Disconnected from server.</div>
           <button
             onClick={backToDashboard}
-            style={{ padding: '10px 24px', fontSize: 16, background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '10px 24px', fontSize: 16, background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm, cursor: 'pointer' }}
           >
             Back to Dashboard
           </button>
@@ -178,7 +179,7 @@ export default function App() {
               ? (
                 <>
                   {joinError && (
-                    <div style={{ maxWidth: 760, margin: '12px auto 0', padding: '10px 16px', background: '#1a0808', border: '1px solid #e74c3c', borderRadius: 6, color: '#e74c3c', fontSize: 13 }}>
+                    <div style={{ maxWidth: 760, margin: '12px auto 0', padding: '10px 16px', background: '#1a0808', border: `1px solid ${color.danger}`, borderRadius: radius.md, color: color.danger, fontSize: 13 }}>
                       {joinError}
                     </div>
                   )}

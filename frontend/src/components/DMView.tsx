@@ -9,6 +9,7 @@ import { EntityRow } from './EntityRow'
 import { AddCreatureForm } from './AddCreatureForm'
 import type { AddCreatureFormHandle } from './AddCreatureForm'
 import { EncounterTemplatesControl } from './EncounterTemplatesControl'
+import { color, radius } from '../theme'
 
 interface DMViewProps {
   roomState: RoomState
@@ -50,19 +51,19 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <button
           onClick={onBackToDashboard}
-          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
         >
           ← Dashboard
         </button>
         <h2 style={{ margin: 0 }}>⚔ DM Panel</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {is_started && <span style={{ fontSize: 18, fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
+          {is_started && <span style={{ fontSize: 18, fontWeight: 'bold', color: color.accent }}>Round {round}</span>}
         </div>
       </div>
 
       {/* Room info bar */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 16, padding: '8px 12px', background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, fontSize: 13, flexWrap: 'wrap' }}>
-        <span><span style={{ color: '#7878a0' }}>Room Code: </span><strong style={{ letterSpacing: 1, color: '#d4d4e8' }}>{roomState.room_id}</strong></span>
+      <div style={{ display: 'flex', gap: 20, marginBottom: 16, padding: '8px 12px', background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md, fontSize: 13, flexWrap: 'wrap' }}>
+        <span><span style={{ color: color.textSecondary }}>Room Code: </span><strong style={{ letterSpacing: 1, color: color.textPrimary }}>{roomState.room_id}</strong></span>
       </div>
 
       {/* Combat controls */}
@@ -74,7 +75,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
               disabled={pendingInitiative.length > 0}
               style={{
                 padding: '10px 20px', fontSize: 15, fontWeight: 'bold',
-                background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4,
+                background: color.success, color: '#fff', border: 'none', borderRadius: radius.sm,
                 cursor: pendingInitiative.length > 0 ? 'not-allowed' : 'pointer',
                 opacity: pendingInitiative.length > 0 ? 0.45 : 1,
               }}
@@ -82,7 +83,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
               ▶ Start Combat
             </button>
             {pendingInitiative.length > 0 && (
-              <span style={{ fontSize: 13, color: '#e67e22' }}>
+              <span style={{ fontSize: 13, color: color.accent }}>
                 Waiting on initiative: {pendingInitiative.map(e => e.name).join(', ')}
               </span>
             )}
@@ -91,29 +92,29 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
           <>
             <button
               onClick={() => sendMessage({ type: 'next_turn' })}
-              style={{ padding: '10px 20px', fontSize: 15, fontWeight: 'bold', cursor: 'pointer', background: '#2980b9', color: '#fff', border: 'none', borderRadius: 4 }}
+              style={{ padding: '10px 20px', fontSize: 15, fontWeight: 'bold', cursor: 'pointer', background: '#2980b9', color: '#fff', border: 'none', borderRadius: radius.sm }}
             >
               Next Turn →
             </button>
             {!confirmingEnd ? (
               <button
                 onClick={() => setConfirmingEnd(true)}
-                style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 4 }}
+                style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', background: '#c0392b', color: '#fff', border: 'none', borderRadius: radius.sm }}
               >
                 ⚠ End Combat
               </button>
             ) : (
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, color: '#e74c3c' }}>End this encounter? Creatures will be removed.</span>
+                <span style={{ fontSize: 13, color: color.danger }}>End this encounter? Creatures will be removed.</span>
                 <button
                   onClick={() => setConfirmingEnd(false)}
-                  style={{ padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+                  style={{ padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => { sendMessage({ type: 'end_combat' }); setConfirmingEnd(false) }}
-                  style={{ padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 4 }}
+                  style={{ padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: '#c0392b', color: '#fff', border: 'none', borderRadius: radius.sm }}
                 >
                   Yes, End Combat
                 </button>
@@ -123,7 +124,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
         )}
         <button
           onClick={() => sendMessage({ type: 'add_lair_action' })}
-          style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+          style={{ padding: '10px 20px', fontSize: 14, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
         >
           + Add Lair Action
         </button>
@@ -131,7 +132,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
       </div>
 
       {/* Add creature form */}
-      <div style={{ border: '1px solid #2e2e48', borderRadius: 6, padding: '0 14px', marginBottom: 12, background: '#161626' }}>
+      <div style={{ border: `1px solid ${color.border}`, borderRadius: radius.md, padding: '0 14px', marginBottom: 12, background: color.bgCard }}>
         <AddCreatureForm
           ref={addCreatureFormRef}
           sendMessage={sendMessage}
@@ -145,7 +146,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
         <div style={{ marginBottom: 12 }}>
           <button
             onClick={() => sendMessage({ type: 'remove_dead_creatures' })}
-            style={{ padding: '7px 14px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+            style={{ padding: '7px 14px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
           >
             🗑 Remove All Dead Creatures
           </button>
@@ -153,9 +154,9 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
       )}
 
       {/* Initiative tracker */}
-      <div style={{ border: '1px solid #2e2e48', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ border: `1px solid ${color.border}`, borderRadius: radius.md, overflow: 'hidden' }}>
         {entities.length === 0 && (
-          <div style={{ padding: 16, color: '#7878a0' }}>No combatants yet. Add creatures above or wait for players to join.</div>
+          <div style={{ padding: 16, color: color.textSecondary }}>No combatants yet. Add creatures above or wait for players to join.</div>
         )}
         {entities.map((entity, i) => (
           <EntityRow

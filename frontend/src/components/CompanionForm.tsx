@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { color, radius } from '../theme'
 
 interface CompanionFormProps {
   onSubmit: (msg: object) => void
@@ -30,7 +31,7 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
   return (
     <div style={overlayStyle}>
       <div style={panelStyle}>
-        <h3 style={{ marginTop: 0, marginBottom: 16, color: '#d4d4e8' }}>Add Summon / Pet</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 16, color: color.textPrimary }}>Add Summon / Pet</h3>
         <form onSubmit={handleSubmit}>
           <label style={labelStyle}>
             <span>Name</span>
@@ -55,7 +56,7 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
             />
           </label>
           <label style={labelStyle}>
-            <span>Initiative <span style={{ fontWeight: 400, color: '#5a5a78' }}>(optional)</span></span>
+            <span>Initiative <span style={{ fontWeight: 400, color: color.textMuted }}>(optional)</span></span>
             <input
               type="number"
               value={initiative}
@@ -77,13 +78,13 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
             <button
               type="button"
               onClick={onClose}
-              style={{ flex: 1, padding: '10px 0', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 }}
+              style={{ flex: 1, padding: '10px 0', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: 14 }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              style={{ flex: 2, padding: '10px 0', fontWeight: 'bold', background: '#9b59b6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 }}
+              style={{ flex: 2, padding: '10px 0', fontWeight: 'bold', background: '#9b59b6', color: '#fff', border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: 14 }}
             >
               Add to Tracker
             </button>
@@ -103,7 +104,7 @@ const overlayStyle: React.CSSProperties = {
 
 const panelStyle: React.CSSProperties = {
   background: '#1e1e30',
-  border: '1px solid #2e2e48',
+  border: `1px solid ${color.border}`,
   borderRadius: 8,
   padding: 24,
   width: '90%',
@@ -117,7 +118,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 12,
   fontWeight: 600,
   fontSize: 13,
-  color: '#7878a0',
+  color: color.textSecondary,
 }
 
 const inputStyle: React.CSSProperties = {

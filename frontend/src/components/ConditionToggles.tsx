@@ -1,4 +1,5 @@
 import { CONDITIONS } from '../entityVitals'
+import { color, radius } from '../theme'
 
 interface ConditionTogglesProps {
   conditions: string[]
@@ -15,10 +16,10 @@ export function ConditionToggles({ conditions, onToggle }: ConditionTogglesProps
             key={cond}
             onClick={() => onToggle(cond)}
             style={{
-              padding: '4px 10px', fontSize: 12, borderRadius: 12, border: '1px solid',
-              borderColor: active ? '#e74c3c' : '#2e2e48',
-              background: active ? '#2a0808' : '#1a1a2c',
-              color: active ? '#e74c3c' : '#8888aa',
+              padding: '4px 10px', fontSize: 12, borderRadius: radius.pill, border: '1px solid',
+              borderColor: active ? color.danger : color.border,
+              background: active ? '#2a0808' : color.bgPanel,
+              color: active ? color.danger : '#8888aa',
               cursor: 'pointer',
             }}
           >

@@ -5,6 +5,7 @@ import { CompanionForm } from './CompanionForm'
 import { InventoryPanel } from './InventoryPanel'
 import { ConditionToggles } from './ConditionToggles'
 import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
+import { color, radius } from '../theme'
 
 function hpLabel(current: number, max: number): string {
   if (max === 0) return 'Unknown'
@@ -82,7 +83,7 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
         ) : (
           <button
             onClick={() => { setHpInput(String(entity.current_hp)); setEditingHP(true) }}
-            style={{ fontSize: 18, fontWeight: 'bold', background: 'none', border: '1px solid #2e2e48', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', minWidth: 72, textAlign: 'center', color: '#d4d4e8' }}
+            style={{ fontSize: 18, fontWeight: 'bold', background: 'none', border: `1px solid ${color.border}`, borderRadius: radius.sm, padding: '4px 12px', cursor: 'pointer', minWidth: 72, textAlign: 'center', color: color.textPrimary }}
           >
             {entity.current_hp}/{entity.max_hp}
           </button>
@@ -95,7 +96,7 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
         ))}
 
         {entity.temp_hp > 0 && (
-          <span style={{ fontSize: 13, color: '#3498db', marginLeft: 4 }}>+{entity.temp_hp} tmp</span>
+          <span style={{ fontSize: 13, color: color.info, marginLeft: 4 }}>+{entity.temp_hp} tmp</span>
         )}
       </div>
 
@@ -120,8 +121,8 @@ function InitiativeForm({ sendMessage }: InitiativeFormProps) {
   }
 
   return (
-    <div style={{ padding: '12px 16px', background: '#1a1608', border: '1px solid #e67e22', borderRadius: 6, marginBottom: 16 }}>
-      <div style={{ fontWeight: 600, color: '#e67e22', marginBottom: 8, fontSize: 14 }}>Set your initiative</div>
+    <div style={{ padding: '12px 16px', background: '#1a1608', border: `1px solid ${color.accent}`, borderRadius: radius.md, marginBottom: 16 }}>
+      <div style={{ fontWeight: 600, color: color.accent, marginBottom: 8, fontSize: 14 }}>Set your initiative</div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8 }}>
         <input
           type="number"
@@ -137,7 +138,7 @@ function InitiativeForm({ sendMessage }: InitiativeFormProps) {
           disabled={!initiative}
           style={{
             padding: '8px 16px', fontSize: 14, fontWeight: 600,
-            background: '#e67e22', color: '#fff', border: 'none', borderRadius: 4,
+            background: color.accent, color: '#fff', border: 'none', borderRadius: radius.sm,
             cursor: !initiative ? 'not-allowed' : 'pointer',
             opacity: !initiative ? 0.45 : 1,
           }}
@@ -173,30 +174,30 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <button
           onClick={onBackToDashboard}
-          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
         >
           ← Dashboard
         </button>
         <h2 style={{ margin: 0 }}>⚔ Combat Tracker</h2>
-        {is_started && <span style={{ fontWeight: 'bold', color: '#e67e22' }}>Round {round}</span>}
+        {is_started && <span style={{ fontWeight: 'bold', color: color.accent }}>Round {round}</span>}
       </div>
 
       {/* Initiative prompt (shown until initiative is set) */}
       {needsInitiative && <InitiativeForm sendMessage={sendMessage} />}
 
       {!is_started && !needsInitiative && (
-        <div style={{ padding: 10, background: '#161626', border: '1px solid #2e2e48', borderRadius: 6, marginBottom: 12, fontSize: 14, color: '#7878a0' }}>
+        <div style={{ padding: 10, background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md, marginBottom: 12, fontSize: 14, color: color.textSecondary }}>
           Waiting for DM to start combat…
         </div>
       )}
 
       {/* Initiative tracker */}
-      <div style={{ border: '1px solid #2e2e48', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ border: `1px solid ${color.border}`, borderRadius: radius.md, overflow: 'hidden', marginBottom: 16 }}>
         {visibleEntities.length === 0 && entities.length === 0 && (
-          <div style={{ padding: 16, color: '#7878a0' }}>No combatants yet.</div>
+          <div style={{ padding: 16, color: color.textSecondary }}>No combatants yet.</div>
         )}
         {visibleEntities.length === 0 && entities.length > 0 && (
-          <div style={{ padding: 16, color: '#7878a0' }}>The DM is preparing the encounter…</div>
+          <div style={{ padding: 16, color: color.textSecondary }}>The DM is preparing the encounter…</div>
         )}
         {visibleEntities.map((entity, i) => {
           const isActive = is_started && i === active_index
@@ -213,35 +214,35 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
               key={entity.id}
               style={{
                 padding: '10px 14px',
-                borderBottom: '1px solid #2e2e48',
+                borderBottom: `1px solid ${color.border}`,
                 background: rowBg,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <span style={{ width: 16, color: '#e67e22' }}>{isActive ? '▶' : ''}</span>
+              <span style={{ width: 16, color: color.accent }}>{isActive ? '▶' : ''}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: isMe ? 700 : 400, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {entity.display_name || entity.name}
-                  {isMe && <span style={{ fontSize: 11, color: '#3498db', marginLeft: 6 }}>you</span>}
-                  {vitalState === 'dead' && <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 6 }}>💀 Dead</span>}
-                  {vitalState === 'unconscious' && <span style={{ fontSize: 11, color: '#e67e22', marginLeft: 6 }}>😵 Unconscious</span>}
+                  {isMe && <span style={{ fontSize: 11, color: color.info, marginLeft: 6 }}>you</span>}
+                  {vitalState === 'dead' && <span style={{ fontSize: 11, color: color.danger, marginLeft: 6 }}>💀 Dead</span>}
+                  {vitalState === 'unconscious' && <span style={{ fontSize: 11, color: color.accent, marginLeft: 6 }}>😵 Unconscious</span>}
                 </div>
                 {entity.conditions.length > 0 && (
-                  <div style={{ fontSize: 11, color: '#e74c3c', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: color.danger, marginTop: 2 }}>
                     {entity.conditions.join(' · ')}
                   </div>
                 )}
               </div>
               <div style={{ fontSize: 14, textAlign: 'right', flexShrink: 0, color: textColor }}>
                 {isLairAction ? null : isCreature ? (
-                  <span style={{ color: '#7878a0', fontStyle: 'italic' }}>{hpLabel(entity.current_hp, entity.max_hp)}</span>
+                  <span style={{ color: color.textSecondary, fontStyle: 'italic' }}>{hpLabel(entity.current_hp, entity.max_hp)}</span>
                 ) : (
                   <span>{entity.current_hp}/{entity.max_hp} HP</span>
                 )}
               </div>
-              <div style={{ fontSize: 12, color: '#5a5a78', width: 32, textAlign: 'right' }}>
+              <div style={{ fontSize: 12, color: color.textMuted, width: 32, textAlign: 'right' }}>
                 {entity.initiative !== null ? entity.initiative : '—'}
               </div>
             </div>
@@ -251,18 +252,18 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
 
       {/* My entity editor */}
       {myEntity && (
-        <div style={{ border: '1px solid #3498db', borderRadius: 6, padding: '12px 16px', marginBottom: 16, background: '#0c1929' }}>
+        <div style={{ border: `1px solid ${color.info}`, borderRadius: radius.md, padding: '12px 16px', marginBottom: 16, background: '#0c1929' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <div style={{ fontWeight: 700, color: '#d4d4e8' }}>
+            <div style={{ fontWeight: 700, color: color.textPrimary }}>
               {myEntity.name}
               {is_started && active_index !== -1 && entities[active_index]?.id === myEntityId && (
-                <span style={{ marginLeft: 8, color: '#e67e22', fontSize: 13 }}>Your turn!</span>
+                <span style={{ marginLeft: 8, color: color.accent, fontSize: 13 }}>Your turn!</span>
               )}
               {entityVitalState(myEntity.dead, myEntity.current_hp) === 'dead' && (
-                <span style={{ marginLeft: 8, fontSize: 12, color: '#e74c3c' }}>💀 Dead</span>
+                <span style={{ marginLeft: 8, fontSize: 12, color: color.danger }}>💀 Dead</span>
               )}
               {entityVitalState(myEntity.dead, myEntity.current_hp) === 'unconscious' && (
-                <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
+                <span style={{ marginLeft: 8, fontSize: 12, color: color.accent }}>😵 Unconscious</span>
               )}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
@@ -270,7 +271,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
                 <button
                   onClick={() => setShowInventory(true)}
                   title="View inventory"
-                  style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: '#7878a0', border: '1px solid #2e2e48', borderRadius: 4 }}
+                  style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: color.textSecondary, border: `1px solid ${color.border}`, borderRadius: radius.sm }}
                 >
                   🎒 Inventory
                 </button>
@@ -278,7 +279,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
               <button
                 onClick={() => sendMessage({ type: 'refresh_from_profile' })}
                 title="Refresh max HP from saved profile"
-                style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: '#7878a0', border: '1px solid #2e2e48', borderRadius: 4 }}
+                style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: color.textSecondary, border: `1px solid ${color.border}`, borderRadius: radius.sm }}
               >
                 ↻ Refresh profile
               </button>
@@ -287,7 +288,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
           <EntityEditor entity={myEntity} sendMessage={sendMessage} />
           <button
             onClick={() => setShowCompanionForm(true)}
-            style={{ marginTop: 12, padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: '#2e2e48', color: '#d4d4e8', border: 'none', borderRadius: 4 }}
+            style={{ marginTop: 12, padding: '8px 14px', fontSize: 13, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
           >
             + Add Summon / Pet
           </button>
@@ -296,14 +297,14 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
 
       {/* Owned companion editors */}
       {myCompanions.map(companion => (
-        <div key={companion.id} style={{ border: '1px solid #9b59b6', borderRadius: 6, padding: '12px 16px', marginBottom: 12, background: '#130f1d' }}>
+        <div key={companion.id} style={{ border: '1px solid #9b59b6', borderRadius: radius.md, padding: '12px 16px', marginBottom: 12, background: '#130f1d' }}>
           <div style={{ fontWeight: 700, marginBottom: 8, color: '#b07fe0' }}>
-            {companion.name} <span style={{ fontSize: 11, fontWeight: 400, color: '#5a5a78' }}>companion</span>
+            {companion.name} <span style={{ fontSize: 11, fontWeight: 400, color: color.textMuted }}>companion</span>
             {entityVitalState(companion.dead, companion.current_hp) === 'dead' && (
-              <span style={{ marginLeft: 8, fontSize: 12, color: '#e74c3c' }}>💀 Dead</span>
+              <span style={{ marginLeft: 8, fontSize: 12, color: color.danger }}>💀 Dead</span>
             )}
             {entityVitalState(companion.dead, companion.current_hp) === 'unconscious' && (
-              <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
+              <span style={{ marginLeft: 8, fontSize: 12, color: color.accent }}>😵 Unconscious</span>
             )}
           </div>
           <EntityEditor entity={companion} sendMessage={sendMessage} />
@@ -328,9 +329,9 @@ const deltaBtn: React.CSSProperties = {
   padding: '6px 10px',
   fontSize: 14,
   cursor: 'pointer',
-  borderRadius: 4,
-  border: '1px solid #2e2e48',
+  borderRadius: radius.sm,
+  border: `1px solid ${color.border}`,
   background: '#1e1e30',
-  color: '#d4d4e8',
+  color: color.textPrimary,
   minWidth: 38,
 }

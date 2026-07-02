@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CustomMonster, Encounter } from '../types'
 import { CustomMonsterList, sectionHeading, emptyText, navItem } from './CustomMonsterList'
 import { fetchJSON } from '../fetchJSON'
+import { color, radius } from '../theme'
 
 interface DMNavColumnProps {
   sendMessage: (msg: object) => void
@@ -31,7 +32,7 @@ export function DMNavColumn({ sendMessage, edition, onSelectCustomMonster }: DMN
   return (
     <div style={{
       height: '100%', minHeight: 0, overflowY: 'auto',
-      border: '1px solid #2e2e48', borderRadius: 6, background: '#161626', padding: 14,
+      border: `1px solid ${color.border}`, borderRadius: radius.md, background: color.bgCard, padding: 14,
     }}>
       <div style={{ marginBottom: 20 }}>
         <div style={sectionHeading}>📋 Encounters</div>
