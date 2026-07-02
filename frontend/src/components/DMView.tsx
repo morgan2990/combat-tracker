@@ -7,17 +7,11 @@ import { DMNavColumn } from './DMNavColumn'
 import { InventoryPanel } from './InventoryPanel'
 import { useLayoutTier } from '../hooks/useLayoutTier'
 import { CustomMonsterPillList } from './CustomMonsterPillList'
+import { ConditionToggles } from './ConditionToggles'
+import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
-
-const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
-
-function entityVitalState(entity: Entity): 'dead' | 'unconscious' | 'alive' {
-  if (entity.dead) return 'dead'
-  if (entity.current_hp === 0) return 'unconscious'
-  return 'alive'
-}
 
 function parseHP(input: string, current: number, max: number): number {
   const s = input.trim()
@@ -100,14 +94,9 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenInventory
     sendUpdate({ conditions: next })
   }
 
-  const vitalState = entity.type === 'lair_action' ? 'alive' : entityVitalState(entity)
-  const rowBg =
-    vitalState === 'dead'        ? '#141414' :
-    vitalState === 'unconscious' ? '#1a1608' :
-    isActive                     ? '#1f1508' : '#1a1a2c'
-  const textColor =
-    vitalState === 'dead'        ? '#585858' :
-    vitalState === 'unconscious' ? '#9090a0' : '#d4d4e8'
+  const vitalState = entity.type === 'lair_action' ? 'alive' : entityVitalState(entity.dead, entity.current_hp)
+  const rowBg = vitalRowBg(vitalState, isActive)
+  const textColor = vitalTextColor(vitalState)
 
   return (
     <div style={{ borderBottom: '1px solid #2e2e48' }}>
@@ -250,25 +239,8 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenInventory
 
           {/* Condition toggles */}
           {entity.type !== 'lair_action' && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {CONDITIONS.map(cond => {
-                const active = entity.conditions.includes(cond)
-                return (
-                  <button
-                    key={cond}
-                    onClick={() => toggleCondition(cond)}
-                    style={{
-                      padding: '3px 9px', fontSize: 12, borderRadius: 12, border: '1px solid',
-                      borderColor: active ? '#e74c3c' : '#2e2e48',
-                      background: active ? '#2a0808' : '#1a1a2c',
-                      color: active ? '#e74c3c' : '#8888aa',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {cond}
-                  </button>
-                )
-              })}
+            <div style={{ marginBottom: 12 }}>
+              <ConditionToggles conditions={entity.conditions} onToggle={toggleCondition} />
             </div>
           )}
 

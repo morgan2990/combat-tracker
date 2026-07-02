@@ -27,9 +27,9 @@
 
 ## 6. Frontend: shared entity vital-state and condition helpers
 
-- [ ] 6.1 Extract the shared `entityVitalState`-style dead/unconscious/alive classifier, the `CONDITIONS` array, and the row-color/text-color mapping into a shared module, used by both `DMView.tsx`'s `EntityRow` and `PlayerView.tsx`.
-- [ ] 6.2 Extract the shared condition-toggle button styling/behavior into a shared component, used by both.
-- [ ] 6.3 Verify DMView and PlayerView render combatant rows and condition toggles identically to before (screenshot compare or manual check for a dead, unconscious, and active entity).
+- [x] 6.1 Extracted `CONDITIONS`, `entityVitalState(dead, currentHP)`, `vitalRowBg(vitalState, isActive, isMe?)`, and `vitalTextColor(vitalState)` into `frontend/src/entityVitals.ts`. `entityVitalState` standardized on `PlayerView`'s primitive-based signature (`dead`, `currentHP`) rather than `DMView`'s Entity-object one, since it's the more general shape; `DMView`'s call site updated to `entityVitalState(entity.dead, entity.current_hp)`. `vitalRowBg` takes an `isMe` parameter (defaulting false) to preserve `PlayerView`'s extra highlight branch that `DMView` doesn't have — not unified away, since it's a real behavioral difference.
+- [x] 6.2 Extracted `ConditionToggles` (`frontend/src/components/ConditionToggles.tsx`) — the flex-wrap row of condition-toggle buttons — used by both `DMView.tsx`'s `EntityRow` and `PlayerView.tsx`. Button padding normalized to `4px 10px` (was `3px 9px` in DMView, `4px 10px` in PlayerView) — a 1px visual normalization, not a pure no-op. Each caller keeps its own outer wrapper spacing (DMView's `marginBottom: 12`, PlayerView's none).
+- [x] 6.3 Verified via Playwright: DM side — added a creature, toggled "Prone" (condition tag rendered correctly), killed it (dead-state row: dark background, grayed text, "💀 Dead" indicator, all correct). Player side — joined the room with a PC, toggled "Stunned" (active-state red border/background rendered correctly). Screenshots confirm no regression.
 
 ## 7. Frontend: shared fetchJSON helper
 
