@@ -10,4 +10,4 @@
 - [x] 2.2 `POST /api/rooms` with no body → HTTP 201, `edition: "5e"`. Confirmed via curl.
 - [x] 2.3 `POST /api/rooms` with `{"edition":"3e"}` (unrecognized value) → HTTP 201, `edition: "5e"`. Confirmed via curl.
 - [x] 2.4 `POST /api/rooms` with `{bad json` (malformed) → HTTP 400 `invalid json`, no room created. Confirmed via curl.
-- [ ] 2.5 Close GitHub issue #8 referencing the merged change. (Left open until this change is actually merged.)
+- [x] 2.5 Closed GitHub issue #8, referencing merge commit `05cc42f5d72b940ca3be7d4b515a4fe1c6c0f1b5` (PR #11).
