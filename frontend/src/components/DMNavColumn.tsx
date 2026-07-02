@@ -1,20 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { CustomMonster, Encounter } from '../types'
+import { CustomMonsterList, sectionHeading, emptyText, navItem } from './CustomMonsterList'
 
 interface DMNavColumnProps {
   sendMessage: (msg: object) => void
   edition: string
   onSelectCustomMonster: (monster: CustomMonster) => void
-}
-
-const sectionHeading: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: '#7878a0',
-  textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
-}
-const emptyText: React.CSSProperties = { fontSize: 12, color: '#454568', padding: '4px 0' }
-const navItem: React.CSSProperties = {
-  padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: '#d4d4e8',
-  borderRadius: 4, marginBottom: 4, background: '#1a1a2c', border: '1px solid transparent',
 }
 
 // Persistent, always-visible sibling to the phone tier's Encounter Templates
@@ -58,17 +49,7 @@ export function DMNavColumn({ sendMessage, edition, onSelectCustomMonster }: DMN
           </div>
         ))}
       </div>
-      <div>
-        <div style={sectionHeading}>My Creatures</div>
-        {myCreatures.length === 0 && (
-          <div style={emptyText}>No custom monsters for this edition.</div>
-        )}
-        {myCreatures.map(m => (
-          <div key={m.id} onClick={() => onSelectCustomMonster(m)} style={navItem}>
-            {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
-          </div>
-        ))}
-      </div>
+      <CustomMonsterList monsters={myCreatures} onSelect={onSelectCustomMonster} />
     </div>
   )
 }
