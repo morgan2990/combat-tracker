@@ -13,7 +13,7 @@
 
 ## Decisions
 
-**Use the existing `decodeJSON` helper rather than hand-rolling a new check.** `CreateRoom` already has access to `decodeJSON(w, r, &body) bool` from `api/helpers.go`; swapping to it is a one-line change and keeps `CreateRoom` consistent with the rest of the package rather than introducing a second decode-error-handling pattern.
+**`CreateRoom` keeps its own decode step rather than reusing the shared `decodeJSON` helper.** `decodeJSON` treats any decode error — including `io.EOF` from a genuinely empty body — as "invalid json" and rejects with 400. But `room-creation`'s spec explicitly requires an empty body to succeed (`edition` defaults to `"5e"`), a contract no other endpoint has. Reusing `decodeJSON` as-is would have silently broken that spec'd scenario. `CreateRoom`'s decode step treats `io.EOF` as "valid, empty body" and only rejects on other decode errors (i.e. an actually malformed, non-empty body) — verified against all four scenarios (well-formed body, empty body, unrecognized edition value, malformed JSON) via manual `curl` requests.
 
 **Keep `resolveEditionOrDefault` unchanged.** The decode step and the edition-resolution step are separate concerns — decode failure is now a hard 400, while a valid-but-unrecognized `edition` value (or an omitted one) within a successfully-decoded body still defaults to `"5e"`, per the existing spec'd behavior. This proposal only removes the silent-swallow of decode errors.
 
