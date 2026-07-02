@@ -1,12 +1,48 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import type { Entity, RoomState, MonsterSearchHit, Encounter, CustomMonster } from '../types'
 import { StatblockDrawer } from './StatblockDrawer'
+import { StatblockColumn } from './StatblockColumn'
+import { DMNavColumn } from './DMNavColumn'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
 
 const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
+
+// Width-based layout tiers for DMView. Deliberately viewport-width only — no
+// navigator/UA or touch-capability checks — since device class doesn't
+// reliably predict available pixels (e.g. a high-res tablet should get the
+// desktop layout; a narrowed desktop window should degrade like a phone).
+type LayoutTier = 'phone' | 'tablet' | 'desktop'
+
+const TABLET_QUERY = '(min-width: 768px)'
+const DESKTOP_QUERY = '(min-width: 1300px)'
+
+function computeLayoutTier(): LayoutTier {
+  if (typeof window === 'undefined') return 'phone'
+  if (window.matchMedia(DESKTOP_QUERY).matches) return 'desktop'
+  if (window.matchMedia(TABLET_QUERY).matches) return 'tablet'
+  return 'phone'
+}
+
+function useLayoutTier(): LayoutTier {
+  const [tier, setTier] = useState<LayoutTier>(computeLayoutTier)
+
+  useEffect(() => {
+    const tabletQuery = window.matchMedia(TABLET_QUERY)
+    const desktopQuery = window.matchMedia(DESKTOP_QUERY)
+    const update = () => setTier(computeLayoutTier())
+    tabletQuery.addEventListener('change', update)
+    desktopQuery.addEventListener('change', update)
+    return () => {
+      tabletQuery.removeEventListener('change', update)
+      desktopQuery.removeEventListener('change', update)
+    }
+  }, [])
+
+  return tier
+}
 
 function entityVitalState(entity: Entity): 'dead' | 'unconscious' | 'alive' {
   if (entity.dead) return 'dead'
@@ -294,11 +330,18 @@ const actionBtn: React.CSSProperties = {
 interface AddCreatureFormProps {
   sendMessage: (msg: object) => void
   edition: string
+  showMyCreaturesInline: boolean
 }
 
 interface MonsterRef { source_type: string; reference_url: string; pdf_object_key: string; initiative_modifier: number | null }
 
-function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
+export interface AddCreatureFormHandle {
+  selectCustomMonster: (m: CustomMonster) => void
+}
+
+const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(function AddCreatureForm(
+  { sendMessage, edition, showMyCreaturesInline }, ref
+) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<MonsterSearchHit[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -312,11 +355,14 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
   const [myCreatures, setMyCreatures] = useState<CustomMonster[]>([])
 
   useEffect(() => {
+    // Only fetched here when this tier renders the list inline; at
+    // tablet/desktop tiers DMNavColumn fetches and displays it instead.
+    if (!showMyCreaturesInline) { setMyCreatures([]); return }
     fetch(`/api/custom-monsters?edition=${encodeURIComponent(edition)}`)
       .then(res => res.ok ? res.json() : [])
       .then((data: CustomMonster[]) => setMyCreatures(data))
       .catch(() => setMyCreatures([]))
-  }, [edition])
+  }, [edition, showMyCreaturesInline])
 
   function selectCustomMonster(m: CustomMonster) {
     setName(m.name)
@@ -328,6 +374,8 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
       initiative_modifier: m.initiative_modifier,
     })
   }
+
+  useImperativeHandle(ref, () => ({ selectCustomMonster }))
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -419,7 +467,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
 
   return (
     <div style={{ padding: '12px 0' }}>
-      {myCreatures.length > 0 && (
+      {showMyCreaturesInline && myCreatures.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <div style={labelText}>My Creatures</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
@@ -523,7 +571,7 @@ function AddCreatureForm({ sendMessage, edition }: AddCreatureFormProps) {
       </form>
     </div>
   )
-}
+})
 
 const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 }
 const labelText: React.CSSProperties = { fontSize: 11, color: '#7878a0' }
@@ -593,20 +641,35 @@ interface DMViewProps {
   onBackToDashboard: () => void
 }
 
+// Column sizing shared by the tablet (Nav | Tracker) and desktop
+// (Nav | Tracker | Statblock) layouts. Tracker's max-width is reduced from
+// the phone tier's 720px so the desktop tier is reachable on common
+// ~1366px-wide laptops, not just large monitors.
+const NAV_COLUMN_WIDTH = 220
+const TRACKER_MAX_WIDTH = 580
+const TRACKER_MIN_BASIS = 460
+const STATBLOCK_COLUMN_WIDTH = 420
+const COLUMN_GAP = 16
+const TABLET_LAYOUT_CAP = NAV_COLUMN_WIDTH + TRACKER_MAX_WIDTH + COLUMN_GAP + 32
+const DESKTOP_LAYOUT_CAP = NAV_COLUMN_WIDTH + TRACKER_MAX_WIDTH + STATBLOCK_COLUMN_WIDTH + COLUMN_GAP * 2 + 32
+
 export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProps) {
   const { entities, active_index, is_started, round } = roomState
   const hasDeadCreatures = entities.some(e => e.dead && e.type === 'creature')
   const pendingInitiative = entities.filter(e => (e.type === 'pc' || e.type === 'companion') && e.initiative === null)
   const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [openDrawerEntityId, setOpenDrawerEntityId] = useState<string | null>(null)
+  const addCreatureFormRef = useRef<AddCreatureFormHandle>(null)
+  const tier = useLayoutTier()
 
   useEffect(() => {
     if (!is_started) setConfirmingEnd(false)
   }, [is_started])
 
-  return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: 16 }}>
+  const openEntity = entities.find(e => e.id === openDrawerEntityId) ?? null
 
+  const trackerColumnBody = (
+    <>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <button
@@ -688,12 +751,17 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
         >
           + Add Lair Action
         </button>
-        <EncounterTemplatesControl sendMessage={sendMessage} edition={roomState.edition} />
+        {tier === 'phone' && <EncounterTemplatesControl sendMessage={sendMessage} edition={roomState.edition} />}
       </div>
 
       {/* Add creature form */}
       <div style={{ border: '1px solid #2e2e48', borderRadius: 6, padding: '0 14px', marginBottom: 12, background: '#161626' }}>
-        <AddCreatureForm sendMessage={sendMessage} edition={roomState.edition} />
+        <AddCreatureForm
+          ref={addCreatureFormRef}
+          sendMessage={sendMessage}
+          edition={roomState.edition}
+          showMyCreaturesInline={tier === 'phone'}
+        />
       </div>
 
       {/* Remove all dead creatures */}
@@ -725,15 +793,54 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
           />
         ))}
       </div>
+    </>
+  )
 
-      {entities.filter(e => e.type === 'creature' && e.source_type).map(e => (
-        <StatblockDrawer
-          key={e.id}
-          entity={e}
-          open={openDrawerEntityId === e.id}
-          onClose={() => setOpenDrawerEntityId(null)}
+  const statblockDrawers = entities.filter(e => e.type === 'creature' && e.source_type).map(e => (
+    <StatblockDrawer
+      key={e.id}
+      entity={e}
+      open={openDrawerEntityId === e.id}
+      onClose={() => setOpenDrawerEntityId(null)}
+    />
+  ))
+
+  if (tier === 'phone') {
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: 16 }}>
+        {trackerColumnBody}
+        {statblockDrawers}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        maxWidth: tier === 'desktop' ? DESKTOP_LAYOUT_CAP : TABLET_LAYOUT_CAP,
+        margin: '0 auto', padding: 16, boxSizing: 'border-box',
+        display: 'flex', gap: COLUMN_GAP, height: '100vh',
+      }}
+    >
+      <div style={{ flex: `0 0 ${NAV_COLUMN_WIDTH}px`, minHeight: 0 }}>
+        <DMNavColumn
+          sendMessage={sendMessage}
+          edition={roomState.edition}
+          onSelectCustomMonster={m => addCreatureFormRef.current?.selectCustomMonster(m)}
         />
-      ))}
+      </div>
+
+      <div style={{ flex: `1 1 ${TRACKER_MIN_BASIS}px`, maxWidth: TRACKER_MAX_WIDTH, minHeight: 0, overflowY: 'auto' }}>
+        {trackerColumnBody}
+      </div>
+
+      {tier === 'desktop' && (
+        <div style={{ flex: `0 0 ${STATBLOCK_COLUMN_WIDTH}px`, minHeight: 0 }}>
+          <StatblockColumn entity={openEntity} onClose={() => setOpenDrawerEntityId(null)} />
+        </div>
+      )}
+
+      {tier === 'tablet' && statblockDrawers}
     </div>
   )
 }
