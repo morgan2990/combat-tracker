@@ -15,31 +15,31 @@ import (
 const idChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 type Entity struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Type             string   `json:"type"` // pc | creature | companion
-	OwnerID          string   `json:"owner_id,omitempty"`
-	SessionID        string   `json:"session_id,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"` // pc | creature | companion
+	OwnerID   string `json:"owner_id,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
 	// PCID is the Mongo PC/companion document this entity was instantiated from
 	// (empty for creatures and for ad-hoc companions added via add_companion).
 	// Used to match a reconnecting pc_id back to its entity, to resolve
 	// refresh_from_profile lookups without relying on (no-longer-unique) Name,
 	// and by the frontend to identify "which entity is mine" after connecting.
-	PCID             string   `json:"pc_id,omitempty"`
-	MaxHP            int      `json:"max_hp"`
-	CurrentHP        int      `json:"current_hp"`
-	TempHP           int      `json:"temp_hp"`
-	Initiative       *int     `json:"initiative"`
-	SharesInitiative bool     `json:"shares_initiative"`
-	Conditions       []string `json:"conditions"`
-	Dead             bool     `json:"dead"`
-	SourceType       string   `json:"source_type,omitempty"`
-	ReferenceURL     string   `json:"reference_url,omitempty"`
-	PDFObjectKey        string   `json:"pdf_object_key,omitempty"`
-	InitiativeModifier  *int     `json:"initiative_modifier,omitempty"`
-	InitiativeRoll      *int     `json:"initiative_roll,omitempty"`
-	DisplayName         string   `json:"display_name,omitempty"`
-	IsHidden            bool     `json:"is_hidden"`
+	PCID               string   `json:"pc_id,omitempty"`
+	MaxHP              int      `json:"max_hp"`
+	CurrentHP          int      `json:"current_hp"`
+	TempHP             int      `json:"temp_hp"`
+	Initiative         *int     `json:"initiative"`
+	SharesInitiative   bool     `json:"shares_initiative"`
+	Conditions         []string `json:"conditions"`
+	Dead               bool     `json:"dead"`
+	SourceType         string   `json:"source_type,omitempty"`
+	ReferenceURL       string   `json:"reference_url,omitempty"`
+	PDFObjectKey       string   `json:"pdf_object_key,omitempty"`
+	InitiativeModifier *int     `json:"initiative_modifier,omitempty"`
+	InitiativeRoll     *int     `json:"initiative_roll,omitempty"`
+	DisplayName        string   `json:"display_name,omitempty"`
+	IsHidden           bool     `json:"is_hidden"`
 }
 
 type RoomState struct {

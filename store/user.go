@@ -17,20 +17,20 @@ const sessionTouchDebounce = 5 * time.Minute
 
 // User is a self-serve account: a username/passphrase pair that owns Rooms and PCs.
 type User struct {
-	ID              string    `bson:"id"               json:"id"`
-	Username        string    `bson:"username"         json:"username"`
-	PassphraseHash  string    `bson:"passphrase_hash"  json:"-"`
-	DisplayName     string    `bson:"display_name"     json:"display_name"`
-	CreatedAt       time.Time `bson:"created_at"       json:"created_at"`
+	ID             string    `bson:"id"               json:"id"`
+	Username       string    `bson:"username"         json:"username"`
+	PassphraseHash string    `bson:"passphrase_hash"  json:"-"`
+	DisplayName    string    `bson:"display_name"     json:"display_name"`
+	CreatedAt      time.Time `bson:"created_at"       json:"created_at"`
 }
 
 // Session is a DB-backed login session, identified by an opaque token carried in a cookie.
 type Session struct {
-	Token     string    `bson:"token"        json:"token"`
-	UserID    string    `bson:"user_id"      json:"user_id"`
-	CreatedAt time.Time `bson:"created_at"   json:"created_at"`
+	Token      string    `bson:"token"        json:"token"`
+	UserID     string    `bson:"user_id"      json:"user_id"`
+	CreatedAt  time.Time `bson:"created_at"   json:"created_at"`
 	LastSeenAt time.Time `bson:"last_seen_at" json:"last_seen_at"`
-	ExpiresAt time.Time `bson:"expires_at"   json:"expires_at"`
+	ExpiresAt  time.Time `bson:"expires_at"   json:"expires_at"`
 }
 
 type UserStore struct {

@@ -18,7 +18,7 @@
 
 ## 4. Backend: formatting sweep
 
-- [ ] 4.1 Run `gofmt -l .` to find inconsistently formatted files (including `room/room.go`'s `Entity` struct) and `gofmt -w` them.
+- [x] 4.1 Ran `gofmt -l .`; most flagged files use CRLF line endings, which makes `gofmt -d`/`gofmt -w` treat every line as changed (line-ending normalization noise, not real formatting issues) — running `gofmt -w` on those would silently convert them to LF repo-wide, well outside this task's scope. Instead: hand-realigned `room/room.go`'s `Entity` struct fields to match gofmt's actual output (verified by running gofmt on the struct in isolation), preserving the file's CRLF; ran `gofmt -w` on `store/user.go` (LF-only, genuinely small diff — `User`/`Session` struct field alignment).
 
 ## 5. Frontend: finish My Creatures quick-pick extraction
 
