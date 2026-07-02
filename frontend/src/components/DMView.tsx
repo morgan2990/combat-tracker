@@ -6,6 +6,7 @@ import { StatblockColumn } from './StatblockColumn'
 import { DMNavColumn } from './DMNavColumn'
 import { InventoryPanel } from './InventoryPanel'
 import { useLayoutTier } from '../hooks/useLayoutTier'
+import { CustomMonsterPillList } from './CustomMonsterPillList'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -448,21 +449,7 @@ const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureFormProps>(
       {showMyCreaturesInline && myCreatures.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <div style={labelText}>My Creatures</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-            {myCreatures.map(m => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => selectCustomMonster(m)}
-                style={{
-                  padding: '5px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 12,
-                  border: '1px solid #2e2e48', background: '#1a1a2c', color: '#d4d4e8',
-                }}
-              >
-                {m.name} <span style={{ color: '#7878a0' }}>{m.max_hp} HP</span>
-              </button>
-            ))}
-          </div>
+          <CustomMonsterPillList monsters={myCreatures} onSelect={selectCustomMonster} />
         </div>
       )}
       <div style={{ position: 'relative', marginBottom: 8, maxWidth: 240 }}>

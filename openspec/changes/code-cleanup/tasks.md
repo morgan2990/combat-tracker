@@ -22,8 +22,8 @@
 
 ## 5. Frontend: finish My Creatures quick-pick extraction
 
-- [ ] 5.1 Extract a shared component covering both the phone-tier pill markup and the tablet/desktop `CustomMonsterList` row-list, and use it in both `EncounterForm.tsx` and `DMView.tsx`'s `AddCreatureForm`, removing the duplicated pill JSX from both.
-- [ ] 5.2 Manually verify (as in the prior change) that both tiers still render and add-to-staging/add-to-combat works identically in `EncounterForm` and in `DMView`'s in-room panel.
+- [x] 5.1 The tablet/desktop row-list was already shared via `CustomMonsterList`/`DMNavColumn` from the prior change — `DMView.tsx`'s `AddCreatureForm` never rendered a row-list itself (that's `DMNavColumn`'s job, elsewhere in the layout), only the phone-tier pill. Extracted the pill row markup into `CustomMonsterPillList.tsx` and used it in both `EncounterForm.tsx`'s phone branch and `AddCreatureForm`, removing the duplicated pill JSX from both. Each caller keeps its own "My Creatures" label wrapper (styling drift between them is task 9's scope).
+- [x] 5.2 Manually verified via Playwright: `EncounterForm` at phone width renders the pill and clicking adds to the staging list; `DMView`'s in-room `AddCreatureForm` at phone width renders the pill and clicking populates the Name/Max HP fields — both unchanged from before the extraction.
 
 ## 6. Frontend: shared entity vital-state and condition helpers
 
