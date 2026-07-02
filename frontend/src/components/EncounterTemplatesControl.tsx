@@ -16,8 +16,12 @@ export function EncounterTemplatesControl({ sendMessage, edition }: EncounterTem
     setOpen(next)
     if (next && !loaded) {
       fetch(`/api/encounters?edition=${encodeURIComponent(edition)}`)
-        .then(res => res.ok ? res.json() : [])
-        .then((data: Encounter[]) => { setEncounters(data); setLoaded(true) })
+        .then(res => res.ok ? res.json() as Promise<Encounter[]> : undefined)
+        .then(data => {
+          if (data === undefined) { setEncounters([]); return }
+          setEncounters(data)
+          setLoaded(true)
+        })
         .catch(() => setEncounters([]))
     }
   }

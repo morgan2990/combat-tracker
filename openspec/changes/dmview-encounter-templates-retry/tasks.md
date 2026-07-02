@@ -1,10 +1,10 @@
 ## 1. Fix retry behavior
 
-- [ ] 1.1 In `frontend/src/components/EncounterTemplatesControl.tsx`'s `toggleOpen`, restructure the fetch chain so `setLoaded(true)` only fires when the response is ok and the body parses successfully — a non-ok response and a network/parse error both leave `loaded` false.
-- [ ] 1.2 Run `tsc -b` and `oxlint` to confirm no regressions.
+- [x] 1.1 In `frontend/src/components/EncounterTemplatesControl.tsx`'s `toggleOpen`, restructured the fetch chain so `setLoaded(true)` only fires when the response is ok and the body parses successfully — a non-ok response resolves to `undefined` (instead of `[]`) so it's handled the same way as the `.catch()` network-error path, both leaving `loaded` false.
+- [x] 1.2 `tsc -b` and `oxlint` clean (same pre-existing warnings as before, no new ones).
 
 ## 2. Verify
 
-- [ ] 2.1 Manually test: with the backend running normally, open the dropdown, confirm the encounter list loads and a second open doesn't re-fetch (e.g. via network tab / no visible reload flicker).
-- [ ] 2.2 Manually test (simulated failure): temporarily point the fetch at a bad URL or stop the backend, open the dropdown, confirm the empty-state message shows; restart the backend, open again, confirm it retries and succeeds this time.
-- [ ] 2.3 Close GitHub issue #7 referencing the merged change.
+- [x] 2.1 Verified via Playwright with route interception: a successful fetch lists the encounter and a second dropdown open makes no new request (call count stayed at 1).
+- [x] 2.2 Verified via Playwright, both failure modes: (a) forced HTTP 500 on first call → empty-state shown, reopening retries and succeeds (2 calls total); (b) simulated network abort on first call → same result, retries and succeeds on reopen (2 calls total).
+- [ ] 2.3 Close GitHub issue #7 referencing the merged change. (Left open until this change is actually merged.)
