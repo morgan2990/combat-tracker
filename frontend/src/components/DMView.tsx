@@ -4,6 +4,7 @@ import type { Entity, RoomState, MonsterSearchHit, Encounter, CustomMonster } fr
 import { StatblockDrawer } from './StatblockDrawer'
 import { StatblockColumn } from './StatblockColumn'
 import { DMNavColumn } from './DMNavColumn'
+import { InventoryPanel } from './InventoryPanel'
 
 const SEARCH_MIN_CHARS = 3
 const SEARCH_DEBOUNCE_MS = 175
@@ -71,9 +72,10 @@ interface EntityRowProps {
   isActive: boolean
   sendMessage: (msg: object) => void
   onStatblock?: () => void
+  onOpenInventory: (pcId: string) => void
 }
 
-function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProps) {
+function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenInventory }: EntityRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [hpInput, setHpInput] = useState('')
   const [initInput, setInitInput] = useState(entity.initiative != null ? String(entity.initiative) : '')
@@ -151,6 +153,15 @@ function EntityRow({ entity, isActive, sendMessage, onStatblock }: EntityRowProp
           <span style={{ fontWeight: 600, color: textColor }}>
             {entity.display_name ? `${entity.display_name} (${entity.name})` : entity.name}
           </span>
+          {entity.type === 'pc' && entity.pc_id && (
+            <button
+              onClick={e => { e.stopPropagation(); onOpenInventory(entity.pc_id!) }}
+              title="View inventory"
+              style={{ marginLeft: 6, background: 'none', border: 'none', color: '#7878a0', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}
+            >
+              🎒
+            </button>
+          )}
           {entity.type === 'creature' && entity.source_type && onStatblock && (
             <button
               onClick={e => { e.stopPropagation(); onStatblock() }}
@@ -659,6 +670,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
   const pendingInitiative = entities.filter(e => (e.type === 'pc' || e.type === 'companion') && e.initiative === null)
   const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [openDrawerEntityId, setOpenDrawerEntityId] = useState<string | null>(null)
+  const [inventoryPcId, setInventoryPcId] = useState<string | null>(null)
   const addCreatureFormRef = useRef<AddCreatureFormHandle>(null)
   const tier = useLayoutTier()
 
@@ -790,6 +802,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
             onStatblock={entity.type === 'creature' && entity.source_type
               ? () => setOpenDrawerEntityId(id => id === entity.id ? null : entity.id)
               : undefined}
+            onOpenInventory={setInventoryPcId}
           />
         ))}
       </div>
@@ -805,11 +818,16 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
     />
   ))
 
+  const inventoryPanel = inventoryPcId && (
+    <InventoryPanel pcId={inventoryPcId} onClose={() => setInventoryPcId(null)} />
+  )
+
   if (tier === 'phone') {
     return (
       <div style={{ maxWidth: 720, margin: '0 auto', padding: 16 }}>
         {trackerColumnBody}
         {statblockDrawers}
+        {inventoryPanel}
       </div>
     )
   }
@@ -841,6 +859,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
       )}
 
       {tier === 'tablet' && statblockDrawers}
+      {inventoryPanel}
     </div>
   )
 }

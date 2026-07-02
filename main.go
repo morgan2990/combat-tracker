@@ -56,6 +56,9 @@ func main() {
 	mux.HandleFunc("PUT /api/pcs/{id}", api.UpdatePC)
 	mux.HandleFunc("GET /api/pcs/{id}", api.GetPC)
 	mux.HandleFunc("POST /api/pcs/{id}/companions", api.CreateCompanion)
+	mux.HandleFunc("POST /api/parties", api.CreateParty)
+	mux.HandleFunc("PUT /api/parties/{id}", api.UpdateParty)
+	mux.HandleFunc("GET /api/parties/{id}", api.GetParty)
 	mux.HandleFunc("POST /api/monsters", api.CreateCustomMonster)
 	// custom-monsters is a distinct top-level path from monsters/{name} so the
 	// two route sets can never structurally overlap in Go's ServeMux (e.g.

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Entity, RoomState } from '../types'
 import { CompanionForm } from './CompanionForm'
+import { InventoryPanel } from './InventoryPanel'
 
 const CONDITIONS = ['Prone', 'Stunned', 'Poisoned', 'Blinded', 'Frightened', 'Incapacitated', 'Restrained', 'Paralyzed']
 
@@ -186,6 +187,7 @@ interface PlayerViewProps {
 
 export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage, onBackToDashboard }: PlayerViewProps) {
   const [showCompanionForm, setShowCompanionForm] = useState(false)
+  const [showInventory, setShowInventory] = useState(false)
   const { entities, active_index, is_started, round } = roomState
 
   const myEntity = entities.find(e => e.id === myEntityId)
@@ -297,13 +299,24 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
                 <span style={{ marginLeft: 8, fontSize: 12, color: '#e67e22' }}>😵 Unconscious</span>
               )}
             </div>
-            <button
-              onClick={() => sendMessage({ type: 'refresh_from_profile' })}
-              title="Refresh max HP from saved profile"
-              style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: '#7878a0', border: '1px solid #2e2e48', borderRadius: 4 }}
-            >
-              ↻ Refresh profile
-            </button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {myEntity.pc_id && (
+                <button
+                  onClick={() => setShowInventory(true)}
+                  title="View inventory"
+                  style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: '#7878a0', border: '1px solid #2e2e48', borderRadius: 4 }}
+                >
+                  🎒 Inventory
+                </button>
+              )}
+              <button
+                onClick={() => sendMessage({ type: 'refresh_from_profile' })}
+                title="Refresh max HP from saved profile"
+                style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: '#1e1e30', color: '#7878a0', border: '1px solid #2e2e48', borderRadius: 4 }}
+              >
+                ↻ Refresh profile
+              </button>
+            </div>
           </div>
           <EntityEditor entity={myEntity} sendMessage={sendMessage} />
           <button
@@ -336,6 +349,10 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
           onSubmit={sendMessage}
           onClose={() => setShowCompanionForm(false)}
         />
+      )}
+
+      {showInventory && myEntity?.pc_id && (
+        <InventoryPanel pcId={myEntity.pc_id} onClose={() => setShowInventory(false)} />
       )}
     </div>
   )
