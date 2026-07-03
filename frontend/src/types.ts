@@ -100,6 +100,7 @@ export interface PC {
 export interface Party {
   id: string
   name: string
+  join_code: string
   member_pc_ids: string[]
   currency: Currency
 }

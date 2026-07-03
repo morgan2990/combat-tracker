@@ -95,3 +95,50 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, saved)
 }
+
+type joinPartyPayload struct {
+	JoinCode string `json:"join_code"`
+	PCID     string `json:"pc_id"`
+}
+
+// JoinParty lets any authenticated user add one of their own PCs to a party
+// by presenting its join code — unlike UpdateParty, this requires no existing
+// membership, only that the requester owns the PC being added.
+func JoinParty(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var body joinPartyPayload
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	if body.JoinCode == "" || body.PCID == "" {
+		http.Error(w, "join_code and pc_id required", http.StatusBadRequest)
+		return
+	}
+	party, err := store.GlobalParties.GetPartyByJoinCode(body.JoinCode)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if party == nil {
+		http.NotFound(w, r)
+		return
+	}
+	pc, err := store.Global.GetPCByID(body.PCID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if pc == nil || pc.OwnerUserID != userID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	saved, err := store.GlobalParties.AddMember(party.ID, body.PCID)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, saved)
+}

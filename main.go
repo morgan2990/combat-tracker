@@ -57,6 +57,7 @@ func main() {
 	mux.HandleFunc("GET /api/pcs/{id}", api.GetPC)
 	mux.HandleFunc("POST /api/pcs/{id}/companions", api.CreateCompanion)
 	mux.HandleFunc("POST /api/parties", api.CreateParty)
+	mux.HandleFunc("POST /api/parties/join", api.JoinParty)
 	mux.HandleFunc("PUT /api/parties/{id}", api.UpdateParty)
 	mux.HandleFunc("GET /api/parties/{id}", api.GetParty)
 	mux.HandleFunc("POST /api/monsters", api.CreateCustomMonster)

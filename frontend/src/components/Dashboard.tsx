@@ -28,6 +28,10 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   const [newPartyName, setNewPartyName] = useState('')
   const [creatingParty, setCreatingParty] = useState(false)
   const [inventoryPcId, setInventoryPcId] = useState<string | null>(null)
+  const [joinPartyCode, setJoinPartyCode] = useState('')
+  const [joinPartyPcId, setJoinPartyPcId] = useState(me.pcs[0]?.id ?? '')
+  const [joiningParty, setJoiningParty] = useState(false)
+  const [joinPartyError, setJoinPartyError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchJSON<CustomMonster[]>('/api/custom-monsters', []).then(setMyMonsters)
@@ -104,6 +108,27 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
     if (res.ok) {
       const updated: Party = await res.json()
       setParties(prev => prev.map(p => p.id === updated.id ? updated : p))
+    }
+  }
+
+  async function handleJoinParty() {
+    if (!joinPartyCode.trim() || !joinPartyPcId) return
+    setJoiningParty(true)
+    setJoinPartyError(null)
+    try {
+      const res = await fetch('/api/parties/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ join_code: joinPartyCode.trim().toUpperCase(), pc_id: joinPartyPcId }),
+      })
+      if (!res.ok) throw new Error(res.status === 404 ? 'No party found with that code' : 'Failed to join party')
+      const joined: Party = await res.json()
+      setParties(prev => prev.some(p => p.id === joined.id) ? prev.map(p => p.id === joined.id ? joined : p) : [...prev, joined])
+      setJoinPartyCode('')
+    } catch (err) {
+      setJoinPartyError(err instanceof Error ? err.message : 'Failed to join party')
+    } finally {
+      setJoiningParty(false)
     }
   }
 
@@ -255,6 +280,29 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
               </button>
             </div>
 
+            {me.pcs.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select value={joinPartyPcId} onChange={e => setJoinPartyPcId(e.target.value)} style={selectStyle}>
+                    {me.pcs.map(pc => (
+                      <option key={pc.id} value={pc.id}>{pc.name}</option>
+                    ))}
+                  </select>
+                  <input
+                    value={joinPartyCode}
+                    onChange={e => setJoinPartyCode(e.target.value.toUpperCase())}
+                    maxLength={5}
+                    placeholder="Party code"
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button onClick={handleJoinParty} disabled={joiningParty || !joinPartyCode.trim()} style={actionBtn}>
+                    {joiningParty ? 'Joining…' : 'Join'}
+                  </button>
+                </div>
+                {joinPartyError && <div style={errorStyle}>{joinPartyError}</div>}
+              </div>
+            )}
+
             {me.recent_rooms.length > 0 && (
               <>
                 <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>Recent Rooms</div>
@@ -343,7 +391,10 @@ function PartyCard({ party, myPcs, onUpdate }: PartyCardProps) {
 
   return (
     <div style={{ ...panelStyle, marginBottom: 10 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>{party.name}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+        <div style={{ fontWeight: 600 }}>{party.name}</div>
+        <div style={{ fontSize: 11, color: color.textMuted }}>Code: {party.join_code}</div>
+      </div>
 
       {party.member_pc_ids.length === 0 && (
         <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 8 }}>No members yet.</div>
