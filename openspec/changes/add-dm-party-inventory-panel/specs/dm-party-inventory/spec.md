@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: DM can fetch the aggregated inventory of the room's linked party
-The system SHALL provide `GET /api/rooms/{room_id}/party-inventory`, restricted to the requester matching the room's `owner_user_id`. The response SHALL include: `items`, an array of `{ owner_pc_id, owner_name, name, quantity }` covering every item instance across every member of the room's linked party; `party_currency`, the party's pooled currency (`Party.Currency`, unchanged); and `members_currency_total`, the sum across all members of each member's personal `PC.Currency`, denomination-wise.
+The system SHALL provide `GET /api/rooms/{room_id}/party-inventory`, restricted to the requester matching the room's `owner_user_id`. The response SHALL include: `items`, an array of `{ owner_pc_id, owner_name, name, quantity }` covering every item instance across every member of the room's linked party; `members`, an array of `{ pc_id, name, currency }` giving each member's identity and personal currency (the data source the client filters against — see "Aggregated view is filterable by party member"); `party_currency`, the party's pooled currency (`Party.Currency`, unchanged); and `members_currency_total`, the sum across all members of each member's personal `PC.Currency`, denomination-wise.
 
 #### Scenario: DM fetches the aggregated view
 - **WHEN** the room's owner sends `GET /api/rooms/{room_id}/party-inventory` for a room whose `party_id` is set
-- **THEN** the server SHALL respond with HTTP 200, an `items` array covering every member PC's items with owner references, a `party_currency` object, and a `members_currency_total` object
+- **THEN** the server SHALL respond with HTTP 200, an `items` array covering every member PC's items with owner references, a `members` array with each member's identity and personal currency, a `party_currency` object, and a `members_currency_total` object
 
 #### Scenario: Non-owner cannot fetch the aggregated view
 - **WHEN** a user who is not the room's `owner_user_id` sends `GET /api/rooms/{room_id}/party-inventory`
