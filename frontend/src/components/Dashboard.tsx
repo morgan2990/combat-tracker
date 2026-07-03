@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { MeResponse, CustomMonster, Encounter, Party, PC, Currency } from '../types'
 import { InventoryPanel } from './InventoryPanel'
 import { CurrencyEditor } from './CurrencyEditor'
+import { CollapsibleSection } from './CollapsibleSection'
 import { fetchJSON } from '../fetchJSON'
 import { color, radius } from '../theme'
 
@@ -148,21 +149,8 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
           <h2 style={sectionTitle}>As DM</h2>
 
           <div style={panelStyle}>
-            <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>My Rooms</div>
-            {me.rooms.length === 0 && (
-              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No rooms yet.</div>
-            )}
-            {me.rooms.map(room => (
-              <div key={room.room_id} style={listRow}>
-                <span>
-                  {room.room_id}
-                  {room.is_combat_active && <span style={{ marginLeft: 8, fontSize: 11, color: color.accent }}>● in combat</span>}
-                </span>
-                <button onClick={() => onOpenRoomAsDM(room.room_id)} style={actionBtn}>Open</button>
-              </div>
-            ))}
-
-            <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 20 }}>
+              <span style={{ fontSize: 13, color: color.textSecondary }}>Edition</span>
               {(['5e', '5.5e'] as const).map(ed => (
                 <button
                   key={ed}
@@ -180,48 +168,79 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
                   {ed}
                 </button>
               ))}
-              <button onClick={handleCreateRoom} disabled={creating} style={primaryBtn(creating)}>
-                {creating ? 'Creating…' : '+ New Room'}
-              </button>
             </div>
-            {createError && <div style={errorStyle}>{createError}</div>}
 
-            <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>My Monsters</div>
-            {myMonsters.length === 0 && (
-              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No custom monsters yet.</div>
-            )}
-            {myMonsters.map(m => (
-              <div key={m.id} style={listRow}>
-                <span>
-                  {m.name}
-                  {m.private && <span style={{ marginLeft: 8, fontSize: 11, color: color.textSecondary }}>● private</span>}
-                </span>
-                <span style={{ display: 'flex', gap: 8 }}>
-                  <Link to={`/monsters/custom/${m.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
-                  <button onClick={() => handleDeleteMonster(m.id)} style={deleteBtn}>Delete</button>
-                </span>
-              </div>
-            ))}
-            <Link to="/monsters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: color.info }}>
-              + New Monster
-            </Link>
+            <CollapsibleSection
+              id="dm.rooms"
+              title="My Rooms"
+              count={me.rooms.length}
+              headerAction={
+                <button onClick={handleCreateRoom} disabled={creating} style={primaryBtn(creating)}>
+                  {creating ? 'Creating…' : '+ New Room'}
+                </button>
+              }
+            >
+              {me.rooms.length === 0 && (
+                <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No rooms yet.</div>
+              )}
+              {me.rooms.map(room => (
+                <div key={room.room_id} style={listRow}>
+                  <span>
+                    {room.room_id}
+                    {room.is_combat_active && <span style={{ marginLeft: 8, fontSize: 11, color: color.accent }}>● in combat</span>}
+                  </span>
+                  <button onClick={() => onOpenRoomAsDM(room.room_id)} style={actionBtn}>Open</button>
+                </div>
+              ))}
+              {createError && <div style={errorStyle}>{createError}</div>}
+            </CollapsibleSection>
 
-            <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>My Encounters</div>
-            {myEncounters.length === 0 && (
-              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No encounters yet.</div>
-            )}
-            {myEncounters.map(enc => (
-              <div key={enc.id} style={listRow}>
-                <span>{enc.name}</span>
-                <span style={{ display: 'flex', gap: 8 }}>
-                  <Link to={`/encounters/${enc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
-                  <button onClick={() => handleDeleteEncounter(enc.id)} style={deleteBtn}>Delete</button>
-                </span>
-              </div>
-            ))}
-            <Link to="/encounters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: color.info }}>
-              + New Encounter
-            </Link>
+            <CollapsibleSection
+              id="dm.monsters"
+              title="My Monsters"
+              count={myMonsters.length}
+              headerAction={
+                <Link to="/monsters/new" style={headerActionLink}>+ New Monster</Link>
+              }
+            >
+              {myMonsters.length === 0 && (
+                <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No custom monsters yet.</div>
+              )}
+              {myMonsters.map(m => (
+                <div key={m.id} style={listRow}>
+                  <span>
+                    {m.name}
+                    {m.private && <span style={{ marginLeft: 8, fontSize: 11, color: color.textSecondary }}>● private</span>}
+                  </span>
+                  <span style={{ display: 'flex', gap: 8 }}>
+                    <Link to={`/monsters/custom/${m.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
+                    <button onClick={() => handleDeleteMonster(m.id)} style={deleteBtn}>Delete</button>
+                  </span>
+                </div>
+              ))}
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              id="dm.encounters"
+              title="My Encounters"
+              count={myEncounters.length}
+              headerAction={
+                <Link to="/encounters/new" style={headerActionLink}>+ New Encounter</Link>
+              }
+            >
+              {myEncounters.length === 0 && (
+                <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No encounters yet.</div>
+              )}
+              {myEncounters.map(enc => (
+                <div key={enc.id} style={listRow}>
+                  <span>{enc.name}</span>
+                  <span style={{ display: 'flex', gap: 8 }}>
+                    <Link to={`/encounters/${enc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
+                    <button onClick={() => handleDeleteEncounter(enc.id)} style={deleteBtn}>Delete</button>
+                  </span>
+                </div>
+              ))}
+            </CollapsibleSection>
           </div>
         </div>
 
@@ -230,122 +249,132 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
           <h2 style={sectionTitle}>As Player</h2>
 
           <div style={panelStyle}>
-            <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>My Characters</div>
-            {me.pcs.length === 0 && (
-              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No characters yet.</div>
-            )}
-            {me.pcs.map(pc => (
-              <div key={pc.id} style={listRow}>
-                <span>{pc.name} <span style={{ color: color.textMuted, fontSize: 11 }}>{pc.max_hp} HP</span></span>
-                <span style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => setInventoryPcId(pc.id)}
-                    style={{ fontSize: 12, cursor: 'pointer', padding: 0, background: 'none', color: color.info, border: 'none' }}
-                  >
-                    Inventory
-                  </button>
-                  <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
-                </span>
-              </div>
-            ))}
-            <Link to="/characters/new" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: color.info }}>
-              + New Character
-            </Link>
-
-            <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>My Parties</div>
-            {parties.length === 0 && (
-              <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No parties yet.</div>
-            )}
-            {parties.map(party => (
-              <PartyCard
-                key={party.id}
-                party={party}
-                myPcs={me.pcs}
-                onUpdate={(memberPCIDs, currency) => handleUpdateParty(party.id, memberPCIDs, currency)}
-              />
-            ))}
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <input
-                value={newPartyName}
-                onChange={e => setNewPartyName(e.target.value)}
-                placeholder="Party name"
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button
-                onClick={handleCreateParty}
-                disabled={creatingParty || !newPartyName.trim()}
-                style={primaryBtn(creatingParty || !newPartyName.trim())}
-              >
-                {creatingParty ? 'Creating…' : '+ New Party'}
-              </button>
-            </div>
-
-            {me.pcs.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select value={joinPartyPcId} onChange={e => setJoinPartyPcId(e.target.value)} style={selectStyle}>
-                    {me.pcs.map(pc => (
-                      <option key={pc.id} value={pc.id}>{pc.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    value={joinPartyCode}
-                    onChange={e => setJoinPartyCode(e.target.value.toUpperCase())}
-                    maxLength={5}
-                    placeholder="Party code"
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button onClick={handleJoinParty} disabled={joiningParty || !joinPartyCode.trim()} style={actionBtn}>
-                    {joiningParty ? 'Joining…' : 'Join'}
-                  </button>
+            <CollapsibleSection
+              id="player.characters"
+              title="My Characters"
+              count={me.pcs.length}
+              headerAction={
+                <Link to="/characters/new" style={headerActionLink}>+ New Character</Link>
+              }
+            >
+              {me.pcs.length === 0 && (
+                <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No characters yet.</div>
+              )}
+              {me.pcs.map(pc => (
+                <div key={pc.id} style={listRow}>
+                  <span>{pc.name} <span style={{ color: color.textMuted, fontSize: 11 }}>{pc.max_hp} HP</span></span>
+                  <span style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setInventoryPcId(pc.id)}
+                      style={{ fontSize: 12, cursor: 'pointer', padding: 0, background: 'none', color: color.info, border: 'none' }}
+                    >
+                      Inventory
+                    </button>
+                    <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
+                  </span>
                 </div>
-                {joinPartyError && <div style={errorStyle}>{joinPartyError}</div>}
-              </div>
-            )}
+              ))}
+            </CollapsibleSection>
 
-            {me.recent_rooms.length > 0 && (
-              <>
-                <div style={{ fontSize: 13, color: color.textSecondary, marginTop: 20, marginBottom: 8 }}>Recent Rooms</div>
-                {me.recent_rooms.map(rm => {
-                  const pc = me.pcs.find(p => p.id === rm.last_pc_id)
-                  return (
-                    <div key={rm.room_id} style={listRow}>
-                      <span>{rm.room_id} <span style={{ color: color.textMuted, fontSize: 11 }}>as {pc?.name ?? 'unknown'}</span></span>
-                      <button
-                        onClick={() => onJoinAsPlayer(rm.room_id, rm.last_pc_id)}
-                        disabled={!pc}
-                        style={actionBtn}
-                      >
+            <CollapsibleSection id="player.parties" title="My Parties" count={parties.length}>
+              {parties.length === 0 && (
+                <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No parties yet.</div>
+              )}
+              {parties.map(party => (
+                <PartyCard
+                  key={party.id}
+                  party={party}
+                  myPcs={me.pcs}
+                  onUpdate={(memberPCIDs, currency) => handleUpdateParty(party.id, memberPCIDs, currency)}
+                />
+              ))}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <input
+                  value={newPartyName}
+                  onChange={e => setNewPartyName(e.target.value)}
+                  placeholder="Party name"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={handleCreateParty}
+                  disabled={creatingParty || !newPartyName.trim()}
+                  style={primaryBtn(creatingParty || !newPartyName.trim())}
+                >
+                  {creatingParty ? 'Creating…' : '+ New Party'}
+                </button>
+              </div>
+
+              {me.pcs.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select value={joinPartyPcId} onChange={e => setJoinPartyPcId(e.target.value)} style={selectStyle}>
+                      {me.pcs.map(pc => (
+                        <option key={pc.id} value={pc.id}>{pc.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      value={joinPartyCode}
+                      onChange={e => setJoinPartyCode(e.target.value.toUpperCase())}
+                      maxLength={5}
+                      placeholder="Party code"
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button onClick={handleJoinParty} disabled={joiningParty || !joinPartyCode.trim()} style={actionBtn}>
+                      {joiningParty ? 'Joining…' : 'Join'}
+                    </button>
+                  </div>
+                  {joinPartyError && <div style={errorStyle}>{joinPartyError}</div>}
+                </div>
+              )}
+            </CollapsibleSection>
+
+            <CollapsibleSection id="player.rooms" title="Rooms" count={me.recent_rooms.length}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {me.recent_rooms.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>Recent Rooms</div>
+                    {me.recent_rooms.map(rm => {
+                      const pc = me.pcs.find(p => p.id === rm.last_pc_id)
+                      return (
+                        <div key={rm.room_id} style={listRow}>
+                          <span>{rm.room_id} <span style={{ color: color.textMuted, fontSize: 11 }}>as {pc?.name ?? 'unknown'}</span></span>
+                          <button
+                            onClick={() => onJoinAsPlayer(rm.room_id, rm.last_pc_id)}
+                            disabled={!pc}
+                            style={actionBtn}
+                          >
+                            Go
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {me.pcs.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>Join a new room</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select value={selectedPcId} onChange={e => setSelectedPcId(e.target.value)} style={selectStyle}>
+                        {me.pcs.map(pc => (
+                          <option key={pc.id} value={pc.id}>{pc.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        value={joinRoomCode}
+                        onChange={e => setJoinRoomCode(e.target.value.toUpperCase())}
+                        maxLength={6}
+                        placeholder="XXXXX"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                      <button onClick={handleJoinNewRoom} disabled={!joinRoomCode.trim()} style={primaryBtn(!joinRoomCode.trim())}>
                         Go
                       </button>
                     </div>
-                  )
-                })}
-              </>
-            )}
-
-            {me.pcs.length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>Join a new room</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select value={selectedPcId} onChange={e => setSelectedPcId(e.target.value)} style={selectStyle}>
-                    {me.pcs.map(pc => (
-                      <option key={pc.id} value={pc.id}>{pc.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    value={joinRoomCode}
-                    onChange={e => setJoinRoomCode(e.target.value.toUpperCase())}
-                    maxLength={6}
-                    placeholder="XXXXX"
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button onClick={handleJoinNewRoom} disabled={!joinRoomCode.trim()} style={primaryBtn(!joinRoomCode.trim())}>
-                    Go
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
-            )}
+            </CollapsibleSection>
           </div>
         </div>
       </div>
@@ -449,6 +478,8 @@ const deleteBtn: React.CSSProperties = {
   fontSize: 12, cursor: 'pointer', padding: 0,
   background: 'none', color: color.danger, border: 'none',
 }
+
+const headerActionLink: React.CSSProperties = { fontSize: 13, color: color.info }
 
 const logoutBtn: React.CSSProperties = {
   padding: '6px 12px', fontSize: 12, cursor: 'pointer',
