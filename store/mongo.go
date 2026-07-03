@@ -11,10 +11,15 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// Item is one entry in a PC's personal item list.
+// Item is one entry in a PC's personal item list. CatalogItemID and
+// ReferenceURL are optional and both present only when the entry was created
+// or last edited via a catalog selection (see the item-search capability); a
+// free-text entry omits both.
 type Item struct {
-	Name     string `bson:"name"     json:"name"`
-	Quantity int    `bson:"quantity" json:"quantity"`
+	Name          string `bson:"name"                     json:"name"`
+	Quantity      int    `bson:"quantity"                 json:"quantity"`
+	CatalogItemID string `bson:"catalog_item_id,omitempty" json:"catalog_item_id,omitempty"`
+	ReferenceURL  string `bson:"reference_url,omitempty"   json:"reference_url,omitempty"`
 }
 
 // Currency is a 5e-style coin purse. Denominations are stored and edited
@@ -109,6 +114,11 @@ func Init() error {
 	if err := ensurePartyIndex(ctx, partiesCol); err != nil {
 		return err
 	}
+	itemsCol := db.Collection("items")
+	GlobalCatalogItems = CatalogItemStore{col: itemsCol}
+	if err := ensureCatalogItemIndex(ctx, itemsCol); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -164,6 +174,16 @@ func ensureMonsterIndex(ctx context.Context, col *mongo.Collection) error {
 		}
 	}
 	_, err = iv.CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "name", Value: 1}, {Key: "edition", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	return err
+}
+
+// ensureCatalogItemIndex ensures a unique index on {name, edition}, mirroring
+// ensureMonsterIndex — the item catalog is keyed the same way.
+func ensureCatalogItemIndex(ctx context.Context, col *mongo.Collection) error {
+	_, err := col.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "name", Value: 1}, {Key: "edition", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
