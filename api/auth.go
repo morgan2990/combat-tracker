@@ -107,22 +107,30 @@ func Me(w http.ResponseWriter, r *http.Request) {
 		memberships = []store.RoomMembership{}
 	}
 	pcIDs := make([]string, len(pcs))
+	ownedNames := make(map[string]string, len(pcs))
 	for i, pc := range pcs {
 		pcIDs[i] = pc.ID
+		ownedNames[pc.ID] = pc.Name
 	}
 	parties, err := store.GlobalParties.ListPartiesByMemberPCIDs(pcIDs)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	if parties == nil {
-		parties = []store.Party{}
+	partyViews := make([]partyView, len(parties))
+	for i := range parties {
+		view, err := newPartyView(&parties[i], ownedNames)
+		if err != nil {
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		partyViews[i] = view
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"user":         map[string]string{"username": user.Username, "display_name": user.DisplayName},
 		"rooms":        rooms,
 		"pcs":          pcs,
 		"recent_rooms": memberships,
-		"parties":      parties,
+		"parties":      partyViews,
 	})
 }

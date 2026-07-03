@@ -102,6 +102,9 @@ export interface Party {
   name: string
   join_code: string
   member_pc_ids: string[]
+  // Every member's name, resolved server-side — member_pc_ids may include
+  // PCs owned by other users, which the client has no other way to name.
+  member_names: Record<string, string>
   currency: Currency
 }
 

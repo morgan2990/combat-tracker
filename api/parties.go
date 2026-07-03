@@ -12,6 +12,50 @@ type partyPayload struct {
 	Currency    store.Currency `json:"currency"`
 }
 
+// partyView is the JSON shape returned to clients for a party: the stored
+// document plus each member's resolved name. member_pc_ids may include PCs
+// owned by other users (via join codes), which the client has no other way
+// to name — without this, a party member's card falls back to rendering raw
+// PC IDs for any character it doesn't own.
+type partyView struct {
+	*store.Party
+	MemberNames map[string]string `json:"member_names"`
+}
+
+// newPartyView resolves p's member names, skipping a GetPCByID round trip for
+// any member already present in knownNames (e.g. the requester's own PCs,
+// which callers like Me already have loaded). knownNames may be nil.
+func newPartyView(p *store.Party, knownNames map[string]string) (partyView, error) {
+	names := make(map[string]string, len(p.MemberPCIDs))
+	for _, pcID := range p.MemberPCIDs {
+		if name, ok := knownNames[pcID]; ok {
+			names[pcID] = name
+			continue
+		}
+		pc, err := store.Global.GetPCByID(pcID)
+		if err != nil {
+			return partyView{}, err
+		}
+		if pc != nil {
+			names[pcID] = pc.Name
+		}
+	}
+	return partyView{Party: p, MemberNames: names}, nil
+}
+
+// writePartyView resolves p into its client-facing view and writes it as the
+// JSON response, or writes a 500 on resolution failure. Returns false on
+// failure so callers can short-circuit consistently with the rest of the file.
+func writePartyView(w http.ResponseWriter, status int, p *store.Party, knownNames map[string]string) bool {
+	view, err := newPartyView(p, knownNames)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return false
+	}
+	writeJSON(w, status, view)
+	return true
+}
+
 func CreateParty(w http.ResponseWriter, r *http.Request) {
 	if _, ok := requireUser(w, r); !ok {
 		return
@@ -29,7 +73,7 @@ func CreateParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, p)
+	writePartyView(w, http.StatusOK, p, nil)
 }
 
 func GetParty(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +90,7 @@ func GetParty(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	writeJSON(w, http.StatusOK, p)
+	writePartyView(w, http.StatusOK, p, nil)
 }
 
 // UpdateParty saves membership and pooled-currency changes. A requester may
@@ -93,7 +137,7 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, saved)
+	writePartyView(w, http.StatusOK, saved, nil)
 }
 
 type joinPartyPayload struct {
@@ -140,5 +184,5 @@ func JoinParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, saved)
+	writePartyView(w, http.StatusOK, saved, map[string]string{pc.ID: pc.Name})
 }

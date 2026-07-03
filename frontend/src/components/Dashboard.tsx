@@ -372,7 +372,7 @@ function PartyCard({ party, myPcs, onUpdate }: PartyCardProps) {
   const availablePcs = myPcs.filter(pc => !party.member_pc_ids.includes(pc.id))
 
   function memberName(pcId: string): string {
-    return myPcs.find(pc => pc.id === pcId)?.name ?? pcId
+    return party.member_names[pcId] ?? pcId
   }
 
   function addMember() {
