@@ -57,10 +57,12 @@ func GetRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 type partyInventoryItemRow struct {
-	OwnerPCID string `json:"owner_pc_id"`
-	OwnerName string `json:"owner_name"`
-	Name      string `json:"name"`
-	Quantity  int    `json:"quantity"`
+	OwnerPCID     string `json:"owner_pc_id"`
+	OwnerName     string `json:"owner_name"`
+	Name          string `json:"name"`
+	Quantity      int    `json:"quantity"`
+	CatalogItemID string `json:"catalog_item_id,omitempty"`
+	ReferenceURL  string `json:"reference_url,omitempty"`
 }
 
 type partyInventoryMember struct {
@@ -114,10 +116,12 @@ func GetPartyInventory(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, it := range pc.Items {
 			items = append(items, partyInventoryItemRow{
-				OwnerPCID: pc.ID,
-				OwnerName: pc.Name,
-				Name:      it.Name,
-				Quantity:  it.Quantity,
+				OwnerPCID:     pc.ID,
+				OwnerName:     pc.Name,
+				Name:          it.Name,
+				Quantity:      it.Quantity,
+				CatalogItemID: it.CatalogItemID,
+				ReferenceURL:  it.ReferenceURL,
 			})
 		}
 		members = append(members, partyInventoryMember{PCID: pc.ID, Name: pc.Name, Currency: pc.Currency})
