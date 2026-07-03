@@ -12,7 +12,7 @@ Provides the DM-facing frontend for authoring encounter blueprints: a Dashboard 
 
 ### Requirement: Dashboard Encounters List
 
-The Dashboard's "As DM" card SHALL render a "My Encounters" list, fetched from `GET /api/encounters` on mount, following the same row layout as the existing "My Monsters" list: each row shows the encounter's `name`, an "Edit" link to `/encounters/:id/edit`, and a "Delete" button. A "+ New Encounter" link to `/encounters/new` SHALL appear below the list.
+The Dashboard's "As DM" card SHALL render a "My Encounters" list, fetched from `GET /api/encounters` on mount, following the same row layout as the existing "My Monsters" list: each row shows the encounter's `name`, an "Edit" link to `/encounters/:id/edit`, and a "Delete" button. A "+ New Encounter" link to `/encounters/new` SHALL appear in the Encounters section's header, alongside the section's collapse/expand toggle.
 
 #### Scenario: DM sees their saved encounters
 - **WHEN** the Dashboard loads for a DM with 2 saved encounters
@@ -25,6 +25,10 @@ The Dashboard's "As DM" card SHALL render a "My Encounters" list, fetched from `
 #### Scenario: DM deletes an encounter from the Dashboard
 - **WHEN** the DM clicks Delete on an encounter row and confirms
 - **THEN** the frontend SHALL send `DELETE /api/encounters/:id` and remove the row from the list on success
+
+#### Scenario: New Encounter link is reachable from the section header
+- **WHEN** the DM views the Encounters section, expanded or collapsed
+- **THEN** the "+ New Encounter" link SHALL be visible in the section's header and SHALL navigate to `/encounters/new` when activated
 
 ### Requirement: Encounter Builder Screen
 
