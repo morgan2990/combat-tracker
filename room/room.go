@@ -82,6 +82,47 @@ type Room struct {
 	OwnerUserID string
 	Clients     map[string]*Client // session_id → *Client
 	dirty       bool               // true if state has changed since the last persisted snapshot
+	// partyID is the party this room has claimed (see ClaimParty), or "" if
+	// unclaimed. Deliberately kept off RoomState: it's DM-panel-only metadata,
+	// never broadcast to clients.
+	partyID string
+}
+
+// PartyID returns the party this room has claimed, or "" if unclaimed.
+func (r *Room) PartyID() string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.partyID
+}
+
+// ClaimParty sets the room's linked party if none is set yet. Returns true if
+// this call performed the claim; false if the room was already claimed
+// (by this or a different party).
+func (r *Room) ClaimParty(partyID string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.partyID != "" {
+		return false
+	}
+	r.partyID = partyID
+	return true
+}
+
+// ClaimPartyIfUnclaimed links the room to pcID's party if the room is
+// unclaimed and pcID belongs to a party, reporting whether this call
+// performed the claim. A no-op if the room is already claimed or pcID is
+// unaffiliated. If pcID belongs to more than one party, the lowest party ID
+// is chosen deterministically.
+func (r *Room) ClaimPartyIfUnclaimed(pcID string, ps *store.PartyStore) bool {
+	if r.PartyID() != "" {
+		return false
+	}
+	parties, err := ps.ListPartiesByMemberPCIDs([]string{pcID})
+	if err != nil || len(parties) == 0 {
+		return false
+	}
+	sort.Slice(parties, func(i, j int) bool { return parties[i].ID < parties[j].ID })
+	return r.ClaimParty(parties[0].ID)
 }
 
 // sortEntities always re-sorts State.Entities descending by initiative.
@@ -876,6 +917,7 @@ func (r *Room) snapshot() store.RoomSnapshot {
 		CurrentRound:       r.State.Round,
 		ActiveTurnEntityID: r.activeEntityID(),
 		Edition:            r.State.Edition,
+		PartyID:            r.partyID,
 		Entities:           entities,
 	}
 }
@@ -1009,6 +1051,7 @@ func inflateRoom(snap store.RoomSnapshot) *Room {
 		},
 		OwnerUserID: snap.OwnerUserID,
 		Clients:     make(map[string]*Client),
+		partyID:     snap.PartyID,
 	}
 	rm.State.ActiveIndex = rm.resolveActiveIndex(snap.ActiveTurnEntityID)
 	return rm

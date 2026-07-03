@@ -1,16 +1,48 @@
 import { useState, useEffect } from 'react'
-import type { Item, Currency } from '../types'
+import type { Item, Currency, PartyInventoryResponse } from '../types'
 import { CurrencyEditor } from './CurrencyEditor'
 import { color, radius } from '../theme'
 
 const emptyCurrency: Currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 }
 
+interface ParsedInventory {
+  pcName: string
+  maxHP: number
+  items: Item[]
+  currency: Currency
+}
+
+// GET /api/pcs/:id response, the owner's own view.
+function parseOwnerResponse(data: { pc: { name: string; max_hp: number; items?: Item[]; currency?: Currency } }): ParsedInventory {
+  return {
+    pcName: data.pc.name,
+    maxHP: data.pc.max_hp,
+    items: data.pc.items ?? [],
+    currency: data.pc.currency ?? emptyCurrency,
+  }
+}
+
+// GET .../party-inventory response, sliced down to one member — the DM's view.
+function parsePartyResponse(resp: PartyInventoryResponse, pcId: string): ParsedInventory {
+  const member = resp.members.find(m => m.pc_id === pcId)
+  return {
+    pcName: member?.name ?? '',
+    maxHP: 0,
+    items: resp.items.filter(it => it.owner_pc_id === pcId).map(it => ({ name: it.name, quantity: it.quantity })),
+    currency: member?.currency ?? emptyCurrency,
+  }
+}
+
 interface InventoryPanelProps {
   pcId: string
+  // When set, the DM is viewing this PC via the room's linked-party inventory
+  // rather than the PC's own owner — fetches/saves go through the room-scoped
+  // endpoints instead of /api/pcs/:id.
+  roomId?: string
   onClose: () => void
 }
 
-export function InventoryPanel({ pcId, onClose }: InventoryPanelProps) {
+export function InventoryPanel({ pcId, roomId, onClose }: InventoryPanelProps) {
   const [pcName, setPcName] = useState('')
   const [maxHP, setMaxHP] = useState(0)
   const [items, setItems] = useState<Item[]>([])
@@ -23,7 +55,10 @@ export function InventoryPanel({ pcId, onClose }: InventoryPanelProps) {
   useEffect(() => {
     setLoading(true)
     setLoadError(null)
-    fetch(`/api/pcs/${encodeURIComponent(pcId)}`)
+    const url = roomId
+      ? `/api/rooms/${encodeURIComponent(roomId)}/party-inventory`
+      : `/api/pcs/${encodeURIComponent(pcId)}`
+    fetch(url)
       .then(res => {
         if (!res.ok) {
           throw new Error(res.status === 403 || res.status === 404
@@ -33,14 +68,15 @@ export function InventoryPanel({ pcId, onClose }: InventoryPanelProps) {
         return res.json()
       })
       .then(data => {
-        setPcName(data.pc.name)
-        setMaxHP(data.pc.max_hp)
-        setItems(data.pc.items ?? [])
-        setCurrency(data.pc.currency ?? emptyCurrency)
+        const parsed = roomId ? parsePartyResponse(data as PartyInventoryResponse, pcId) : parseOwnerResponse(data)
+        setPcName(parsed.pcName)
+        setMaxHP(parsed.maxHP)
+        setItems(parsed.items)
+        setCurrency(parsed.currency)
       })
       .catch(err => setLoadError(err instanceof Error ? err.message : 'Failed to load inventory.'))
       .finally(() => setLoading(false))
-  }, [pcId])
+  }, [pcId, roomId])
 
   function addItem() {
     setItems(prev => [...prev, { name: '', quantity: 1 }])
@@ -58,15 +94,16 @@ export function InventoryPanel({ pcId, onClose }: InventoryPanelProps) {
     setSaving(true)
     setSaveError(null)
     try {
-      const res = await fetch(`/api/pcs/${encodeURIComponent(pcId)}`, {
+      const url = roomId
+        ? `/api/rooms/${encodeURIComponent(roomId)}/party-inventory/pcs/${encodeURIComponent(pcId)}`
+        : `/api/pcs/${encodeURIComponent(pcId)}`
+      const body = roomId
+        ? { items: items.filter(it => it.name.trim()), currency }
+        : { name: pcName, max_hp: maxHP, items: items.filter(it => it.name.trim()), currency }
+      const res = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: pcName,
-          max_hp: maxHP,
-          items: items.filter(it => it.name.trim()),
-          currency,
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error(`Failed to save (${res.status})`)
       onClose()
