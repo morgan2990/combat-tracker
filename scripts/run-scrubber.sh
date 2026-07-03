@@ -1,41 +1,55 @@
 #!/usr/bin/env bash
 #
-# Runs the monster scrubber against a local 5etools checkout, sourcing its
-# MongoDB/Typesense credentials from either .env (dev) or .env.production
-# (prod). Bash port of run-scrubber.ps1 — same behavior.
+# Runs the scrubber (monsters or items) against a local 5etools checkout,
+# sourcing its MongoDB/Typesense credentials from either .env (dev) or
+# .env.production (prod). Bash port of run-scrubber.ps1 — same behavior.
 #
 # The scrubber (cmd/scrubber) reads MONGODB_URI, TYPESENSE_URL, and
 # TYPESENSE_API_KEY from the environment - it does not load an env file
 # itself. This script picks which file to load based on --environment:
 #   dev  -> .env             (already used for local `go run .`)
 #   prod -> .env.production  (gitignored; you maintain this by hand)
-# and exports those values for this process only, then invokes:
-#   go run ./cmd/scrubber --source <path> --edition <edition>
+# and exports those values for this process only, then invokes either:
+#   go run ./cmd/scrubber --source <path> --edition <edition>   (monsters)
+#   go run ./cmd/scrubber --mode items --source <path>          (items)
 #
 # Usage:
 #   ./scripts/run-scrubber.sh
 #   ./scripts/run-scrubber.sh --environment prod --edition 5e --source-path /path/to/5etools-src
+#   ./scripts/run-scrubber.sh --mode items --environment prod --source-path /path/to/5etools-src
 #
 # Options:
+#   --mode monsters|items    Prompted for (default "monsters") if omitted.
+#                             Items have no --edition — edition is derived per
+#                             entry from the 5etools source book, not from
+#                             which checkout is scrubbed (see design.md
+#                             Decision 7 in the add-item-search-and-linking
+#                             change).
 #   --environment dev|prod   Prompted for (default "dev") if omitted.
-#   --edition 5e|5.5e        Prompted for (default "5e") if omitted.
+#   --edition 5e|5.5e        Prompted for (default "5e") if omitted. Ignored
+#                             for --mode items.
 #   --source-path PATH       If omitted, defaults to SCRUBBER_SOURCE_5E or
-#                             SCRUBBER_SOURCE_5_5E (whichever matches
-#                             --edition) from the env file, and prompts only
-#                             if that's also unset.
+#                             SCRUBBER_SOURCE_5_5E from the env file (for
+#                             monsters, whichever matches --edition; for
+#                             items, always SCRUBBER_SOURCE_5_5E, since that
+#                             checkout is a strict superset for item data),
+#                             and prompts only if that's also unset.
 
 set -euo pipefail
 
 usage() {
-    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'
 }
 
+MODE=""
 ENVIRONMENT=""
 EDITION=""
 SOURCE_PATH=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --mode) MODE="$2"; shift 2 ;;
+        --mode=*) MODE="${1#*=}"; shift ;;
         --environment) ENVIRONMENT="$2"; shift 2 ;;
         --environment=*) ENVIRONMENT="${1#*=}"; shift ;;
         --edition) EDITION="$2"; shift 2 ;;
@@ -76,9 +90,17 @@ read_with_default() {
     fi
 }
 
-echo "== Monster scrubber setup =="
+echo "== Scrubber setup =="
 echo "Populates MongoDB and Typesense from a local 5etools data checkout."
 echo ""
+
+if [ -z "$MODE" ]; then
+    MODE="$(read_with_default 'Mode (monsters or items)' 'monsters')"
+fi
+if [ "$MODE" != "monsters" ] && [ "$MODE" != "items" ]; then
+    echo "Mode must be 'monsters' or 'items', got '$MODE'." >&2
+    exit 1
+fi
 
 if [ -z "$ENVIRONMENT" ]; then
     ENVIRONMENT="$(read_with_default 'Environment (dev or prod)' 'dev')"
@@ -88,12 +110,14 @@ if [ "$ENVIRONMENT" != "dev" ] && [ "$ENVIRONMENT" != "prod" ]; then
     exit 1
 fi
 
-if [ -z "$EDITION" ]; then
-    EDITION="$(read_with_default 'Edition (5e or 5.5e)' '5e')"
-fi
-if [ "$EDITION" != "5e" ] && [ "$EDITION" != "5.5e" ]; then
-    echo "Edition must be '5e' or '5.5e', got '$EDITION'." >&2
-    exit 1
+if [ "$MODE" = "monsters" ]; then
+    if [ -z "$EDITION" ]; then
+        EDITION="$(read_with_default 'Edition (5e or 5.5e)' '5e')"
+    fi
+    if [ "$EDITION" != "5e" ] && [ "$EDITION" != "5.5e" ]; then
+        echo "Edition must be '5e' or '5.5e', got '$EDITION'." >&2
+        exit 1
+    fi
 fi
 
 if [ "$ENVIRONMENT" = "dev" ]; then
@@ -112,7 +136,7 @@ TYPESENSE_URL_VAL="$(read_env_var "$ENV_FILE_PATH" TYPESENSE_URL)"
 TYPESENSE_KEY_VAL="$(read_env_var "$ENV_FILE_PATH" TYPESENSE_API_KEY)"
 
 if [ -z "$MONGO_URI" ]; then
-    echo "MONGODB_URI not set in $ENV_FILE_NAME - the scrubber cannot write monsters without it." >&2
+    echo "MONGODB_URI not set in $ENV_FILE_NAME - the scrubber cannot write data without it." >&2
     exit 1
 fi
 if [ -z "$TYPESENSE_URL_VAL" ] || [ -z "$TYPESENSE_KEY_VAL" ]; then
@@ -121,7 +145,9 @@ fi
 
 echo "Using credentials from $ENV_FILE_NAME ($ENVIRONMENT)"
 
-if [ "$EDITION" = "5e" ]; then
+if [ "$MODE" = "items" ]; then
+    SOURCE_VAR="SCRUBBER_SOURCE_5_5E"
+elif [ "$EDITION" = "5e" ]; then
     SOURCE_VAR="SCRUBBER_SOURCE_5E"
 else
     SOURCE_VAR="SCRUBBER_SOURCE_5_5E"
@@ -149,9 +175,16 @@ export MONGODB_URI="$MONGO_URI"
 export TYPESENSE_URL="$TYPESENSE_URL_VAL"
 export TYPESENSE_API_KEY="$TYPESENSE_KEY_VAL"
 
-echo ""
-echo "Running scrubber: --source \"$SOURCE_PATH\" --edition $EDITION"
-echo ""
-
 cd "$REPO_ROOT"
-go run ./cmd/scrubber --source "$SOURCE_PATH" --edition "$EDITION"
+
+if [ "$MODE" = "items" ]; then
+    echo ""
+    echo "Running scrubber: --mode items --source \"$SOURCE_PATH\""
+    echo ""
+    go run ./cmd/scrubber --mode items --source "$SOURCE_PATH"
+else
+    echo ""
+    echo "Running scrubber: --source \"$SOURCE_PATH\" --edition $EDITION"
+    echo ""
+    go run ./cmd/scrubber --source "$SOURCE_PATH" --edition "$EDITION"
+fi
