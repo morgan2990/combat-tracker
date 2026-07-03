@@ -95,6 +95,14 @@ type RoomSummary struct {
 	IsCombatActive bool   `bson:"is_combat_active" json:"is_combat_active"`
 }
 
+// Delete removes the persisted snapshot for roomID.
+func (s *RoomStore) Delete(roomID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := s.col.DeleteOne(ctx, bson.M{"room_id": roomID})
+	return err
+}
+
 // ListByOwner returns a summary of every room owned by ownerUserID.
 func (s *RoomStore) ListByOwner(ownerUserID string) ([]RoomSummary, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

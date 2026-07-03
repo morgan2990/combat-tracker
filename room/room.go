@@ -75,6 +75,13 @@ func (c *Client) WritePing() error {
 	return c.Conn.WriteMessage(websocket.PingMessage, nil)
 }
 
+// Close closes the underlying WebSocket connection.
+func (c *Client) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Conn.Close()
+}
+
 // Room holds live combat state and all active WebSocket connections.
 type Room struct {
 	mu          sync.RWMutex
@@ -812,18 +819,34 @@ func (r *Room) RemoveClient(sessionID string) {
 	delete(r.Clients, sessionID)
 }
 
-// BroadcastState sends the full RoomState JSON to every connected client.
-func (r *Room) BroadcastState() {
+// snapshotClients returns a copy of the room's connected clients, taken under
+// a read lock so callers can safely act on them without holding the lock.
+func (r *Room) snapshotClients() []*Client {
 	r.mu.RLock()
-	state := r.State
+	defer r.mu.RUnlock()
 	clients := make([]*Client, 0, len(r.Clients))
 	for _, c := range r.Clients {
 		clients = append(clients, c)
 	}
+	return clients
+}
+
+// BroadcastState sends the full RoomState JSON to every connected client.
+func (r *Room) BroadcastState() {
+	r.mu.RLock()
+	state := r.State
 	r.mu.RUnlock()
 
-	for _, c := range clients {
+	for _, c := range r.snapshotClients() {
 		c.WriteJSON(state)
+	}
+}
+
+// Close closes every currently connected client's WebSocket connection. It
+// does not remove the room from the registry — see Registry.RemoveRoom.
+func (r *Room) Close() {
+	for _, c := range r.snapshotClients() {
+		c.Close()
 	}
 }
 
@@ -993,6 +1016,20 @@ func (reg *Registry) GetOrRestoreRoom(roomID string, st *store.RoomStore) (*Room
 	}
 	reg.rooms[roomID] = rm
 	return rm, true
+}
+
+// RemoveRoom closes every connected client's WebSocket connection in roomID's
+// room, then removes the room from the in-memory registry. A no-op if the
+// room isn't currently registered.
+func (reg *Registry) RemoveRoom(roomID string) {
+	reg.mu.Lock()
+	defer reg.mu.Unlock()
+	rm, ok := reg.rooms[roomID]
+	if !ok {
+		return
+	}
+	rm.Close()
+	delete(reg.rooms, roomID)
 }
 
 // SweepDirty persists every room that has been marked dirty since its last save.

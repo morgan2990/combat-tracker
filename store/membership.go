@@ -61,3 +61,20 @@ func (s *MembershipStore) ListByUser(userID string) ([]RoomMembership, error) {
 	}
 	return results, nil
 }
+
+// DeleteByRoom deletes every membership record referencing roomID.
+func (s *MembershipStore) DeleteByRoom(roomID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := s.col.DeleteMany(ctx, bson.M{"room_id": roomID})
+	return err
+}
+
+// DeleteOne deletes the membership record for (userID, roomID), if any. A
+// no-op, not an error, if no such record exists.
+func (s *MembershipStore) DeleteOne(userID, roomID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := s.col.DeleteOne(ctx, bson.M{"user_id": userID, "room_id": roomID})
+	return err
+}
