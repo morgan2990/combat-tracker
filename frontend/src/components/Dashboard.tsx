@@ -142,7 +142,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* As DM */}
         <div style={{ flex: 1, minWidth: 300 }}>
           <h2 style={sectionTitle}>As DM</h2>
@@ -460,7 +460,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 const selectStyle: React.CSSProperties = {
-  ...inputStyle, maxWidth: 140,
+  ...inputStyle, maxWidth: 140, minWidth: 0,
 }
 
 const errorStyle: React.CSSProperties = {
