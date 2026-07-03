@@ -7,7 +7,7 @@ Defines how room combat state is mirrored to MongoDB so it survives a server res
 ## Requirements
 
 ### Requirement: Room state is persisted to MongoDB
-The system SHALL store a snapshot of each room's combat state in a MongoDB `rooms` collection, keyed by a unique `room_id` index. The persisted document SHALL include `room_id`, `owner_user_id`, `is_combat_active`, `current_round`, `active_turn_entity_id` (nullable), `edition`, and `entities`. Each persisted entity SHALL carry enough fields to fully reconstitute a `room.Entity` on restore — `id`, `name`, `type`, `owner_id`, `max_hp`, `current_hp`, `temp_hp`, `initiative`, `shares_initiative`, `conditions`, `dead`, `source_type`, `reference_url`, `pdf_object_key`, `initiative_modifier`, `initiative_roll`, `display_name`, `is_hidden` — plus a `connected` field. A narrower shape that omits `type`, `owner_id`, `dead`, `display_name`, or `is_hidden` is insufficient: combat logic (turn filtering, companion ownership, dead/alive state) and player-facing name/visibility masking depend on these fields being present after a restore.
+The system SHALL store a snapshot of each room's combat state in a MongoDB `rooms` collection, keyed by a unique `room_id` index. The persisted document SHALL include `room_id`, `owner_user_id`, `is_combat_active`, `current_round`, `active_turn_entity_id` (nullable), `edition`, `party_id` (nullable, absent unless the room has claimed a party), and `entities`. Each persisted entity SHALL carry enough fields to fully reconstitute a `room.Entity` on restore — `id`, `name`, `type`, `owner_id`, `max_hp`, `current_hp`, `temp_hp`, `initiative`, `shares_initiative`, `conditions`, `dead`, `source_type`, `reference_url`, `pdf_object_key`, `initiative_modifier`, `initiative_roll`, `display_name`, `is_hidden` — plus a `connected` field. A narrower shape that omits `type`, `owner_id`, `dead`, `display_name`, or `is_hidden` is insufficient: combat logic (turn filtering, companion ownership, dead/alive state) and player-facing name/visibility masking depend on these fields being present after a restore.
 
 #### Scenario: Snapshot reflects combat-active state
 - **WHEN** a room's snapshot is persisted while `State.IsStarted` is true
@@ -41,6 +41,14 @@ The system SHALL store a snapshot of each room's combat state in a MongoDB `room
 - **WHEN** a room containing a creature with `IsHidden: false` is persisted and later restored
 - **THEN** the restored entity's `IsHidden` SHALL be `false`
 
+#### Scenario: Party claim survives persistence
+- **WHEN** a room whose `party_id` has been set by the party-claiming flow is persisted
+- **THEN** the document SHALL have `party_id` set to that party's ID
+
+#### Scenario: Unclaimed room persists with no party_id
+- **WHEN** a room whose `party_id` is unset is persisted
+- **THEN** the document SHALL have `party_id` absent or `null`
+
 ### Requirement: Room state changes trigger persistence
 The system SHALL write the current room snapshot to MongoDB immediately (as a fire-and-forget operation that does not block the WebSocket message loop) whenever any of the following occurs: a player joins, a player leaves, combat is started, combat is ended, or the active turn advances to the next entity. All other state-mutating events SHALL mark the room dirty without writing immediately.
 
@@ -72,7 +80,7 @@ The system SHALL run a background process that, every 30 seconds, persists a sna
 - **THEN** the server SHALL NOT perform a MongoDB write for that room
 
 ### Requirement: Rooms are restored from MongoDB when absent from memory
-The system SHALL provide a single lookup path that first checks the in-memory room registry, and on a miss, queries MongoDB by `room_id`. If found in MongoDB, the server SHALL inflate the room's state back into the in-memory registry (with an empty connection map, since no WebSocket connections survive a process restart) before returning it.
+The system SHALL provide a single lookup path that first checks the in-memory room registry, and on a miss, queries MongoDB by `room_id`. If found in MongoDB, the server SHALL inflate the room's state back into the in-memory registry (with an empty connection map, since no WebSocket connections survive a process restart) before returning it, including restoring `party_id` if present on the stored document.
 
 #### Scenario: Room found in memory
 - **WHEN** a lookup is performed for a `room_id` present in the in-memory registry
@@ -80,7 +88,7 @@ The system SHALL provide a single lookup path that first checks the in-memory ro
 
 #### Scenario: Room found only in MongoDB
 - **WHEN** a lookup is performed for a `room_id` absent from the in-memory registry but present in the `rooms` MongoDB collection
-- **THEN** the server SHALL decode the stored snapshot into a new in-memory room (restoring `room_id`, `owner_user_id`, combat state, and entities, with `active_index` resolved from `active_turn_entity_id`), register it in the in-memory registry, and return it
+- **THEN** the server SHALL decode the stored snapshot into a new in-memory room (restoring `room_id`, `owner_user_id`, combat state, `party_id`, and entities, with `active_index` resolved from `active_turn_entity_id`), register it in the in-memory registry, and return it
 
 #### Scenario: Active turn ID cannot be resolved on restore
 - **WHEN** a restored snapshot's `active_turn_entity_id` does not match any entity in the restored `entities` list
@@ -89,6 +97,10 @@ The system SHALL provide a single lookup path that first checks the in-memory ro
 #### Scenario: Room not found anywhere
 - **WHEN** a lookup is performed for a `room_id` absent from both the in-memory registry and MongoDB
 - **THEN** the lookup SHALL report not-found to the caller
+
+#### Scenario: Restored room with no stored party_id remains unclaimed
+- **WHEN** a snapshot with no `party_id` field is restored into the in-memory registry
+- **THEN** the restored room's `party_id` SHALL be unset, and the room remains eligible to be claimed by the next party-affiliated join
 
 ### Requirement: A REST endpoint exposes room existence and restoration
 The system SHALL provide a `GET /api/rooms/{room_id}` endpoint that performs the in-memory-then-MongoDB lookup and returns room metadata on success.
