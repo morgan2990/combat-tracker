@@ -25,10 +25,13 @@ interface EntityRowProps {
   isActive: boolean
   sendMessage: (msg: object) => void
   onStatblock?: () => void
+  // Whether this row's PC is a member of the room's currently linked party —
+  // the only case where the DM has a legal, working path to its inventory.
+  canOpenInventory?: boolean
   onOpenInventory: (pcId: string) => void
 }
 
-export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenInventory }: EntityRowProps) {
+export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenInventory, onOpenInventory }: EntityRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [hpInput, setHpInput] = useState('')
   const [initInput, setInitInput] = useState(entity.initiative != null ? String(entity.initiative) : '')
@@ -101,7 +104,7 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, onOpenIn
           <span style={{ fontWeight: 600, color: textColor }}>
             {entity.display_name ? `${entity.display_name} (${entity.name})` : entity.name}
           </span>
-          {entity.type === 'pc' && entity.pc_id && (
+          {entity.type === 'pc' && entity.pc_id && canOpenInventory && (
             <button
               onClick={e => { e.stopPropagation(); onOpenInventory(entity.pc_id!) }}
               title="View inventory"

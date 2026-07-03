@@ -111,6 +111,27 @@ export interface RoomSummary {
   is_combat_active: boolean
 }
 
+export interface PartyInventoryItemRow {
+  owner_pc_id: string
+  owner_name: string
+  name: string
+  quantity: number
+}
+
+export interface PartyInventoryMember {
+  pc_id: string
+  name: string
+  currency: Currency
+}
+
+export interface PartyInventoryResponse {
+  party_linked: boolean
+  items: PartyInventoryItemRow[]
+  members: PartyInventoryMember[]
+  party_currency: Currency
+  members_currency_total: Currency
+}
+
 export interface RoomMembership {
   user_id: string
   room_id: string

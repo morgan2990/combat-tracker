@@ -44,6 +44,7 @@ type RoomSnapshot struct {
 	CurrentRound       int                  `bson:"current_round"         json:"current_round"`
 	ActiveTurnEntityID *string              `bson:"active_turn_entity_id" json:"active_turn_entity_id"`
 	Edition            string               `bson:"edition"               json:"edition"`
+	PartyID            string               `bson:"party_id,omitempty"    json:"party_id,omitempty"`
 	Entities           []RoomEntitySnapshot `bson:"entities"              json:"entities"`
 }
 

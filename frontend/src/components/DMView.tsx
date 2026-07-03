@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
-import type { RoomState } from '../types'
+import type { RoomState, PartyInventoryResponse } from '../types'
 import { StatblockDrawer } from './StatblockDrawer'
 import { StatblockColumn } from './StatblockColumn'
 import { DMNavColumn } from './DMNavColumn'
 import { InventoryPanel } from './InventoryPanel'
+import { PartyInventoryPanel } from './PartyInventoryPanel'
 import { useLayoutTier } from '../hooks/useLayoutTier'
 import { EntityRow } from './EntityRow'
 import { AddCreatureForm } from './AddCreatureForm'
 import type { AddCreatureFormHandle } from './AddCreatureForm'
 import { EncounterTemplatesControl } from './EncounterTemplatesControl'
+import { fetchJSON } from '../fetchJSON'
 import { color, radius } from '../theme'
 
 interface DMViewProps {
@@ -36,12 +38,27 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
   const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [openDrawerEntityId, setOpenDrawerEntityId] = useState<string | null>(null)
   const [inventoryPcId, setInventoryPcId] = useState<string | null>(null)
+  const [showPartyInventory, setShowPartyInventory] = useState(false)
+  const [partyMemberPCIDs, setPartyMemberPCIDs] = useState<Set<string>>(new Set())
   const addCreatureFormRef = useRef<AddCreatureFormHandle>(null)
   const tier = useLayoutTier()
 
   useEffect(() => {
     if (!is_started) setConfirmingEnd(false)
   }, [is_started])
+
+  // party_id is deliberately never broadcast over the room's WebSocket state
+  // (see the party-room-claiming spec), so the only way to know whether — and
+  // to whom — a party has been linked is to ask this REST endpoint. Refetched
+  // whenever the room's PC roster changes, since that's exactly when a claim
+  // can happen.
+  const pcRosterKey = entities.filter(e => e.type === 'pc').map(e => e.pc_id).join(',')
+  useEffect(() => {
+    fetchJSON<Pick<PartyInventoryResponse, 'members'>>(
+      `/api/rooms/${encodeURIComponent(roomState.room_id)}/party-inventory`,
+      { members: [] },
+    ).then(data => setPartyMemberPCIDs(new Set(data.members.map(m => m.pc_id))))
+  }, [roomState.room_id, pcRosterKey])
 
   const openEntity = entities.find(e => e.id === openDrawerEntityId) ?? null
 
@@ -62,8 +79,14 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
       </div>
 
       {/* Room info bar */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 16, padding: '8px 12px', background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md, fontSize: 13, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 20, marginBottom: 16, padding: '8px 12px', background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md, fontSize: 13, flexWrap: 'wrap', alignItems: 'center' }}>
         <span><span style={{ color: color.textSecondary }}>Room Code: </span><strong style={{ letterSpacing: 1, color: color.textPrimary }}>{roomState.room_id}</strong></span>
+        <button
+          onClick={() => setShowPartyInventory(true)}
+          style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 12, cursor: 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
+        >
+          🎒 Party Inventory
+        </button>
       </div>
 
       {/* Combat controls */}
@@ -167,6 +190,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
             onStatblock={entity.type === 'creature' && entity.source_type
               ? () => setOpenDrawerEntityId(id => id === entity.id ? null : entity.id)
               : undefined}
+            canOpenInventory={!!entity.pc_id && partyMemberPCIDs.has(entity.pc_id)}
             onOpenInventory={setInventoryPcId}
           />
         ))}
@@ -184,7 +208,11 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
   ))
 
   const inventoryPanel = inventoryPcId && (
-    <InventoryPanel pcId={inventoryPcId} onClose={() => setInventoryPcId(null)} />
+    <InventoryPanel pcId={inventoryPcId} roomId={roomState.room_id} onClose={() => setInventoryPcId(null)} />
+  )
+
+  const partyInventoryPanel = showPartyInventory && (
+    <PartyInventoryPanel roomId={roomState.room_id} onClose={() => setShowPartyInventory(false)} />
   )
 
   if (tier === 'phone') {
@@ -193,6 +221,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
         {trackerColumnBody}
         {statblockDrawers}
         {inventoryPanel}
+        {partyInventoryPanel}
       </div>
     )
   }
@@ -225,6 +254,7 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
 
       {tier === 'tablet' && statblockDrawers}
       {inventoryPanel}
+      {partyInventoryPanel}
     </div>
   )
 }

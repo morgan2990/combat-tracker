@@ -192,6 +192,9 @@ func dispatch(rm *room.Room, c *room.Client, raw []byte) {
 			if cErr == nil && len(companions) > 0 {
 				rm.InstantiateCompanionsFromPC(c.SessionID, companions)
 			}
+			if rm.ClaimPartyIfUnclaimed(c.PCID, &store.GlobalParties) {
+				go rm.PersistNow(&store.GlobalRooms)
+			}
 			roomID, _, _ := rm.Summary()
 			go store.GlobalMemberships.Upsert(c.UserID, roomID, c.PCID)
 			rm.BroadcastState()

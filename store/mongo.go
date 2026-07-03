@@ -204,6 +204,31 @@ func (s *Store) UpdatePC(id, name string, maxHP int, items []Item, currency Curr
 	return err
 }
 
+// UpdatePCInventory overwrites only a PC's items and currency, leaving name
+// and max_hp untouched, and returns the updated document (nil if id doesn't
+// exist). Used by callers that don't otherwise know or need the PC's other
+// fields — e.g. the DM party-inventory endpoints.
+func (s *Store) UpdatePCInventory(id string, items []Item, currency Currency) (*PC, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if items == nil {
+		items = []Item{}
+	}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var result PC
+	err := s.col.FindOneAndUpdate(ctx, bson.M{"id": id}, bson.M{"$set": bson.M{
+		"items":    items,
+		"currency": currency,
+	}}, opts).Decode(&result)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // GetPCByID returns the PC (or companion) with the given id, or nil if not found.
 func (s *Store) GetPCByID(id string) (*PC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
