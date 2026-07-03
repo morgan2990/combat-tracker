@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import type { Item, Currency, PartyInventoryResponse } from '../types'
 import { CurrencyEditor, CURRENCY_DENOMS } from './CurrencyEditor'
+import { ItemNameSearchField } from './ItemNameSearchField'
+import { mergeIntoExistingRow } from '../hooks/useItemCatalogSearch'
 import { color, radius } from '../theme'
 
 const emptyCurrency: Currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 }
 
 interface PartyInventoryPanelProps {
   roomId: string
+  edition?: string
   onClose: () => void
 }
 
@@ -27,7 +30,7 @@ function CurrencyReadout({ currency }: { currency: Currency }) {
   )
 }
 
-export function PartyInventoryPanel({ roomId, onClose }: PartyInventoryPanelProps) {
+export function PartyInventoryPanel({ roomId, edition, onClose }: PartyInventoryPanelProps) {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [partyLinked, setPartyLinked] = useState(false)
@@ -56,7 +59,12 @@ export function PartyInventoryPanel({ roomId, onClose }: PartyInventoryPanelProp
         setMembersCurrencyTotal(data.members_currency_total)
         const itemsByOwner: Record<string, Item[]> = {}
         for (const row of data.items) {
-          (itemsByOwner[row.owner_pc_id] ??= []).push({ name: row.name, quantity: row.quantity })
+          (itemsByOwner[row.owner_pc_id] ??= []).push({
+            name: row.name,
+            quantity: row.quantity,
+            catalog_item_id: row.catalog_item_id,
+            reference_url: row.reference_url,
+          })
         }
         setMembers(data.members.map(m => ({
           pcId: m.pc_id,
@@ -77,6 +85,19 @@ export function PartyInventoryPanel({ roomId, onClose }: PartyInventoryPanelProp
     const member = members.find(m => m.pcId === pcId)
     if (!member) return
     updateMemberItems(pcId, member.items.map((it, idx) => idx === index ? { ...it, ...patch } : it))
+  }
+
+  // Merges a catalog selection into a sibling row within the *same* member's
+  // item list only — a selection made while editing one member never affects
+  // another member's rows (see design.md Decision 5 / the dm-party-inventory
+  // spec's per-member merge scenarios).
+  function trySelectExisting(pcId: string, rowIndex: number, catalogItemId: string): boolean {
+    const member = members.find(m => m.pcId === pcId)
+    if (!member) return false
+    const merged = mergeIntoExistingRow(member.items, rowIndex, catalogItemId)
+    if (!merged) return false
+    updateMemberItems(pcId, merged)
+    return true
   }
 
   async function saveMember(pcId: string) {
@@ -156,11 +177,11 @@ export function PartyInventoryPanel({ roomId, onClose }: PartyInventoryPanelProp
                 )}
                 {member.items.map((item, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                    <input
-                      value={item.name}
-                      onChange={e => updateItem(member.pcId, i, { name: e.target.value })}
-                      placeholder="Item name"
-                      style={{ ...inputStyle, flex: 1 }}
+                    <ItemNameSearchField
+                      item={item}
+                      edition={edition ?? '5e'}
+                      onUpdate={patch => updateItem(member.pcId, i, patch)}
+                      onSelectExisting={catalogItemId => trySelectExisting(member.pcId, i, catalogItemId)}
                     />
                     <input
                       type="number"

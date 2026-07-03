@@ -74,6 +74,8 @@ func main() {
 	mux.HandleFunc("GET /api/monsters/{name}", api.GetMonster)
 	mux.HandleFunc("GET /api/search/monsters", api.SearchMonsters)
 	mux.HandleFunc("GET /api/monsters/{name}/pdf", api.StreamMonsterPDF)
+	mux.HandleFunc("GET /api/search/items", api.SearchItems)
+	mux.HandleFunc("GET /api/items/{id}", api.GetItem)
 	mux.HandleFunc("POST /api/encounters", api.CreateEncounter)
 	mux.HandleFunc("GET /api/encounters", api.ListMyEncounters)
 	mux.HandleFunc("GET /api/encounters/{id}", api.GetEncounter)

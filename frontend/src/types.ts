@@ -39,6 +39,24 @@ export interface MonsterSearchHit {
   owner_display_name?: string
 }
 
+export interface ItemSearchHit {
+  id: string
+  name: string
+  category: string
+  rarity?: string
+}
+
+export interface CatalogItem {
+  id: string
+  name: string
+  edition: string
+  category: string
+  rarity?: string
+  reference_url?: string
+  five_etools_id?: string
+  source_book?: string
+}
+
 export interface CustomMonster {
   id: string
   name: string
@@ -75,6 +93,8 @@ export type Role = 'dm' | 'player'
 export interface Item {
   name: string
   quantity: number
+  catalog_item_id?: string
+  reference_url?: string
 }
 
 export interface Currency {
@@ -119,6 +139,8 @@ export interface PartyInventoryItemRow {
   owner_name: string
   name: string
   quantity: number
+  catalog_item_id?: string
+  reference_url?: string
 }
 
 export interface PartyInventoryMember {

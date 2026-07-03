@@ -208,11 +208,11 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
   ))
 
   const inventoryPanel = inventoryPcId && (
-    <InventoryPanel pcId={inventoryPcId} roomId={roomState.room_id} onClose={() => setInventoryPcId(null)} />
+    <InventoryPanel pcId={inventoryPcId} roomId={roomState.room_id} edition={roomState.edition} onClose={() => setInventoryPcId(null)} />
   )
 
   const partyInventoryPanel = showPartyInventory && (
-    <PartyInventoryPanel roomId={roomState.room_id} onClose={() => setShowPartyInventory(false)} />
+    <PartyInventoryPanel roomId={roomState.room_id} edition={roomState.edition} onClose={() => setShowPartyInventory(false)} />
   )
 
   if (tier === 'phone') {

@@ -80,6 +80,10 @@ func InitTypesense() {
 		log.Printf("typesense: schema init failed: %v", err)
 		return
 	}
+	if err := ensureItemCollection(ctx, client); err != nil {
+		log.Printf("typesense: item schema init failed: %v", err)
+		return
+	}
 
 	globalTypesense = typesenseStore{client: client}
 }
