@@ -37,7 +37,7 @@ Each section's expanded/collapsed state SHALL be persisted in the browser's `loc
 - **THEN** the Encounters section SHALL render expanded regardless of the Parties section's stored state
 
 ### Requirement: A section's primary create-new action stays reachable when collapsed
-For the Characters, Monsters, Encounters, and DM Rooms sections — whose primary "create new" affordance is a single-interaction link or button requiring no accompanying input — that action SHALL remain visible and usable in the section's header regardless of whether the section is expanded or collapsed. The Parties section's "create a party" control (requires a party name) and the Rooms sections' "join" controls (require a PC selection plus a code) are not single-interaction actions; they SHALL render as part of each section's collapsible content and SHALL be hidden when that section is collapsed.
+For the Characters, Monsters, Encounters, and DM Rooms sections — whose primary "create new" affordance is a single-interaction action requiring no accompanying input — that action SHALL render as a filled button and SHALL remain visible and usable in the section's header regardless of whether the section is expanded or collapsed. The Parties section's "create a party" control (requires a party name) and the Rooms sections' "join" controls (require a PC selection plus a code) are not single-interaction actions; they SHALL render as part of each section's collapsible content and SHALL be hidden when that section is collapsed.
 
 #### Scenario: New Character action usable while its section is collapsed
 - **WHEN** the Characters section is collapsed
@@ -54,6 +54,10 @@ For the Characters, Monsters, Encounters, and DM Rooms sections — whose primar
 #### Scenario: New Encounter action usable while its section is collapsed
 - **WHEN** the Encounters section is collapsed
 - **THEN** the "+ New Encounter" action SHALL still be visible and usable
+
+#### Scenario: Create-new actions render as filled buttons
+- **WHEN** the Dashboard renders the Characters, Monsters, Encounters, or DM Rooms section header
+- **THEN** that section's "+ New …" action SHALL render as a filled button, matching the visual style of the other three sections' create actions
 
 #### Scenario: Create-a-party control hidden while its section is collapsed
 - **WHEN** the Parties section is collapsed
