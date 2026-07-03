@@ -319,7 +319,7 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
       )}
 
       {showInventory && myEntity?.pc_id && (
-        <InventoryPanel pcId={myEntity.pc_id} onClose={() => setShowInventory(false)} />
+        <InventoryPanel pcId={myEntity.pc_id} edition={roomState.edition} onClose={() => setShowInventory(false)} />
       )}
     </div>
   )

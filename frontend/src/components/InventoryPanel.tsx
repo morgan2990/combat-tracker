@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { Item, Currency, PartyInventoryResponse } from '../types'
 import { CurrencyEditor } from './CurrencyEditor'
+import { ItemNameSearchField } from './ItemNameSearchField'
+import { mergeIntoExistingRow } from '../hooks/useItemCatalogSearch'
 import { color, radius } from '../theme'
 
 const emptyCurrency: Currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 }
@@ -28,7 +30,12 @@ function parsePartyResponse(resp: PartyInventoryResponse, pcId: string): ParsedI
   return {
     pcName: member?.name ?? '',
     maxHP: 0,
-    items: resp.items.filter(it => it.owner_pc_id === pcId).map(it => ({ name: it.name, quantity: it.quantity })),
+    items: resp.items.filter(it => it.owner_pc_id === pcId).map(it => ({
+      name: it.name,
+      quantity: it.quantity,
+      catalog_item_id: it.catalog_item_id,
+      reference_url: it.reference_url,
+    })),
     currency: member?.currency ?? emptyCurrency,
   }
 }
@@ -39,10 +46,11 @@ interface InventoryPanelProps {
   // rather than the PC's own owner — fetches/saves go through the room-scoped
   // endpoints instead of /api/pcs/:id.
   roomId?: string
+  edition?: string
   onClose: () => void
 }
 
-export function InventoryPanel({ pcId, roomId, onClose }: InventoryPanelProps) {
+export function InventoryPanel({ pcId, roomId, edition, onClose }: InventoryPanelProps) {
   const [pcName, setPcName] = useState('')
   const [maxHP, setMaxHP] = useState(0)
   const [items, setItems] = useState<Item[]>([])
@@ -90,6 +98,13 @@ export function InventoryPanel({ pcId, roomId, onClose }: InventoryPanelProps) {
     setItems(prev => prev.filter((_, idx) => idx !== i))
   }
 
+  function trySelectExisting(rowIndex: number, catalogItemId: string): boolean {
+    const merged = mergeIntoExistingRow(items, rowIndex, catalogItemId)
+    if (!merged) return false
+    setItems(merged)
+    return true
+  }
+
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
@@ -135,11 +150,11 @@ export function InventoryPanel({ pcId, roomId, onClose }: InventoryPanelProps) {
               )}
               {items.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                  <input
-                    value={item.name}
-                    onChange={e => updateItem(i, { name: e.target.value })}
-                    placeholder="Item name"
-                    style={{ ...inputStyle, flex: 1 }}
+                  <ItemNameSearchField
+                    item={item}
+                    edition={edition ?? '5e'}
+                    onUpdate={patch => updateItem(i, patch)}
+                    onSelectExisting={catalogItemId => trySelectExisting(i, catalogItemId)}
                   />
                   <input
                     type="number"
