@@ -191,6 +191,48 @@ func UpdatePartyInventoryPC(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// DeleteRoom permanently deletes a room the requester owns: it tears down the
+// live in-memory session (disconnecting any connected clients), deletes the
+// persisted MongoDB snapshot, and cascades to delete every RoomMembership
+// referencing the room. Deletion is unconditional — it is not blocked by an
+// active combat state or by connected clients.
+func DeleteRoom(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	roomID := r.PathValue("room_id")
+	if _, ok := requireOwnedRoom(w, r, roomID, userID); !ok {
+		return
+	}
+	room.Global.RemoveRoom(roomID)
+	if err := store.GlobalRooms.Delete(roomID); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if err := store.GlobalMemberships.DeleteByRoom(roomID); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// LeaveRoom deletes the requesting user's own RoomMembership record for a
+// room, removing it from that user's "recent rooms" list. It has no effect on
+// the room itself or on other users' memberships.
+func LeaveRoom(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	roomID := r.PathValue("room_id")
+	if err := store.GlobalMemberships.DeleteOne(userID, roomID); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // requireOwnedRoom resolves roomID and verifies the requester owns it,
 // writing the appropriate error response and returning ok=false on failure.
 func requireOwnedRoom(w http.ResponseWriter, r *http.Request, roomID, userID string) (*room.Room, bool) {

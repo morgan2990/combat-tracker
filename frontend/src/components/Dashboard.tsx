@@ -26,6 +26,16 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   const [joinRoomCode, setJoinRoomCode] = useState('')
   const [selectedPcId, setSelectedPcId] = useState(me.pcs[0]?.id ?? '')
 
+  // Rooms/recent-rooms are derived from `me` rather than mirrored into their
+  // own state — a deleted/left id is hidden locally without waiting on a
+  // fresh `me` fetch, and there's no state to go stale if Dashboard remounts
+  // with an out-of-date `me` prop (e.g. navigating back from a room races the
+  // in-flight refreshMe() fetch).
+  const [hiddenOwnedRoomIds, setHiddenOwnedRoomIds] = useState<Set<string>>(new Set())
+  const [hiddenMembershipRoomIds, setHiddenMembershipRoomIds] = useState<Set<string>>(new Set())
+  const rooms = me.rooms.filter(r => !hiddenOwnedRoomIds.has(r.room_id))
+  const recentRooms = me.recent_rooms.filter(rm => !hiddenMembershipRoomIds.has(rm.room_id))
+
   const [myMonsters, setMyMonsters] = useState<CustomMonster[]>([])
   const [myEncounters, setMyEncounters] = useState<Encounter[]>([])
 
@@ -46,20 +56,42 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
     fetchJSON<Encounter[]>('/api/encounters', []).then(setMyEncounters)
   }, [])
 
-  async function handleDeleteMonster(id: string) {
-    if (!window.confirm('Delete this monster? This cannot be undone.')) return
-    const res = await fetch(`/api/custom-monsters/${encodeURIComponent(id)}`, { method: 'DELETE' })
-    if (res.ok) {
-      setMyMonsters(prev => prev.filter(m => m.id !== id))
-    }
+  async function deleteWithConfirm(message: string, url: string, onSuccess: () => void) {
+    if (!window.confirm(message)) return
+    const res = await fetch(url, { method: 'DELETE' })
+    if (res.ok) onSuccess()
   }
 
-  async function handleDeleteEncounter(id: string) {
-    if (!window.confirm('Delete this encounter? This cannot be undone.')) return
-    const res = await fetch(`/api/encounters/${encodeURIComponent(id)}`, { method: 'DELETE' })
-    if (res.ok) {
-      setMyEncounters(prev => prev.filter(enc => enc.id !== id))
-    }
+  function handleDeleteMonster(id: string) {
+    return deleteWithConfirm(
+      'Delete this monster? This cannot be undone.',
+      `/api/custom-monsters/${encodeURIComponent(id)}`,
+      () => setMyMonsters(prev => prev.filter(m => m.id !== id)),
+    )
+  }
+
+  function handleDeleteEncounter(id: string) {
+    return deleteWithConfirm(
+      'Delete this encounter? This cannot be undone.',
+      `/api/encounters/${encodeURIComponent(id)}`,
+      () => setMyEncounters(prev => prev.filter(enc => enc.id !== id)),
+    )
+  }
+
+  function handleDeleteRoom(roomId: string) {
+    return deleteWithConfirm(
+      'Delete this room? This cannot be undone.',
+      `/api/rooms/${encodeURIComponent(roomId)}`,
+      () => setHiddenOwnedRoomIds(prev => new Set(prev).add(roomId)),
+    )
+  }
+
+  function handleLeaveRoom(roomId: string) {
+    return deleteWithConfirm(
+      'Leave this room?',
+      `/api/rooms/${encodeURIComponent(roomId)}/membership`,
+      () => setHiddenMembershipRoomIds(prev => new Set(prev).add(roomId)),
+    )
   }
 
   async function handleCreateRoom() {
@@ -159,23 +191,26 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
         <CollapsibleSection
           id="dm.rooms"
           title="My Rooms"
-          count={me.rooms.length}
+          count={rooms.length}
           headerAction={
             <button onClick={handleCreateRoom} disabled={creating} style={primaryBtn(creating)}>
               {creating ? 'Creating…' : '+ New Room'}
             </button>
           }
         >
-          {me.rooms.length === 0 && (
+          {rooms.length === 0 && (
             <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No rooms yet.</div>
           )}
-          {me.rooms.map(room => (
+          {rooms.map(room => (
             <div key={room.room_id} style={listRow}>
               <span>
                 {room.room_id}
                 {room.is_combat_active && <span style={{ marginLeft: 8, fontSize: 11, color: color.accent }}>● in combat</span>}
               </span>
-              <button onClick={() => onOpenRoomAsDM(room.room_id)} style={actionBtn}>Open</button>
+              <span style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => onOpenRoomAsDM(room.room_id)} style={actionBtn}>Open</button>
+                <button onClick={() => handleDeleteRoom(room.room_id)} style={deleteBtn}>Delete</button>
+              </span>
             </div>
           ))}
           {createError && <div style={errorStyle}>{createError}</div>}
@@ -315,23 +350,26 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection id="player.rooms" title="Rooms" count={me.recent_rooms.length}>
+        <CollapsibleSection id="player.rooms" title="Rooms" count={recentRooms.length}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {me.recent_rooms.length > 0 && (
+            {recentRooms.length > 0 && (
               <div>
                 <div style={{ fontSize: 13, color: color.textSecondary, marginBottom: 8 }}>Recent Rooms</div>
-                {me.recent_rooms.map(rm => {
+                {recentRooms.map(rm => {
                   const pc = me.pcs.find(p => p.id === rm.last_pc_id)
                   return (
                     <div key={rm.room_id} style={listRow}>
                       <span>{rm.room_id} <span style={{ color: color.textMuted, fontSize: 11 }}>as {pc?.name ?? 'unknown'}</span></span>
-                      <button
-                        onClick={() => onJoinAsPlayer(rm.room_id, rm.last_pc_id)}
-                        disabled={!pc}
-                        style={actionBtn}
-                      >
-                        Go
-                      </button>
+                      <span style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={() => onJoinAsPlayer(rm.room_id, rm.last_pc_id)}
+                          disabled={!pc}
+                          style={actionBtn}
+                        >
+                          Go
+                        </button>
+                        <button onClick={() => handleLeaveRoom(rm.room_id)} style={deleteBtn}>Leave</button>
+                      </span>
                     </div>
                   )
                 })}
