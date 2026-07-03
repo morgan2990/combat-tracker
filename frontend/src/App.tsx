@@ -103,6 +103,14 @@ export default function App() {
     }
 
     ws.onclose = (event) => {
+      // If this socket has already been intentionally abandoned (backToDashboard/
+      // logout clear wsRef.current before calling close()), wsRef.current no
+      // longer points at it by the time this fires — WebSocket's close event is
+      // always asynchronous, arriving after the code that requested the close
+      // has already moved status past 'connected'. Without this check, every
+      // intentional disconnect would be misreported as a failed connection.
+      if (wsRef.current !== ws) return
+
       if (statusRef.current !== 'connected') {
         setJoinError(WS_ERRORS[event.code] ?? 'Failed to connect. Check the room code and try again.')
         setStatusSync('idle')
@@ -117,7 +125,9 @@ export default function App() {
   }, [navigate])
 
   const backToDashboard = useCallback(() => {
-    wsRef.current?.close()
+    const ws = wsRef.current
+    wsRef.current = null
+    ws?.close()
     setRoomState(null)
     setMyEntityId(null)
     setNeedsInitiative(false)
@@ -128,7 +138,9 @@ export default function App() {
 
   const handleLogout = useCallback(async () => {
     await fetch('/api/logout', { method: 'POST' })
-    wsRef.current?.close()
+    const ws = wsRef.current
+    wsRef.current = null
+    ws?.close()
     setMe(null)
     setRoomState(null)
     navigate('/')

@@ -36,11 +36,14 @@ export function useItemCatalogSearch(query: string, edition: string) {
   const [results, setResults] = useState<ItemSearchHit[]>([])
   const [dismissed, setDismissed] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Tracks the name a selection just resolved to, so the effect below doesn't
-  // treat the resulting item.name update (query changing to that same value)
-  // as fresh typing and immediately reopen a dropdown searching for the item
-  // against its own exact name.
-  const lastSelectedNameRef = useRef<string | null>(null)
+  // Tracks the name that shouldn't trigger a fresh search: seeded with the
+  // field's initial value (so a row loaded with an existing name — free-text
+  // or catalog-linked — doesn't immediately search/open a dropdown against
+  // itself on mount), and updated after a selection resolves (so the
+  // resulting item.name update, query changing to that same value, isn't
+  // treated as fresh typing either). Only an actual change away from either
+  // of those triggers a search.
+  const lastSelectedNameRef = useRef<string | null>(query)
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
