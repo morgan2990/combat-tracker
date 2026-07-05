@@ -738,9 +738,9 @@ func (r *Room) RefreshFromProfile(sessionID string, st *store.Store) error {
 		return err
 	}
 
-	companionMaxHP := make(map[string]int, len(companions))
+	companionByID := make(map[string]store.PC, len(companions))
 	for _, cp := range companions {
-		companionMaxHP[cp.ID] = cp.MaxHP
+		companionByID[cp.ID] = cp
 	}
 
 	r.mu.Lock()
@@ -763,11 +763,13 @@ func (r *Room) RefreshFromProfile(sessionID string, st *store.Store) error {
 	for i := range r.State.Entities {
 		e := &r.State.Entities[i]
 		if e.Type == "companion" && e.OwnerID == pcEntityID && e.PCID != "" {
-			if newMax, ok := companionMaxHP[e.PCID]; ok {
-				e.MaxHP = newMax
+			if cp, ok := companionByID[e.PCID]; ok {
+				e.MaxHP = cp.MaxHP
 				if e.CurrentHP > e.MaxHP {
 					e.CurrentHP = e.MaxHP
 				}
+				e.Name = cp.Name
+				e.SharesInitiative = cp.SharesInitiative
 			}
 		}
 	}
