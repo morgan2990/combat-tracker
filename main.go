@@ -58,6 +58,7 @@ func main() {
 	mux.HandleFunc("PUT /api/rooms/{room_id}/party-inventory/pcs/{pc_id}", api.UpdatePartyInventoryPC)
 	mux.HandleFunc("POST /api/pcs", api.CreatePC)
 	mux.HandleFunc("PUT /api/pcs/{id}", api.UpdatePC)
+	mux.HandleFunc("DELETE /api/pcs/{id}", api.DeletePC)
 	mux.HandleFunc("GET /api/pcs/{id}", api.GetPC)
 	mux.HandleFunc("POST /api/pcs/{id}/companions", api.CreateCompanion)
 	mux.HandleFunc("POST /api/parties", api.CreateParty)
