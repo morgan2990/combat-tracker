@@ -5,6 +5,7 @@ import { InventoryPanel } from './InventoryPanel'
 import { CurrencyEditor } from './CurrencyEditor'
 import { CollapsibleSection } from './CollapsibleSection'
 import { fetchJSON } from '../fetchJSON'
+import { deleteWithConfirm } from '../deleteWithConfirm'
 import { color, radius } from '../theme'
 import { useLayoutTier } from '../hooks/useLayoutTier'
 
@@ -33,8 +34,10 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   // in-flight refreshMe() fetch).
   const [hiddenOwnedRoomIds, setHiddenOwnedRoomIds] = useState<Set<string>>(new Set())
   const [hiddenMembershipRoomIds, setHiddenMembershipRoomIds] = useState<Set<string>>(new Set())
+  const [hiddenPcIds, setHiddenPcIds] = useState<Set<string>>(new Set())
   const rooms = me.rooms.filter(r => !hiddenOwnedRoomIds.has(r.room_id))
   const recentRooms = me.recent_rooms.filter(rm => !hiddenMembershipRoomIds.has(rm.room_id))
+  const pcs = me.pcs.filter(pc => !hiddenPcIds.has(pc.id))
 
   const [myMonsters, setMyMonsters] = useState<CustomMonster[]>([])
   const [myEncounters, setMyEncounters] = useState<Encounter[]>([])
@@ -55,12 +58,6 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
   useEffect(() => {
     fetchJSON<Encounter[]>('/api/encounters', []).then(setMyEncounters)
   }, [])
-
-  async function deleteWithConfirm(message: string, url: string, onSuccess: () => void) {
-    if (!window.confirm(message)) return
-    const res = await fetch(url, { method: 'DELETE' })
-    if (res.ok) onSuccess()
-  }
 
   function handleDeleteMonster(id: string) {
     return deleteWithConfirm(
@@ -91,6 +88,14 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
       'Leave this room?',
       `/api/rooms/${encodeURIComponent(roomId)}/membership`,
       () => setHiddenMembershipRoomIds(prev => new Set(prev).add(roomId)),
+    )
+  }
+
+  function handleDeleteCharacter(pcId: string) {
+    return deleteWithConfirm(
+      "Delete this character? This cannot be undone. If it's currently active in a room, you won't be able to reconnect to that room afterward.",
+      `/api/pcs/${encodeURIComponent(pcId)}`,
+      () => setHiddenPcIds(prev => new Set(prev).add(pcId)),
     )
   }
 
@@ -274,15 +279,15 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
         <CollapsibleSection
           id="player.characters"
           title="My Characters"
-          count={me.pcs.length}
+          count={pcs.length}
           headerAction={
             <Link to="/characters/new" style={headerActionButton}>+ New Character</Link>
           }
         >
-          {me.pcs.length === 0 && (
+          {pcs.length === 0 && (
             <div style={{ fontSize: 13, color: color.textMuted, marginBottom: 12 }}>No characters yet.</div>
           )}
-          {me.pcs.map(pc => (
+          {pcs.map(pc => (
             <div key={pc.id} style={listRow}>
               <span>{pc.name} <span style={{ color: color.textMuted, fontSize: 11 }}>{pc.max_hp} HP</span></span>
               <span style={{ display: 'flex', gap: 8 }}>
@@ -293,6 +298,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
                   Inventory
                 </button>
                 <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
+                <button onClick={() => handleDeleteCharacter(pc.id)} style={deleteBtn}>Delete</button>
               </span>
             </div>
           ))}
