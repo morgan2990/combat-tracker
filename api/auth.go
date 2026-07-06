@@ -90,7 +90,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	if pcs == nil {
 		pcs = []store.PC{}
 	}
-	rooms, err := store.GlobalRooms.ListByOwner(userID)
+	rooms, err := roomDB.ListByOwner(userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -98,7 +98,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	if rooms == nil {
 		rooms = []store.RoomSummary{}
 	}
-	memberships, err := store.GlobalMemberships.ListByUser(userID)
+	memberships, err := membershipDB.ListByUser(userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

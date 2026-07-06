@@ -206,11 +206,11 @@ func DeleteRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	room.Global.RemoveRoom(roomID)
-	if err := store.GlobalRooms.Delete(roomID); err != nil {
+	if err := roomDB.Delete(roomID); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	if err := store.GlobalMemberships.DeleteByRoom(roomID); err != nil {
+	if err := membershipDB.DeleteByRoom(roomID); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -226,7 +226,7 @@ func LeaveRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roomID := r.PathValue("room_id")
-	if err := store.GlobalMemberships.DeleteOne(userID, roomID); err != nil {
+	if err := membershipDB.DeleteOne(userID, roomID); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
