@@ -223,7 +223,7 @@ export function EncounterForm() {
                 type="number"
                 min={1}
                 value={m.quantity}
-                onChange={e => updateGroup(i, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                onChange={e => updateGroup(i, { quantity: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })}
                 style={{ ...fieldStyle, width: 52 }}
               />
               <input

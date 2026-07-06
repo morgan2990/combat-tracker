@@ -160,7 +160,7 @@ export function InventoryPanel({ pcId, roomId, edition, onClose }: InventoryPane
                     type="number"
                     min={1}
                     value={item.quantity}
-                    onChange={e => updateItem(i, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                    onChange={e => updateItem(i, { quantity: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })}
                     style={{ ...inputStyle, width: 60 }}
                   />
                   <button type="button" onClick={() => removeItem(i)} style={removeBtn}>Remove</button>

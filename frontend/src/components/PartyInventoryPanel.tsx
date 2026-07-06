@@ -187,7 +187,7 @@ export function PartyInventoryPanel({ roomId, edition, onClose }: PartyInventory
                       type="number"
                       min={1}
                       value={item.quantity}
-                      onChange={e => updateItem(member.pcId, i, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                      onChange={e => updateItem(member.pcId, i, { quantity: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })}
                       style={{ ...inputStyle, width: 60 }}
                     />
                     <button type="button" onClick={() => updateMemberItems(member.pcId, member.items.filter((_, idx) => idx !== i))} style={removeBtn}>Remove</button>

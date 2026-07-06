@@ -15,15 +15,15 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const hp = parseInt(maxHP, 10)
+    const hp = Number.parseInt(maxHP, 10)
     if (!name.trim() || !hp || hp <= 0) return
-    const init = initiative.trim() !== '' ? parseInt(initiative, 10) : null
+    const init = initiative.trim() !== '' ? Number.parseInt(initiative, 10) : null
     onSubmit({
       type: 'add_companion',
       name: name.trim(),
       max_hp: hp,
       shares_initiative: sharesInitiative,
-      initiative: isNaN(init as number) ? null : init,
+      initiative: Number.isNaN(init as number) ? null : init,
     })
     onClose()
   }
@@ -71,7 +71,7 @@ export function CompanionForm({ onSubmit, onClose }: CompanionFormProps) {
               type="checkbox"
               checked={sharesInitiative}
               onChange={e => { setSharesInitiative(e.target.checked); if (e.target.checked) setInitiative('') }}
-            />
+            />{' '}
             Shares initiative with me
           </label>
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>

@@ -108,7 +108,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const hp = parseInt(maxHP, 10)
+    const hp = Number.parseInt(maxHP, 10)
     if (!charName.trim() || hp <= 0) return
 
     setSubmitting(true)
@@ -309,7 +309,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
                     type="checkbox"
                     checked={c.shares_initiative}
                     onChange={e => updateCompanionRow(i, 'shares_initiative', e.target.checked)}
-                  />
+                  />{' '}
                   Shares initiative with character
                 </label>
                 <button

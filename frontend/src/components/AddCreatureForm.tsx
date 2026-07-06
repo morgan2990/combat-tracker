@@ -120,8 +120,8 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const hp = parseInt(maxHP, 10)
-    const qty = Math.max(1, parseInt(quantity, 10) || 1)
+    const hp = Number.parseInt(maxHP, 10)
+    const qty = Math.max(1, Number.parseInt(quantity, 10) || 1)
     if (!name.trim() || !hp || hp <= 0) return
     const msg: Record<string, unknown> = {
       type: 'add_creature',

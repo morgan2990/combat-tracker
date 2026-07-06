@@ -8,14 +8,14 @@ function parseHP(input: string, current: number, max: number): number {
   const s = input.trim()
   let result: number
   if (s.startsWith('+')) {
-    const delta = parseInt(s.slice(1), 10)
-    result = isNaN(delta) ? current : current + delta
+    const delta = Number.parseInt(s.slice(1), 10)
+    result = Number.isNaN(delta) ? current : current + delta
   } else if (s.startsWith('-')) {
-    const delta = parseInt(s.slice(1), 10)
-    result = isNaN(delta) ? current : current - delta
+    const delta = Number.parseInt(s.slice(1), 10)
+    result = Number.isNaN(delta) ? current : current - delta
   } else {
-    const val = parseInt(s, 10)
-    result = isNaN(val) ? current : val
+    const val = Number.parseInt(s, 10)
+    result = Number.isNaN(val) ? current : val
   }
   return Math.max(0, Math.min(result, max))
 }
@@ -63,8 +63,8 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenI
   }
 
   function applyInitiative() {
-    const val = parseInt(initInput, 10)
-    if (!isNaN(val) && val !== entity.initiative) {
+    const val = Number.parseInt(initInput, 10)
+    if (!Number.isNaN(val) && val !== entity.initiative) {
       sendUpdate({ initiative: val })
     }
   }
