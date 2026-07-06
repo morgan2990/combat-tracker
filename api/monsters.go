@@ -18,7 +18,7 @@ func GetMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	m, err := store.GlobalMonsters.GetMonsterByName(name)
+	m, err := monsterDB.GetMonsterByName(name)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -44,7 +44,7 @@ func SearchMonsters(w http.ResponseWriter, r *http.Request) {
 	if !requireValidEdition(w, edition) {
 		return
 	}
-	hits, err := store.GlobalMonsters.SearchMonsters(q, edition, userID)
+	hits, err := monsterDB.SearchMonsters(q, edition, userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -61,7 +61,7 @@ func StreamMonsterPDF(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	m, err := store.GlobalMonsters.GetMonsterByName(name)
+	m, err := monsterDB.GetMonsterByName(name)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
