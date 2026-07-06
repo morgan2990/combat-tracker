@@ -147,7 +147,17 @@ func runItemScrub(source string) {
 		log.Fatalf("could not parse %s: %v", itemsFile, err)
 	}
 
-	categoryLookup := buildCategoryLookup(basePayload.ItemType)
+	processed, inserted, updated := scrubItemEntries(basePayload.BaseItem, basePayload.ItemType, itemsPayload.Item)
+	fmt.Printf("Items done: %d processed, %d inserted, %d updated\n", processed, inserted, updated)
+}
+
+// scrubItemEntries runs the upsert pipeline (base items direct-upserted,
+// then item[] entries direct or _copy-resolved) over already-parsed entries
+// against itemDB, and reports how many were processed/inserted/updated.
+// Split out from runItemScrub so it's testable against a fake itemUpserter,
+// without touching Mongo/Typesense or the filesystem.
+func scrubItemEntries(baseItems []fiveEToolsItemEntry, itemTypes []fiveEToolsItemTypeEntry, items []fiveEToolsItemEntry) (processed, inserted, updated int) {
+	categoryLookup := buildCategoryLookup(itemTypes)
 
 	// resolvedFields holds each successfully-upserted entry's category/rarity,
 	// keyed by (name, source), so _copy children can inherit whichever of the
@@ -155,9 +165,8 @@ func runItemScrub(source string) {
 	type resolvedFields struct{ category, rarity string }
 	resolved := make(map[entryKey]resolvedFields)
 
-	var processed, inserted, updated int
 	upsert := func(ci store.CatalogItem) {
-		result, outcome, err := store.GlobalCatalogItems.UpsertItem(ci)
+		result, outcome, err := itemDB.UpsertItem(ci)
 		if err != nil {
 			log.Printf("warning: upsert failed for %s (%s): %v", ci.Name, ci.Edition, err)
 			return
@@ -186,14 +195,14 @@ func runItemScrub(source string) {
 
 	var pending []fiveEToolsItemEntry
 
-	for _, e := range basePayload.BaseItem {
+	for _, e := range baseItems {
 		if e.Name == "" || e.Source == "" {
 			continue
 		}
 		upsert(buildItem(e.Name, e.Source, categoryLookup[stripTypeSourceSuffix(e.Type)], normalizeRarity(e.Rarity)))
 	}
 
-	for _, e := range itemsPayload.Item {
+	for _, e := range items {
 		if e.Name == "" || e.Source == "" {
 			continue
 		}
@@ -241,5 +250,5 @@ func runItemScrub(source string) {
 		pending = stillPending
 	}
 
-	fmt.Printf("Items done: %d processed, %d inserted, %d updated\n", processed, inserted, updated)
+	return processed, inserted, updated
 }

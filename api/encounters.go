@@ -23,7 +23,7 @@ func CreateEncounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	e.OwnerID = userID
-	saved, err := store.GlobalEncounters.CreateEncounter(e)
+	saved, err := encounterDB.CreateEncounter(e)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -37,7 +37,7 @@ func GetEncounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	e, err := store.GlobalEncounters.GetEncounterByID(id)
+	e, err := encounterDB.GetEncounterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -59,7 +59,7 @@ func UpdateEncounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	existing, err := store.GlobalEncounters.GetEncounterByID(id)
+	existing, err := encounterDB.GetEncounterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -84,7 +84,7 @@ func UpdateEncounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body.OwnerID = existing.OwnerID
-	saved, err := store.GlobalEncounters.UpdateEncounter(id, body)
+	saved, err := encounterDB.UpdateEncounter(id, body)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -98,7 +98,7 @@ func DeleteEncounter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	existing, err := store.GlobalEncounters.GetEncounterByID(id)
+	existing, err := encounterDB.GetEncounterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -111,7 +111,7 @@ func DeleteEncounter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	if err := store.GlobalEncounters.DeleteEncounter(id); err != nil {
+	if err := encounterDB.DeleteEncounter(id); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -124,7 +124,7 @@ func ListMyEncounters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	edition := r.URL.Query().Get("edition")
-	encounters, err := store.GlobalEncounters.ListEncountersByOwner(userID, edition)
+	encounters, err := encounterDB.ListEncountersByOwner(userID, edition)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

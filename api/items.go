@@ -19,7 +19,7 @@ func SearchItems(w http.ResponseWriter, r *http.Request) {
 	if !requireValidEdition(w, edition) {
 		return
 	}
-	hits, err := store.GlobalCatalogItems.SearchItems(q, edition)
+	hits, err := catalogItemDB.SearchItems(q, edition)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -39,7 +39,7 @@ func GetItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id required", http.StatusBadRequest)
 		return
 	}
-	ci, err := store.GlobalCatalogItems.GetItemByID(id)
+	ci, err := catalogItemDB.GetItemByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
