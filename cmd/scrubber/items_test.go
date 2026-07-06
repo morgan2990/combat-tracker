@@ -1,6 +1,18 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"combatapp/store"
+)
+
+func withFakeItemStore(t *testing.T, fake *fakeItemUpserter) {
+	t.Helper()
+	original := itemDB
+	itemDB = fake
+	t.Cleanup(func() { itemDB = original })
+}
 
 func TestItemEdition(t *testing.T) {
 	cases := []struct {
@@ -131,6 +143,125 @@ func TestItemReferenceURL(t *testing.T) {
 	want := "https://5e.tools/items.html#bag%20of%20holding_dmg"
 	if got != want {
 		t.Errorf("itemReferenceURL() = %q, want %q", got, want)
+	}
+}
+
+func TestScrubItemEntries_BaseItemDirect(t *testing.T) {
+	fake := newFakeItemUpserter()
+	withFakeItemStore(t, fake)
+
+	itemTypes := []fiveEToolsItemTypeEntry{{Name: "Armor", Abbreviation: "LA"}}
+	baseItems := []fiveEToolsItemEntry{
+		{Name: "Leather Armor", Source: "PHB", Type: "LA", Rarity: "none"},
+	}
+
+	processed, inserted, updated := scrubItemEntries(baseItems, itemTypes, nil)
+
+	if processed != 1 || inserted != 1 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want (1, 1, 0)", processed, inserted, updated)
+	}
+	got := fake.calls[0]
+	if got.Name != "Leather Armor" || got.Edition != "5e" || got.Category != "Armor" || got.Rarity != "" {
+		t.Errorf("got item = %+v, want Name=Leather Armor Edition=5e Category=Armor Rarity=\"\"", got)
+	}
+	if got.FiveEToolsID != "leather-armor-phb" || got.SourceBook != "PHB" {
+		t.Errorf("got item = %+v", got)
+	}
+}
+
+func TestScrubItemEntries_5DotFiveEdition(t *testing.T) {
+	fake := newFakeItemUpserter()
+	withFakeItemStore(t, fake)
+
+	items := []fiveEToolsItemEntry{
+		{Name: "Potion of Healing", Source: "XPHB", Type: "P"},
+	}
+
+	scrubItemEntries(nil, nil, items)
+
+	if fake.calls[0].Edition != "5.5e" {
+		t.Errorf("Edition = %q, want 5.5e", fake.calls[0].Edition)
+	}
+}
+
+func TestScrubItemEntries_CopyInheritsCategoryAndRarity(t *testing.T) {
+	fake := newFakeItemUpserter()
+	withFakeItemStore(t, fake)
+
+	itemTypes := []fiveEToolsItemTypeEntry{{Name: "Wondrous Item", Abbreviation: "W"}}
+	items := []fiveEToolsItemEntry{
+		{Name: "Bag of Holding", Source: "DMG", Type: "W", Rarity: "uncommon"},
+		{Name: "Bag of Holding Variant", Source: "DMG", Copy: &fiveEToolsCopy{Name: "Bag of Holding", Source: "DMG"}},
+	}
+
+	processed, inserted, updated := scrubItemEntries(nil, itemTypes, items)
+
+	if processed != 2 || inserted != 2 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want (2, 2, 0)", processed, inserted, updated)
+	}
+	variant := fake.calls[1]
+	if variant.Category != "Wondrous Item" || variant.Rarity != "uncommon" {
+		t.Errorf("variant = %+v, want Category=Wondrous Item Rarity=uncommon (both inherited)", variant)
+	}
+}
+
+func TestScrubItemEntries_CopyOverridesRarity(t *testing.T) {
+	fake := newFakeItemUpserter()
+	withFakeItemStore(t, fake)
+
+	items := []fiveEToolsItemEntry{
+		{Name: "Bag of Holding", Source: "DMG", Rarity: "uncommon"},
+		{Name: "Bag of Holding+", Source: "DMG", Rarity: "rare", Copy: &fiveEToolsCopy{Name: "Bag of Holding", Source: "DMG"}},
+	}
+
+	scrubItemEntries(nil, nil, items)
+
+	variant := fake.calls[1]
+	if variant.Rarity != "rare" {
+		t.Errorf("variant.Rarity = %q, want rare (own value, not inherited)", variant.Rarity)
+	}
+}
+
+func TestScrubItemEntries_UnresolvableCopySkipped(t *testing.T) {
+	fake := newFakeItemUpserter()
+	withFakeItemStore(t, fake)
+
+	items := []fiveEToolsItemEntry{
+		{Name: "Orphan", Source: "DMG", Copy: &fiveEToolsCopy{Name: "Does Not Exist", Source: "DMG"}},
+	}
+
+	processed, inserted, updated := scrubItemEntries(nil, nil, items)
+
+	if processed != 0 || inserted != 0 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want all 0", processed, inserted, updated)
+	}
+}
+
+func TestScrubItemEntries_UpsertErrorSkipsButContinues(t *testing.T) {
+	fake := newFakeItemUpserter()
+	fake.forceErr = errors.New("boom")
+	withFakeItemStore(t, fake)
+
+	baseItems := []fiveEToolsItemEntry{{Name: "Longsword", Source: "PHB"}}
+
+	processed, inserted, updated := scrubItemEntries(baseItems, nil, nil)
+
+	if processed != 0 || inserted != 0 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want all 0 on upsert error", processed, inserted, updated)
+	}
+}
+
+func TestScrubItemEntries_ReportsUpdated(t *testing.T) {
+	fake := newFakeItemUpserter()
+	fake.byKey["Longsword|5e"] = store.CatalogItem{Name: "Longsword", Edition: "5e"}
+	withFakeItemStore(t, fake)
+
+	baseItems := []fiveEToolsItemEntry{{Name: "Longsword", Source: "PHB"}}
+
+	processed, inserted, updated := scrubItemEntries(baseItems, nil, nil)
+
+	if processed != 1 || inserted != 0 || updated != 1 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want (1, 0, 1)", processed, inserted, updated)
 	}
 }
 

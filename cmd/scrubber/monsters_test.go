@@ -1,6 +1,18 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"combatapp/store"
+)
+
+func withFakeMonsterStore(t *testing.T, fake *fakeMonsterUpserter) {
+	t.Helper()
+	original := monsterDB
+	monsterDB = fake
+	t.Cleanup(func() { monsterDB = original })
+}
 
 func TestMonsterBaseURL(t *testing.T) {
 	cases := []struct {
@@ -105,3 +117,142 @@ func TestResolveCopyStats(t *testing.T) {
 }
 
 func intPtr(i int) *int { return &i }
+
+func TestScrubMonsterEntries_DirectEntry(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	withFakeMonsterStore(t, fake)
+
+	dex := 14
+	entries := []fiveEToolsEntry{
+		{Name: "Goblin", Source: "MM", HP: &fiveEToolsHP{Average: 7}, Dex: &dex},
+	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	if processed != 1 || inserted != 1 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want (1, 1, 0)", processed, inserted, updated)
+	}
+	if len(fake.calls) != 1 {
+		t.Fatalf("len(calls) = %d, want 1", len(fake.calls))
+	}
+	got := fake.calls[0]
+	if got.Name != "Goblin" || got.Edition != "5e" || got.MaxHP != 7 {
+		t.Errorf("got monster = %+v, want Name=Goblin Edition=5e MaxHP=7", got)
+	}
+	if got.InitiativeModifier == nil || *got.InitiativeModifier != 2 {
+		t.Errorf("InitiativeModifier = %v, want 2", got.InitiativeModifier)
+	}
+	if got.ReferenceURL != "https://2014.5e.tools/bestiary/goblin-mm.html" {
+		t.Errorf("ReferenceURL = %q", got.ReferenceURL)
+	}
+	if got.FiveEToolsID != "goblin-mm" || got.SourceBook != "MM" || got.IsCustom || got.SourceType != "url" {
+		t.Errorf("got monster = %+v", got)
+	}
+}
+
+func TestScrubMonsterEntries_SkipsMissingHP(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	withFakeMonsterStore(t, fake)
+
+	entries := []fiveEToolsEntry{
+		{Name: "No HP", Source: "MM", HP: nil, Copy: nil},
+	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	if processed != 0 || inserted != 0 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want all 0", processed, inserted, updated)
+	}
+}
+
+func TestScrubMonsterEntries_CopyInheritsHPAndDex(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	withFakeMonsterStore(t, fake)
+
+	dex := 14
+	entries := []fiveEToolsEntry{
+		{Name: "Goblin", Source: "MM", HP: &fiveEToolsHP{Average: 7}, Dex: &dex},
+		{Name: "Goblin Variant", Source: "MM", Copy: &fiveEToolsCopy{Name: "Goblin", Source: "MM"}},
+	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	if processed != 2 || inserted != 2 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want (2, 2, 0)", processed, inserted, updated)
+	}
+	variant := fake.calls[1]
+	if variant.MaxHP != 7 {
+		t.Errorf("variant.MaxHP = %d, want 7 (inherited)", variant.MaxHP)
+	}
+	if variant.InitiativeModifier == nil || *variant.InitiativeModifier != 2 {
+		t.Errorf("variant.InitiativeModifier = %v, want 2 (inherited)", variant.InitiativeModifier)
+	}
+}
+
+func TestScrubMonsterEntries_CopyOverridesDex(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	withFakeMonsterStore(t, fake)
+
+	baseDex, ownDex := 14, 20
+	entries := []fiveEToolsEntry{
+		{Name: "Goblin", Source: "MM", HP: &fiveEToolsHP{Average: 7}, Dex: &baseDex},
+		{Name: "Fast Goblin", Source: "MM", Dex: &ownDex, Copy: &fiveEToolsCopy{Name: "Goblin", Source: "MM"}},
+	}
+
+	_, _, _ = scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	variant := fake.calls[1]
+	if variant.MaxHP != 7 {
+		t.Errorf("variant.MaxHP = %d, want 7 (inherited)", variant.MaxHP)
+	}
+	if variant.InitiativeModifier == nil || *variant.InitiativeModifier != 5 {
+		t.Errorf("variant.InitiativeModifier = %v, want 5 (recomputed from own dex)", variant.InitiativeModifier)
+	}
+}
+
+func TestScrubMonsterEntries_UnresolvableCopySkipped(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	withFakeMonsterStore(t, fake)
+
+	entries := []fiveEToolsEntry{
+		{Name: "Orphan", Source: "MM", Copy: &fiveEToolsCopy{Name: "Does Not Exist", Source: "MM"}},
+	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	if processed != 0 || inserted != 0 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want all 0", processed, inserted, updated)
+	}
+}
+
+func TestScrubMonsterEntries_UpsertErrorSkipsButContinues(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	fake.forceErr = errors.New("boom")
+	withFakeMonsterStore(t, fake)
+
+	entries := []fiveEToolsEntry{
+		{Name: "Goblin", Source: "MM", HP: &fiveEToolsHP{Average: 7}},
+	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	if processed != 0 || inserted != 0 || updated != 0 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want all 0 on upsert error", processed, inserted, updated)
+	}
+}
+
+func TestScrubMonsterEntries_ReportsUpdated(t *testing.T) {
+	fake := newFakeMonsterUpserter()
+	fake.byKey["Goblin|5e"] = store.Monster{Name: "Goblin", Edition: "5e", MaxHP: 1}
+	withFakeMonsterStore(t, fake)
+
+	entries := []fiveEToolsEntry{
+		{Name: "Goblin", Source: "MM", HP: &fiveEToolsHP{Average: 7}},
+	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, "5e", "https://2014.5e.tools/bestiary/")
+
+	if processed != 1 || inserted != 0 || updated != 1 {
+		t.Fatalf("got (processed=%d, inserted=%d, updated=%d), want (1, 0, 1)", processed, inserted, updated)
+	}
+}

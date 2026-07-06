@@ -152,16 +152,25 @@ func runMonsterScrub(source, edition string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	processed, inserted, updated := scrubMonsterEntries(entries, edition, baseURL)
+	fmt.Printf("Done: %d processed, %d inserted, %d updated\n", processed, inserted, updated)
+}
+
+// scrubMonsterEntries runs the two-pass _copy-resolution/upsert pipeline
+// over already-parsed entries against monsterDB, and reports how many were
+// processed/inserted/updated. Split out from runMonsterScrub so it's
+// testable against a fake monsterUpserter, without touching Mongo/Typesense
+// or the filesystem.
+func scrubMonsterEntries(entries []fiveEToolsEntry, edition, baseURL string) (processed, inserted, updated int) {
 	direct, pending := classifyMonsterEntries(entries)
 
 	// resolvedStats holds hp+dex keyed by the entry's own (name, source) so
 	// _copy children can inherit them.
 	resolvedStats := make(map[entryKey]monsterStats, len(direct))
 
-	var processed, inserted, updated int
-
 	upsert := func(m store.Monster) {
-		result, outcome, err := store.GlobalMonsters.UpsertMonster(m)
+		result, outcome, err := monsterDB.UpsertMonster(m)
 		if err != nil {
 			log.Printf("warning: upsert failed for %s (%s): %v", m.Name, m.Edition, err)
 			return
@@ -235,5 +244,5 @@ func runMonsterScrub(source, edition string) {
 		pending = stillPending
 	}
 
-	fmt.Printf("Done: %d processed, %d inserted, %d updated\n", processed, inserted, updated)
+	return processed, inserted, updated
 }
