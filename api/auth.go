@@ -112,7 +112,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 		pcIDs[i] = pc.ID
 		ownedNames[pc.ID] = pc.Name
 	}
-	parties, err := store.GlobalParties.ListPartiesByMemberPCIDs(pcIDs)
+	parties, err := partyDB.ListPartiesByMemberPCIDs(pcIDs)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

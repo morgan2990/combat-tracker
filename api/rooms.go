@@ -255,5 +255,5 @@ func resolveLinkedParty(rm *room.Room) (*store.Party, error) {
 	if partyID == "" {
 		return nil, nil
 	}
-	return store.GlobalParties.GetPartyByID(partyID)
+	return partyDB.GetPartyByID(partyID)
 }
