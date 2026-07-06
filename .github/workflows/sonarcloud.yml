@@ -43,7 +43,7 @@ jobs:
 
       - name: Run Go tests with coverage
         continue-on-error: true
-        run: go test ./... -coverprofile=coverage.out
+        run: go test -tags=integration ./... -coverprofile=coverage.out
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6

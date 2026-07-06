@@ -32,7 +32,7 @@ func newPartyView(p *store.Party, knownNames map[string]string) (partyView, erro
 			names[pcID] = name
 			continue
 		}
-		pc, err := store.Global.GetPCByID(pcID)
+		pc, err := pcDB.GetPCByID(pcID)
 		if err != nil {
 			return partyView{}, err
 		}
@@ -122,7 +122,7 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(existing.MemberPCIDs) > 0 {
-		ownsMember, err := store.Global.OwnsAnyPC(userID, existing.MemberPCIDs)
+		ownsMember, err := pcDB.OwnsAnyPC(userID, existing.MemberPCIDs)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -170,7 +170,7 @@ func JoinParty(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	pc, err := store.Global.GetPCByID(body.PCID)
+	pc, err := pcDB.GetPCByID(body.PCID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

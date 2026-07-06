@@ -82,7 +82,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	pcs, err := store.Global.ListPCsByOwner(userID)
+	pcs, err := pcDB.ListPCsByOwner(userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

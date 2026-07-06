@@ -106,7 +106,7 @@ func GetPartyInventory(w http.ResponseWriter, r *http.Request) {
 	members := []partyInventoryMember{}
 	var membersCurrency store.Currency
 	for _, pcID := range party.MemberPCIDs {
-		pc, err := store.Global.GetPCByID(pcID)
+		pc, err := pcDB.GetPCByID(pcID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -179,7 +179,7 @@ func UpdatePartyInventoryPC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := store.Global.UpdatePCInventory(pcID, body.Items, body.Currency)
+	updated, err := pcDB.UpdatePCInventory(pcID, body.Items, body.Currency)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
