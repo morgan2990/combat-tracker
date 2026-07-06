@@ -23,10 +23,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run Go tests with coverage
-        continue-on-error: true
-        run: go test ./... -coverprofile=coverage.out
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -40,6 +36,10 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Run Go tests with coverage
+        continue-on-error: true
+        run: go test ./... -coverprofile=coverage.out
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
