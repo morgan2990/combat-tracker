@@ -22,7 +22,7 @@ function applyDrafts(currency: Currency, drafts: Partial<Record<keyof Currency, 
   for (const denom of CURRENCY_DENOMS) {
     const draft = drafts[denom]?.trim()
     if (!draft || !/^[+-]?\d+$/.test(draft)) continue
-    result[denom] = clamp(currency[denom] + parseInt(draft, 10))
+    result[denom] = clamp(currency[denom] + Number.parseInt(draft, 10))
   }
   return result
 }
@@ -58,7 +58,7 @@ export function CurrencyEditor({ currency, onChange, inputWidth = 56 }: Currency
   const [drafts, setDrafts] = useState<Partial<Record<keyof Currency, string>>>({})
 
   function updateDenom(denom: keyof Currency, value: string) {
-    onChange({ ...currency, [denom]: clamp(parseInt(value, 10) || 0) })
+    onChange({ ...currency, [denom]: clamp(Number.parseInt(value, 10) || 0) })
   }
 
   function openModal() {

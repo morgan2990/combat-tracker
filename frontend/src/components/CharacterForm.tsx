@@ -21,7 +21,7 @@ function emptyCompanion(): CompanionRow {
 // Trims/parses a companion row's fields; returns null if invalid (matching
 // the guard every companion-saving call site needs before submitting).
 function parseCompanionRow(row: CompanionRow): { name: string; max_hp: number } | null {
-  const hp = parseInt(row.max_hp, 10)
+  const hp = Number.parseInt(row.max_hp, 10)
   if (!row.name.trim() || !hp || hp <= 0) return null
   return { name: row.name.trim(), max_hp: hp }
 }
@@ -233,7 +233,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
                         type="checkbox"
                         checked={c.shares_initiative}
                         onChange={e => updateExistingCompanion(c.id, 'shares_initiative', e.target.checked)}
-                      />
+                      />{' '}
                       Shares initiative with character
                     </label>
                     <span style={{ display: 'flex', gap: 8 }}>
