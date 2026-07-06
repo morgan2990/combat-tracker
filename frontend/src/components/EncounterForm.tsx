@@ -187,13 +187,15 @@ export function EncounterForm() {
               marginTop: 2, maxHeight: 220, overflowY: 'auto',
             }}>
               {results.map(hit => (
-                <div
+                <button
                   key={hit.id}
+                  type="button"
                   onClick={() => addMonster(hit)}
                   style={{
-                    padding: '8px 10px', cursor: 'pointer', display: 'flex',
+                    width: '100%', padding: '8px 10px', cursor: 'pointer', display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
-                    borderBottom: `1px solid ${color.border}`,
+                    border: 'none', borderRadius: 0, borderBottom: `1px solid ${color.border}`,
+                    background: 'none', font: 'inherit', color: 'inherit', textAlign: 'left',
                   }}
                 >
                   <span style={{ color: color.textPrimary }}>
@@ -205,7 +207,7 @@ export function EncounterForm() {
                     )}
                   </span>
                   <span style={{ color: color.textSecondary }}>{hit.max_hp} HP</span>
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -96,8 +96,16 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenI
     <div style={{ borderBottom: `1px solid ${color.border}` }}>
       {/* Main row */}
       <div
+        role="button"
+        tabIndex={0}
         style={{ padding: '10px 14px', background: rowBg, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: entity.is_hidden ? 0.5 : 1 }}
         onClick={() => setExpanded(e => !e)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setExpanded(ex => !ex)
+          }
+        }}
       >
         <span style={{ width: 16, color: color.accent, flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
         <div style={{ flex: 1, minWidth: 0 }}>

@@ -50,13 +50,18 @@ export function EncounterTemplatesControl({ sendMessage, edition }: EncounterTem
             <div style={{ padding: 10, fontSize: 13, color: color.textSecondary }}>No saved encounters for this edition.</div>
           )}
           {encounters.map(enc => (
-            <div
+            <button
               key={enc.id}
+              type="button"
               onClick={() => inject(enc.id)}
-              style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: color.textPrimary, borderBottom: `1px solid ${color.border}` }}
+              style={{
+                width: '100%', padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: color.textPrimary,
+                border: 'none', borderRadius: 0, borderBottom: `1px solid ${color.border}`,
+                background: 'none', font: 'inherit', textAlign: 'left',
+              }}
             >
               {enc.name}
-            </div>
+            </button>
           ))}
         </div>
       )}

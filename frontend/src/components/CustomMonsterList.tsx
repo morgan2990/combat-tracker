@@ -12,8 +12,9 @@ export const sectionHeading: React.CSSProperties = {
 }
 export const emptyText: React.CSSProperties = { fontSize: 12, color: '#454568', padding: '4px 0' }
 export const navItem: React.CSSProperties = {
-  padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: color.textPrimary,
+  width: '100%', padding: '8px 10px', cursor: 'pointer', fontSize: 13, color: color.textPrimary,
   borderRadius: radius.sm, marginBottom: 4, background: color.bgPanel, border: '1px solid transparent',
+  font: 'inherit', textAlign: 'left', display: 'block',
 }
 
 export function CustomMonsterList({ monsters, onSelect }: CustomMonsterListProps) {
@@ -24,9 +25,9 @@ export function CustomMonsterList({ monsters, onSelect }: CustomMonsterListProps
         <div style={emptyText}>No custom monsters for this edition.</div>
       )}
       {monsters.map(m => (
-        <div key={m.id} onClick={() => onSelect(m)} style={navItem}>
+        <button key={m.id} type="button" onClick={() => onSelect(m)} style={navItem}>
           {m.name} <span style={{ color: color.textSecondary }}>{m.max_hp} HP</span>
-        </div>
+        </button>
       ))}
     </div>
   )

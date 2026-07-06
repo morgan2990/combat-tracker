@@ -40,9 +40,9 @@ export function DMNavColumn({ sendMessage, edition, onSelectCustomMonster }: DMN
           <div style={emptyText}>No saved encounters for this edition.</div>
         )}
         {encounters.map(enc => (
-          <div key={enc.id} onClick={() => inject(enc.id)} style={navItem}>
+          <button key={enc.id} type="button" onClick={() => inject(enc.id)} style={navItem}>
             {enc.name}
-          </div>
+          </button>
         ))}
       </div>
       <CustomMonsterList monsters={myCreatures} onSelect={onSelectCustomMonster} />

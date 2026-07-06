@@ -127,7 +127,11 @@ export function PartyInventoryPanel({ roomId, edition, onClose }: PartyInventory
   const displayedMembersCurrency = filteredMember ? filteredMember.currency : membersCurrencyTotal
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
+    <div
+      style={overlayStyle}
+      onClick={onClose}
+      onKeyDown={e => { if (e.key === 'Escape') onClose() }}
+    >
       <div style={panelStyle} onClick={e => e.stopPropagation()}>
         <div style={headerStyle}>
           <h3 style={{ margin: 0, fontSize: 18 }}>Party Inventory</h3>

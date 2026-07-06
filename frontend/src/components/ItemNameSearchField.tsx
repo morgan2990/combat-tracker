@@ -74,13 +74,13 @@ export function ItemNameSearchField({ item, edition, style, onUpdate, onSelectEx
       {showDropdown && (
         <div style={dropdownStyle}>
           {results.map(hit => (
-            <div key={hit.id} onClick={() => handleSelect(hit)} style={dropdownItemStyle}>
+            <button key={hit.id} type="button" onClick={() => handleSelect(hit)} style={dropdownItemStyle}>
               <span style={{ color: color.textPrimary }}>{hit.name}</span>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: color.textSecondary }}>{hit.category}</span>
                 {hit.rarity && <span style={{ fontSize: 10, color: color.info }}>{hit.rarity}</span>}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -103,7 +103,8 @@ const dropdownStyle: CSSProperties = {
 }
 
 const dropdownItemStyle: CSSProperties = {
-  padding: '6px 10px', cursor: 'pointer', display: 'flex',
+  width: '100%', padding: '6px 10px', cursor: 'pointer', display: 'flex',
   justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
-  borderBottom: `1px solid ${color.border}`,
+  border: 'none', borderRadius: 0, borderBottom: `1px solid ${color.border}`,
+  background: 'none', font: 'inherit', color: 'inherit', textAlign: 'left',
 }
