@@ -46,7 +46,7 @@ ENVIRONMENT=""
 EDITION=""
 SOURCE_PATH=""
 
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
     case "$1" in
         --mode) MODE="$2"; shift 2 ;;
         --mode=*) MODE="${1#*=}"; shift ;;
@@ -68,9 +68,9 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 # Blank if the file or key doesn't exist.
 read_env_var() {
     local file="$1" key="$2" line val
-    [ -f "$file" ] || return 0
+    [[ -f "$file" ]] || return 0
     line=$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$file" | tail -n1) || true
-    [ -z "$line" ] && return 0
+    [[ -z "$line" ]] && return 0
     val="${line#*=}"
     val="$(printf '%s' "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     printf '%s' "$val"
@@ -78,12 +78,12 @@ read_env_var() {
 
 read_with_default() {
     local prompt="$1" default="$2" response
-    if [ -n "$default" ]; then
+    if [[ -n "$default" ]]; then
         read -r -p "$prompt [$default]: " response
     else
         read -r -p "$prompt: " response
     fi
-    if [ -z "$response" ]; then
+    if [[ -z "$response" ]]; then
         printf '%s' "$default"
     else
         printf '%s' "$response"
@@ -94,39 +94,39 @@ echo "== Scrubber setup =="
 echo "Populates MongoDB and Typesense from a local 5etools data checkout."
 echo ""
 
-if [ -z "$MODE" ]; then
+if [[ -z "$MODE" ]]; then
     MODE="$(read_with_default 'Mode (monsters or items)' 'monsters')"
 fi
-if [ "$MODE" != "monsters" ] && [ "$MODE" != "items" ]; then
+if [[ "$MODE" != "monsters" ]] && [[ "$MODE" != "items" ]]; then
     echo "Mode must be 'monsters' or 'items', got '$MODE'." >&2
     exit 1
 fi
 
-if [ -z "$ENVIRONMENT" ]; then
+if [[ -z "$ENVIRONMENT" ]]; then
     ENVIRONMENT="$(read_with_default 'Environment (dev or prod)' 'dev')"
 fi
-if [ "$ENVIRONMENT" != "dev" ] && [ "$ENVIRONMENT" != "prod" ]; then
+if [[ "$ENVIRONMENT" != "dev" ]] && [[ "$ENVIRONMENT" != "prod" ]]; then
     echo "Environment must be 'dev' or 'prod', got '$ENVIRONMENT'." >&2
     exit 1
 fi
 
-if [ "$MODE" = "monsters" ]; then
-    if [ -z "$EDITION" ]; then
+if [[ "$MODE" = "monsters" ]]; then
+    if [[ -z "$EDITION" ]]; then
         EDITION="$(read_with_default 'Edition (5e or 5.5e)' '5e')"
     fi
-    if [ "$EDITION" != "5e" ] && [ "$EDITION" != "5.5e" ]; then
+    if [[ "$EDITION" != "5e" ]] && [[ "$EDITION" != "5.5e" ]]; then
         echo "Edition must be '5e' or '5.5e', got '$EDITION'." >&2
         exit 1
     fi
 fi
 
-if [ "$ENVIRONMENT" = "dev" ]; then
+if [[ "$ENVIRONMENT" = "dev" ]]; then
     ENV_FILE_NAME=".env"
 else
     ENV_FILE_NAME=".env.production"
 fi
 ENV_FILE_PATH="$REPO_ROOT/$ENV_FILE_NAME"
-if [ ! -f "$ENV_FILE_PATH" ]; then
+if [[ ! -f "$ENV_FILE_PATH" ]]; then
     echo "$ENV_FILE_NAME not found at $ENV_FILE_PATH - create it first (see .env.example for the expected keys)." >&2
     exit 1
 fi
@@ -135,38 +135,38 @@ MONGO_URI="$(read_env_var "$ENV_FILE_PATH" MONGODB_URI)"
 TYPESENSE_URL_VAL="$(read_env_var "$ENV_FILE_PATH" TYPESENSE_URL)"
 TYPESENSE_KEY_VAL="$(read_env_var "$ENV_FILE_PATH" TYPESENSE_API_KEY)"
 
-if [ -z "$MONGO_URI" ]; then
+if [[ -z "$MONGO_URI" ]]; then
     echo "MONGODB_URI not set in $ENV_FILE_NAME - the scrubber cannot write data without it." >&2
     exit 1
 fi
-if [ -z "$TYPESENSE_URL_VAL" ] || [ -z "$TYPESENSE_KEY_VAL" ]; then
+if [[ -z "$TYPESENSE_URL_VAL" ]] || [[ -z "$TYPESENSE_KEY_VAL" ]]; then
     echo "TYPESENSE_URL/TYPESENSE_API_KEY incomplete in $ENV_FILE_NAME - MongoDB will still be populated, but the search index will NOT be updated." >&2
 fi
 
 echo "Using credentials from $ENV_FILE_NAME ($ENVIRONMENT)"
 
-if [ "$MODE" = "items" ]; then
+if [[ "$MODE" = "items" ]]; then
     SOURCE_VAR="SCRUBBER_SOURCE_5_5E"
-elif [ "$EDITION" = "5e" ]; then
+elif [[ "$EDITION" = "5e" ]]; then
     SOURCE_VAR="SCRUBBER_SOURCE_5E"
 else
     SOURCE_VAR="SCRUBBER_SOURCE_5_5E"
 fi
 
-if [ -z "$SOURCE_PATH" ]; then
+if [[ -z "$SOURCE_PATH" ]]; then
     SOURCE_PATH="$(read_env_var "$ENV_FILE_PATH" "$SOURCE_VAR")"
-    if [ -n "$SOURCE_PATH" ]; then
+    if [[ -n "$SOURCE_PATH" ]]; then
         echo "Using $SOURCE_VAR from $ENV_FILE_NAME as source path: $SOURCE_PATH"
     else
         read -r -p "Path to local 5etools repository root: " SOURCE_PATH
     fi
 fi
 
-if [ -z "$SOURCE_PATH" ]; then
+if [[ -z "$SOURCE_PATH" ]]; then
     echo "No source path given, and $SOURCE_VAR is not set in $ENV_FILE_NAME." >&2
     exit 1
 fi
-if [ ! -d "$SOURCE_PATH" ]; then
+if [[ ! -d "$SOURCE_PATH" ]]; then
     echo "Source path not found: $SOURCE_PATH" >&2
     exit 1
 fi
@@ -177,7 +177,7 @@ export TYPESENSE_API_KEY="$TYPESENSE_KEY_VAL"
 
 cd "$REPO_ROOT"
 
-if [ "$MODE" = "items" ]; then
+if [[ "$MODE" = "items" ]]; then
     echo ""
     echo "Running scrubber: --mode items --source \"$SOURCE_PATH\""
     echo ""
