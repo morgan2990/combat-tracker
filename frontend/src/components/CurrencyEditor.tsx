@@ -10,14 +10,14 @@ interface CurrencyEditorProps {
   inputWidth?: number
 }
 
-function clamp(n: number): number {
+export function clamp(n: number): number {
   return Math.max(0, n)
 }
 
 // Applies every present, validly-formatted signed delta ("+10", "-3", "10")
 // to currency, clamping each result to a minimum of 0. Denominations with
 // an empty or unparseable draft pass through unchanged.
-function applyDrafts(currency: Currency, drafts: Partial<Record<keyof Currency, string>>): Currency {
+export function applyDrafts(currency: Currency, drafts: Partial<Record<keyof Currency, string>>): Currency {
   const result = { ...currency }
   for (const denom of CURRENCY_DENOMS) {
     const draft = drafts[denom]?.trim()

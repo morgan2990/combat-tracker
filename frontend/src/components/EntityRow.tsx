@@ -4,7 +4,7 @@ import { ConditionToggles } from './ConditionToggles'
 import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
 import { color, radius } from '../theme'
 
-function parseHP(input: string, current: number, max: number): number {
+export function parseHP(input: string, current: number, max: number): number {
   const s = input.trim()
   let result: number
   if (s.startsWith('+')) {

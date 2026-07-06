@@ -20,7 +20,7 @@ function emptyCompanion(): CompanionRow {
 
 // Trims/parses a companion row's fields; returns null if invalid (matching
 // the guard every companion-saving call site needs before submitting).
-function parseCompanionRow(row: CompanionRow): { name: string; max_hp: number } | null {
+export function parseCompanionRow(row: CompanionRow): { name: string; max_hp: number } | null {
   const hp = Number.parseInt(row.max_hp, 10)
   if (!row.name.trim() || !hp || hp <= 0) return null
   return { name: row.name.trim(), max_hp: hp }
