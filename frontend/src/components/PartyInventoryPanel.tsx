@@ -127,7 +127,11 @@ export function PartyInventoryPanel({ roomId, edition, onClose }: PartyInventory
   const displayedMembersCurrency = filteredMember ? filteredMember.currency : membersCurrencyTotal
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
+    <div
+      style={overlayStyle}
+      onClick={onClose}
+      onKeyDown={e => { if (e.key === 'Escape') onClose() }}
+    >
       <div style={panelStyle} onClick={e => e.stopPropagation()}>
         <div style={headerStyle}>
           <h3 style={{ margin: 0, fontSize: 18 }}>Party Inventory</h3>
@@ -187,7 +191,7 @@ export function PartyInventoryPanel({ roomId, edition, onClose }: PartyInventory
                       type="number"
                       min={1}
                       value={item.quantity}
-                      onChange={e => updateItem(member.pcId, i, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                      onChange={e => updateItem(member.pcId, i, { quantity: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })}
                       style={{ ...inputStyle, width: 60 }}
                     />
                     <button type="button" onClick={() => updateMemberItems(member.pcId, member.items.filter((_, idx) => idx !== i))} style={removeBtn}>Remove</button>

@@ -32,7 +32,7 @@ func newPartyView(p *store.Party, knownNames map[string]string) (partyView, erro
 			names[pcID] = name
 			continue
 		}
-		pc, err := store.Global.GetPCByID(pcID)
+		pc, err := pcDB.GetPCByID(pcID)
 		if err != nil {
 			return partyView{}, err
 		}
@@ -68,7 +68,7 @@ func CreateParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	p, err := store.GlobalParties.CreateParty(body.Name)
+	p, err := partyDB.CreateParty(body.Name)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -81,7 +81,7 @@ func GetParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	p, err := store.GlobalParties.GetPartyByID(id)
+	p, err := partyDB.GetPartyByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -104,7 +104,7 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	existing, err := store.GlobalParties.GetPartyByID(id)
+	existing, err := partyDB.GetPartyByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -122,7 +122,7 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(existing.MemberPCIDs) > 0 {
-		ownsMember, err := store.Global.OwnsAnyPC(userID, existing.MemberPCIDs)
+		ownsMember, err := pcDB.OwnsAnyPC(userID, existing.MemberPCIDs)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -132,7 +132,7 @@ func UpdateParty(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	saved, err := store.GlobalParties.UpdateParty(id, body.MemberPCIDs, body.Currency)
+	saved, err := partyDB.UpdateParty(id, body.MemberPCIDs, body.Currency)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -161,7 +161,7 @@ func JoinParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "join_code and pc_id required", http.StatusBadRequest)
 		return
 	}
-	party, err := store.GlobalParties.GetPartyByJoinCode(body.JoinCode)
+	party, err := partyDB.GetPartyByJoinCode(body.JoinCode)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -170,7 +170,7 @@ func JoinParty(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	pc, err := store.Global.GetPCByID(body.PCID)
+	pc, err := pcDB.GetPCByID(body.PCID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -179,7 +179,7 @@ func JoinParty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	saved, err := store.GlobalParties.AddMember(party.ID, body.PCID)
+	saved, err := partyDB.AddMember(party.ID, body.PCID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

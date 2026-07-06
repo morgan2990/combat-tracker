@@ -64,13 +64,13 @@ export function MonsterForm() {
         if (initiativeModifier.trim() !== '') form.append('initiative_modifier', initiativeModifier.trim())
         res = await fetch('/api/monsters', { method: 'POST', body: form })
       } else {
-        const body: Record<string, unknown> = { name: name.trim(), max_hp: parseInt(maxHP, 10), edition, private: isPrivate }
+        const body: Record<string, unknown> = { name: name.trim(), max_hp: Number.parseInt(maxHP, 10), edition, private: isPrivate }
         if (sourceType === 'url' && referenceURL.trim()) {
           body.source_type = 'url'
           body.reference_url = referenceURL.trim()
         }
         if (initiativeModifier.trim() !== '') {
-          body.initiative_modifier = parseInt(initiativeModifier.trim(), 10)
+          body.initiative_modifier = Number.parseInt(initiativeModifier.trim(), 10)
         }
         res = await fetch(editing ? `/api/custom-monsters/${encodeURIComponent(id!)}` : '/api/monsters', {
           method: editing ? 'PUT' : 'POST',
@@ -163,7 +163,7 @@ export function MonsterForm() {
             type="checkbox"
             checked={isPrivate}
             onChange={e => setIsPrivate(e.target.checked)}
-          />
+          />{' '}
           Mark as Private Campaign Content
           <span
             title="Private monsters are only visible to you — in your dashboard and your active rooms. Other DMs won't see them, even in search."

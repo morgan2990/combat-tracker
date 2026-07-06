@@ -42,8 +42,8 @@ function EntityEditor({ entity, sendMessage }: EntityEditorProps) {
   }
 
   function handleDirectSet() {
-    const val = parseInt(hpInput, 10)
-    if (!isNaN(val)) applyHP(val)
+    const val = Number.parseInt(hpInput, 10)
+    if (!Number.isNaN(val)) applyHP(val)
     setEditingHP(false)
   }
 
@@ -115,8 +115,8 @@ function InitiativeForm({ sendMessage }: InitiativeFormProps) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const init = parseInt(initiative, 10)
-    if (isNaN(init)) return
+    const init = Number.parseInt(initiative, 10)
+    if (Number.isNaN(init)) return
     sendMessage({ type: 'set_initiative', initiative: init })
   }
 

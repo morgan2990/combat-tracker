@@ -14,7 +14,7 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, err := store.GlobalUsers.GetUserByID(userID)
+	user, err := userDB.GetUserByID(userID)
 	if err != nil || user == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -71,7 +71,7 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		m.PDFObjectKey = "custom-monsters/" + id + ".pdf"
-		saved, err := store.GlobalCustomMonsters.CreateCustomMonster(m)
+		saved, err := customMonsterDB.CreateCustomMonster(m)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -93,7 +93,7 @@ func CreateCustomMonster(w http.ResponseWriter, r *http.Request) {
 	}
 	m.OwnerID = userID
 	m.OwnerDisplayName = user.DisplayName
-	saved, err := store.GlobalCustomMonsters.CreateCustomMonster(m)
+	saved, err := customMonsterDB.CreateCustomMonster(m)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -107,7 +107,7 @@ func GetCustomMonster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	m, err := store.GlobalCustomMonsters.GetCustomMonsterByID(id)
+	m, err := customMonsterDB.GetCustomMonsterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -129,7 +129,7 @@ func UpdateCustomMonster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	existing, err := store.GlobalCustomMonsters.GetCustomMonsterByID(id)
+	existing, err := customMonsterDB.GetCustomMonsterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -156,7 +156,7 @@ func UpdateCustomMonster(w http.ResponseWriter, r *http.Request) {
 	body.OwnerID = existing.OwnerID
 	body.OwnerDisplayName = existing.OwnerDisplayName
 	body.PDFObjectKey = existing.PDFObjectKey
-	saved, err := store.GlobalCustomMonsters.UpdateCustomMonster(id, body)
+	saved, err := customMonsterDB.UpdateCustomMonster(id, body)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -170,7 +170,7 @@ func DeleteCustomMonster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	existing, err := store.GlobalCustomMonsters.GetCustomMonsterByID(id)
+	existing, err := customMonsterDB.GetCustomMonsterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -183,7 +183,7 @@ func DeleteCustomMonster(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	if err := store.GlobalCustomMonsters.DeleteCustomMonster(id); err != nil {
+	if err := customMonsterDB.DeleteCustomMonster(id); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -196,7 +196,7 @@ func ListMyCustomMonsters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	edition := r.URL.Query().Get("edition")
-	monsters, err := store.GlobalCustomMonsters.ListCustomMonstersByOwner(userID, edition)
+	monsters, err := customMonsterDB.ListCustomMonstersByOwner(userID, edition)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -213,7 +213,7 @@ func StreamCustomMonsterPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	m, err := store.GlobalCustomMonsters.GetCustomMonsterByID(id)
+	m, err := customMonsterDB.GetCustomMonsterByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

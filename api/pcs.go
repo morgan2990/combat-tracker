@@ -27,12 +27,32 @@ func CreatePC(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
-	pc, err := store.Global.CreatePC(userID, body.Name, body.MaxHP)
+	pc, err := pcDB.CreatePC(userID, body.Name, body.MaxHP)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, pc)
+}
+
+// requireOwnedPC fetches the PC or companion document by id and verifies
+// the requesting user owns it, writing the appropriate error response and
+// returning ok=false if it doesn't exist or isn't owned by userID.
+func requireOwnedPC(w http.ResponseWriter, r *http.Request, id, userID string) (*store.PC, bool) {
+	existing, err := pcDB.GetPCByID(id)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return nil, false
+	}
+	if existing == nil {
+		http.NotFound(w, r)
+		return nil, false
+	}
+	if existing.OwnerUserID != userID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return nil, false
+	}
+	return existing, true
 }
 
 func UpdatePC(w http.ResponseWriter, r *http.Request) {
@@ -41,17 +61,7 @@ func UpdatePC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	existing, err := store.Global.GetPCByID(id)
-	if err != nil {
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if existing == nil {
-		http.NotFound(w, r)
-		return
-	}
-	if existing.OwnerUserID != userID {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	if _, ok := requireOwnedPC(w, r, id, userID); !ok {
 		return
 	}
 	var body pcPayload
@@ -66,7 +76,30 @@ func UpdatePC(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "currency values cannot be negative", http.StatusBadRequest)
 		return
 	}
-	if err := store.Global.UpdatePC(id, body.Name, body.MaxHP, body.Items, body.Currency); err != nil {
+	fields := store.PCUpdateFields{
+		Name:             body.Name,
+		MaxHP:            body.MaxHP,
+		SharesInitiative: body.SharesInitiative,
+		Items:            body.Items,
+		Currency:         body.Currency,
+	}
+	if err := pcDB.UpdatePC(id, fields); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func DeletePC(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	id := r.PathValue("id")
+	if _, ok := requireOwnedPC(w, r, id, userID); !ok {
+		return
+	}
+	if err := pcDB.DeletePC(id); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -84,7 +117,7 @@ func GetPC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	pc, err := store.Global.GetPCByID(id)
+	pc, err := pcDB.GetPCByID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -97,7 +130,7 @@ func GetPC(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	companions, err := store.Global.GetCompanionsByParentID(id)
+	companions, err := pcDB.GetCompanionsByParentID(id)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -114,7 +147,7 @@ func CreateCompanion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	parentID := r.PathValue("id")
-	parent, err := store.Global.GetPCByID(parentID)
+	parent, err := pcDB.GetPCByID(parentID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -131,7 +164,7 @@ func CreateCompanion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
-	companion, err := store.Global.CreateCompanion(parentID, userID, body.Name, body.MaxHP, body.SharesInitiative)
+	companion, err := pcDB.CreateCompanion(parentID, userID, body.Name, body.MaxHP, body.SharesInitiative)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

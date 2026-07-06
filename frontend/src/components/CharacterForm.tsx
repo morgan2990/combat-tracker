@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { PC } from '../types'
 import { fetchJSON } from '../fetchJSON'
+import { deleteWithConfirm } from '../deleteWithConfirm'
 import { color, radius } from '../theme'
 
 interface CompanionRow {
@@ -11,8 +12,18 @@ interface CompanionRow {
   shares_initiative: boolean
 }
 
+type ExistingCompanionRow = CompanionRow & { id: string }
+
 function emptyCompanion(): CompanionRow {
   return { name: '', max_hp: '', shares_initiative: false }
+}
+
+// Trims/parses a companion row's fields; returns null if invalid (matching
+// the guard every companion-saving call site needs before submitting).
+export function parseCompanionRow(row: CompanionRow): { name: string; max_hp: number } | null {
+  const hp = Number.parseInt(row.max_hp, 10)
+  if (!row.name.trim() || !hp || hp <= 0) return null
+  return { name: row.name.trim(), max_hp: hp }
 }
 
 interface CharacterFormProps {
@@ -26,7 +37,9 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
 
   const [charName, setCharName] = useState('')
   const [maxHP, setMaxHP] = useState('')
-  const [existingCompanions, setExistingCompanions] = useState<PC[]>([])
+  const [existingCompanions, setExistingCompanions] = useState<ExistingCompanionRow[]>([])
+  const [savingCompanionId, setSavingCompanionId] = useState<string | null>(null)
+  const [companionActionError, setCompanionActionError] = useState<string | null>(null)
   const [newCompanions, setNewCompanions] = useState<CompanionRow[]>([])
   const [loading, setLoading] = useState(editing)
   const [submitting, setSubmitting] = useState(false)
@@ -40,10 +53,46 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
         if (!data) return
         setCharName(data.pc.name)
         setMaxHP(String(data.pc.max_hp))
-        setExistingCompanions(data.companions)
+        setExistingCompanions(data.companions.map(c => ({
+          id: c.id, name: c.name, max_hp: String(c.max_hp), shares_initiative: c.shares_initiative,
+        })))
       })
       .finally(() => setLoading(false))
   }, [id])
+
+  function updateExistingCompanion(companionId: string, field: keyof CompanionRow, value: string | boolean) {
+    setExistingCompanions(prev => prev.map(c => c.id === companionId ? { ...c, [field]: value } : c))
+  }
+
+  async function saveExistingCompanion(companionId: string) {
+    const row = existingCompanions.find(c => c.id === companionId)
+    const parsed = row && parseCompanionRow(row)
+    if (!row || !parsed) return
+
+    setCompanionActionError(null)
+    setSavingCompanionId(companionId)
+    try {
+      const res = await fetch(`/api/pcs/${encodeURIComponent(companionId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: parsed.name, max_hp: parsed.max_hp, shares_initiative: row.shares_initiative }),
+      })
+      if (!res.ok) throw new Error('Failed to save companion')
+    } catch (err) {
+      setCompanionActionError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSavingCompanionId(null)
+    }
+  }
+
+  function deleteExistingCompanion(companionId: string) {
+    return deleteWithConfirm(
+      'Delete this companion? This cannot be undone.',
+      `/api/pcs/${encodeURIComponent(companionId)}`,
+      () => setExistingCompanions(prev => prev.filter(c => c.id !== companionId)),
+      () => setCompanionActionError('Failed to delete companion'),
+    )
+  }
 
   function addCompanionRow() {
     setNewCompanions(prev => [...prev, emptyCompanion()])
@@ -59,7 +108,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const hp = parseInt(maxHP, 10)
+    const hp = Number.parseInt(maxHP, 10)
     if (!charName.trim() || hp <= 0) return
 
     setSubmitting(true)
@@ -86,19 +135,18 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
       }
 
       for (const c of newCompanions) {
-        if (!c.name.trim() || !c.max_hp) continue
-        const cHP = parseInt(c.max_hp, 10)
-        if (cHP <= 0) continue
+        const parsed = parseCompanionRow(c)
+        if (!parsed) continue
         const res = await fetch(`/api/pcs/${encodeURIComponent(pcId!)}/companions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: c.name.trim(),
-            max_hp: cHP,
+            name: parsed.name,
+            max_hp: parsed.max_hp,
             shares_initiative: c.shares_initiative,
           }),
         })
-        if (!res.ok) throw new Error(`Failed to save companion "${c.name}"`)
+        if (!res.ok) throw new Error(`Failed to save companion "${parsed.name}"`)
       }
 
       await onSaved()
@@ -146,15 +194,69 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
           </label>
         </section>
 
-        {/* Existing companions (edit mode, read-only here) */}
+        {/* Existing companions (edit mode) */}
         {existingCompanions.length > 0 && (
           <section style={{ ...sectionStyle, marginTop: 20 }}>
             <h3 style={sectionHeader}>Existing Companions / Pets</h3>
-            {existingCompanions.map(c => (
-              <div key={c.id} style={{ fontSize: 14, padding: '6px 0', borderBottom: `1px solid ${color.border}` }}>
-                {c.name} <span style={{ color: color.textMuted, fontSize: 12 }}>{c.max_hp} HP{c.shares_initiative ? ' · shares initiative' : ''}</span>
+            {companionActionError && (
+              <div style={{ marginBottom: 10, padding: '10px 12px', background: '#1a0808', border: `1px solid ${color.danger}`, borderRadius: radius.md, fontSize: 13, color: color.danger }}>
+                {companionActionError}
               </div>
-            ))}
+            )}
+            {existingCompanions.map(c => {
+              const saving = savingCompanionId === c.id
+              return (
+                <div key={c.id} style={{ background: color.bgCard, border: `1px solid ${color.border}`, borderRadius: radius.md, padding: 12, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <div style={{ flex: 2 }}>
+                      <div style={fieldLabel}>Name</div>
+                      <input
+                        value={c.name}
+                        onChange={e => updateExistingCompanion(c.id, 'name', e.target.value)}
+                        style={{ ...inputStyle, marginTop: 0 }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={fieldLabel}>Max HP</div>
+                      <input
+                        type="number"
+                        value={c.max_hp}
+                        onChange={e => updateExistingCompanion(c.id, 'max_hp', e.target.value)}
+                        min={1}
+                        style={{ ...inputStyle, marginTop: 0 }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#8888aa', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={c.shares_initiative}
+                        onChange={e => updateExistingCompanion(c.id, 'shares_initiative', e.target.checked)}
+                      />{' '}
+                      Shares initiative with character
+                    </label>
+                    <span style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => saveExistingCompanion(c.id)}
+                        disabled={saving || !c.name.trim() || !c.max_hp}
+                        style={{ padding: '4px 10px', fontSize: 12, cursor: saving ? 'not-allowed' : 'pointer', background: color.border, color: color.textPrimary, border: 'none', borderRadius: radius.sm }}
+                      >
+                        {saving ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteExistingCompanion(c.id)}
+                        style={{ padding: '4px 10px', fontSize: 12, cursor: 'pointer', background: 'none', color: color.danger, border: '1px solid #3a1010', borderRadius: radius.sm }}
+                      >
+                        Delete
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
           </section>
         )}
 
@@ -207,7 +309,7 @@ export function CharacterForm({ onSaved }: CharacterFormProps) {
                     type="checkbox"
                     checked={c.shares_initiative}
                     onChange={e => updateCompanionRow(i, 'shares_initiative', e.target.checked)}
-                  />
+                  />{' '}
                   Shares initiative with character
                 </label>
                 <button

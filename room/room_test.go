@@ -119,8 +119,8 @@ func TestSnapshotConnectedStatus(t *testing.T) {
 	r := &Room{
 		State: RoomState{
 			Entities: []Entity{
-				{ID: "p1", Type: "player", SessionID: "sess-online"},
-				{ID: "p2", Type: "player", SessionID: "sess-offline"},
+				{ID: "p1", Type: "pc", SessionID: "sess-online"},
+				{ID: "p2", Type: "pc", SessionID: "sess-offline"},
 				{ID: "c1", Type: "companion", OwnerID: "p1"},
 				{ID: "k1", Type: "creature"},
 			},

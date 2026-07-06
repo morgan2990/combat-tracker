@@ -27,12 +27,12 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not hash passphrase", http.StatusInternalServerError)
 		return
 	}
-	user, err := store.GlobalUsers.CreateUser(body.Username, string(hash))
+	user, err := userDB.CreateUser(body.Username, string(hash))
 	if err != nil {
 		http.Error(w, "username taken", http.StatusConflict)
 		return
 	}
-	sess, err := store.GlobalUsers.CreateSession(user.ID)
+	sess, err := userDB.CreateSession(user.ID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -46,7 +46,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &body) {
 		return
 	}
-	user, err := store.GlobalUsers.GetUserByUsername(body.Username)
+	user, err := userDB.GetUserByUsername(body.Username)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -55,7 +55,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid username or passphrase", http.StatusUnauthorized)
 		return
 	}
-	sess, err := store.GlobalUsers.CreateSession(user.ID)
+	sess, err := userDB.CreateSession(user.ID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -66,7 +66,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 func Logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("combatapp_session"); err == nil && c.Value != "" {
-		store.GlobalUsers.DeleteSession(c.Value)
+		userDB.DeleteSession(c.Value)
 	}
 	auth.ClearSessionCookie(w)
 	w.WriteHeader(http.StatusNoContent)
@@ -77,12 +77,12 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, err := store.GlobalUsers.GetUserByID(userID)
+	user, err := userDB.GetUserByID(userID)
 	if err != nil || user == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	pcs, err := store.Global.ListPCsByOwner(userID)
+	pcs, err := pcDB.ListPCsByOwner(userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -90,7 +90,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	if pcs == nil {
 		pcs = []store.PC{}
 	}
-	rooms, err := store.GlobalRooms.ListByOwner(userID)
+	rooms, err := roomDB.ListByOwner(userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -98,7 +98,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 	if rooms == nil {
 		rooms = []store.RoomSummary{}
 	}
-	memberships, err := store.GlobalMemberships.ListByUser(userID)
+	memberships, err := membershipDB.ListByUser(userID)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -112,7 +112,7 @@ func Me(w http.ResponseWriter, r *http.Request) {
 		pcIDs[i] = pc.ID
 		ownedNames[pc.ID] = pc.Name
 	}
-	parties, err := store.GlobalParties.ListPartiesByMemberPCIDs(pcIDs)
+	parties, err := partyDB.ListPartiesByMemberPCIDs(pcIDs)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

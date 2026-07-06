@@ -14,8 +14,8 @@ export function SetupForm({ myName, onSubmit }: SetupFormProps) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const hp = parseInt(maxHP, 10)
-    const init = parseInt(initiative, 10)
+    const hp = Number.parseInt(maxHP, 10)
+    const init = Number.parseInt(initiative, 10)
     if (!hp || hp <= 0) return
     setSubmitted(true)
     onSubmit({ type: 'setup_character', max_hp: hp, initiative: init || 0 })

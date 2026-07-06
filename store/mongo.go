@@ -208,18 +208,44 @@ func (s *Store) CreatePC(ownerUserID, name string, maxHP int) (*PC, error) {
 	return &p, nil
 }
 
+// PCUpdateFields holds the editable fields for UpdatePC.
+type PCUpdateFields struct {
+	Name             string
+	MaxHP            int
+	SharesInitiative bool
+	Items            []Item
+	Currency         Currency
+}
+
 // UpdatePC overwrites the editable fields of an existing PC. Callers must verify ownership first.
-func (s *Store) UpdatePC(id, name string, maxHP int, items []Item, currency Currency) error {
+func (s *Store) UpdatePC(id string, fields PCUpdateFields) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	items := fields.Items
 	if items == nil {
 		items = []Item{}
 	}
 	_, err := s.col.UpdateOne(ctx, bson.M{"id": id}, bson.M{"$set": bson.M{
-		"name":     name,
-		"max_hp":   maxHP,
-		"items":    items,
-		"currency": currency,
+		"name":              fields.Name,
+		"max_hp":            fields.MaxHP,
+		"shares_initiative": fields.SharesInitiative,
+		"items":             items,
+		"currency":          fields.Currency,
+	}})
+	return err
+}
+
+// DeletePC deletes the PC or companion document with the given id. If it is
+// a "pc" document, this also deletes every companion document whose
+// parent_pc_id matches it, in the same operation (harmless no-op match if id
+// is instead a companion, since only "pc" documents are ever a parent).
+// Callers must verify ownership first.
+func (s *Store) DeletePC(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := s.col.DeleteMany(ctx, bson.M{"$or": []bson.M{
+		{"id": id},
+		{"type": "companion", "parent_pc_id": id},
 	}})
 	return err
 }

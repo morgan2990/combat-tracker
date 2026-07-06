@@ -12,6 +12,17 @@ import (
 
 const cookieName = "combatapp_session"
 
+// SessionResolver is the subset of store.UserStore's methods needed to
+// resolve a session token to a user id. store.GlobalUsers (the production
+// implementation) is the default; tests in this or other packages (e.g.
+// api's handler tests) can swap Sessions for a fake so session-gated code
+// is testable without a live MongoDB connection.
+type SessionResolver interface {
+	ResolveSession(token string) (*store.Session, error)
+}
+
+var Sessions SessionResolver = &store.GlobalUsers
+
 // secureCookies reports whether the session cookie should carry the Secure
 // attribute. Defaults to true; set COOKIE_SECURE=false for local/LAN HTTP testing.
 func secureCookies() bool {
@@ -52,7 +63,7 @@ func ResolveUserID(r *http.Request) (userID string, ok bool) {
 	if err != nil || c.Value == "" {
 		return "", false
 	}
-	sess, err := store.GlobalUsers.ResolveSession(c.Value)
+	sess, err := Sessions.ResolveSession(c.Value)
 	if err != nil || sess == nil {
 		return "", false
 	}

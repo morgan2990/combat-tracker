@@ -106,7 +106,7 @@ func GetPartyInventory(w http.ResponseWriter, r *http.Request) {
 	members := []partyInventoryMember{}
 	var membersCurrency store.Currency
 	for _, pcID := range party.MemberPCIDs {
-		pc, err := store.Global.GetPCByID(pcID)
+		pc, err := pcDB.GetPCByID(pcID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -179,7 +179,7 @@ func UpdatePartyInventoryPC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := store.Global.UpdatePCInventory(pcID, body.Items, body.Currency)
+	updated, err := pcDB.UpdatePCInventory(pcID, body.Items, body.Currency)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
@@ -206,11 +206,11 @@ func DeleteRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	room.Global.RemoveRoom(roomID)
-	if err := store.GlobalRooms.Delete(roomID); err != nil {
+	if err := roomDB.Delete(roomID); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	if err := store.GlobalMemberships.DeleteByRoom(roomID); err != nil {
+	if err := membershipDB.DeleteByRoom(roomID); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -226,7 +226,7 @@ func LeaveRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roomID := r.PathValue("room_id")
-	if err := store.GlobalMemberships.DeleteOne(userID, roomID); err != nil {
+	if err := membershipDB.DeleteOne(userID, roomID); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -255,5 +255,5 @@ func resolveLinkedParty(rm *room.Room) (*store.Party, error) {
 	if partyID == "" {
 		return nil, nil
 	}
-	return store.GlobalParties.GetPartyByID(partyID)
+	return partyDB.GetPartyByID(partyID)
 }

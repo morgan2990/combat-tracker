@@ -4,18 +4,18 @@ import { ConditionToggles } from './ConditionToggles'
 import { entityVitalState, vitalRowBg, vitalTextColor } from '../entityVitals'
 import { color, radius } from '../theme'
 
-function parseHP(input: string, current: number, max: number): number {
+export function parseHP(input: string, current: number, max: number): number {
   const s = input.trim()
   let result: number
   if (s.startsWith('+')) {
-    const delta = parseInt(s.slice(1), 10)
-    result = isNaN(delta) ? current : current + delta
+    const delta = Number.parseInt(s.slice(1), 10)
+    result = Number.isNaN(delta) ? current : current + delta
   } else if (s.startsWith('-')) {
-    const delta = parseInt(s.slice(1), 10)
-    result = isNaN(delta) ? current : current - delta
+    const delta = Number.parseInt(s.slice(1), 10)
+    result = Number.isNaN(delta) ? current : current - delta
   } else {
-    const val = parseInt(s, 10)
-    result = isNaN(val) ? current : val
+    const val = Number.parseInt(s, 10)
+    result = Number.isNaN(val) ? current : val
   }
   return Math.max(0, Math.min(result, max))
 }
@@ -63,8 +63,8 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenI
   }
 
   function applyInitiative() {
-    const val = parseInt(initInput, 10)
-    if (!isNaN(val) && val !== entity.initiative) {
+    const val = Number.parseInt(initInput, 10)
+    if (!Number.isNaN(val) && val !== entity.initiative) {
       sendUpdate({ initiative: val })
     }
   }
@@ -96,8 +96,16 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenI
     <div style={{ borderBottom: `1px solid ${color.border}` }}>
       {/* Main row */}
       <div
+        role="button"
+        tabIndex={0}
         style={{ padding: '10px 14px', background: rowBg, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: entity.is_hidden ? 0.5 : 1 }}
         onClick={() => setExpanded(e => !e)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setExpanded(ex => !ex)
+          }
+        }}
       >
         <span style={{ width: 16, color: color.accent, flexShrink: 0 }}>{isActive ? '▶' : ''}</span>
         <div style={{ flex: 1, minWidth: 0 }}>

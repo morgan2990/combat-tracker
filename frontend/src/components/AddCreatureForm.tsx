@@ -120,8 +120,8 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const hp = parseInt(maxHP, 10)
-    const qty = Math.max(1, parseInt(quantity, 10) || 1)
+    const hp = Number.parseInt(maxHP, 10)
+    const qty = Math.max(1, Number.parseInt(quantity, 10) || 1)
     if (!name.trim() || !hp || hp <= 0) return
     const msg: Record<string, unknown> = {
       type: 'add_creature',
@@ -170,13 +170,15 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
             marginTop: 2, maxHeight: 220, overflowY: 'auto',
           }}>
             {results.map(hit => (
-              <div
+              <button
                 key={hit.id}
+                type="button"
                 onClick={() => selectMonster(hit)}
                 style={{
-                  padding: '8px 10px', cursor: 'pointer', display: 'flex',
+                  width: '100%', padding: '8px 10px', cursor: 'pointer', display: 'flex',
                   justifyContent: 'space-between', alignItems: 'center', fontSize: 13,
-                  borderBottom: `1px solid ${color.border}`,
+                  border: 'none', borderRadius: 0, borderBottom: `1px solid ${color.border}`,
+                  background: 'none', font: 'inherit', color: 'inherit', textAlign: 'left',
                 }}
               >
                 <span style={{ color: color.textPrimary }}>
@@ -193,7 +195,7 @@ export const AddCreatureForm = forwardRef<AddCreatureFormHandle, AddCreatureForm
                   </span>
                   <span style={{ color: color.textSecondary }}>{hit.max_hp} HP</span>
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         )}
