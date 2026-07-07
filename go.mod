@@ -6,6 +6,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.2.1
+	github.com/testcontainers/testcontainers-go v0.43.0
 	github.com/testcontainers/testcontainers-go/modules/mongodb v0.43.0
 	github.com/typesense/typesense-go/v2 v2.0.0
 )
@@ -59,7 +60,6 @@ require (
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/testcontainers/testcontainers-go v0.43.0 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect

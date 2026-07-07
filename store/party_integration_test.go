@@ -4,16 +4,30 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// TestMain spins up a single, real MongoDB container for the whole package's
-// integration tests (not per-test — a fresh container per test would be
-// needlessly slow), points store.Init() at it via MONGODB_URI, and tears it
-// down afterward. Run with: go test -tags=integration ./store/...
+// testTypesenseURL and testTypesenseAPIKey point at the real Typesense
+// container started by TestMain. globalTypesense.client stays nil by
+// default (matching production when Typesense is unconfigured/unreachable —
+// see TestMonsterStore_SearchMonsters_NoTypesenseReturnsEmpty), so tests
+// that need a real client build one from these and swap it in for their own
+// duration (see withRealTypesense in typesense_integration_test.go).
+const testTypesenseAPIKey = "test-api-key"
+
+var testTypesenseURL string
+
+// TestMain spins up a single, real MongoDB container plus a single, real
+// Typesense container for the whole package's integration tests (not
+// per-test — a fresh container per test would be needlessly slow), points
+// store.Init() at Mongo via MONGODB_URI, and tears both down afterward. Run
+// with: go test -tags=integration ./store/...
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
@@ -37,6 +51,35 @@ func TestMain(m *testing.M) {
 	if err := Init(); err != nil {
 		panic("store.Init() against test container failed: " + err.Error())
 	}
+
+	tsContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        "typesense/typesense:27.1",
+			ExposedPorts: []string{"8108/tcp"},
+			Tmpfs:        map[string]string{"/data": ""},
+			Cmd:          []string{"--data-dir=/data", "--api-key=" + testTypesenseAPIKey},
+			WaitingFor:   wait.ForHTTP("/health").WithPort("8108/tcp"),
+		},
+		Started: true,
+	})
+	if err != nil {
+		panic("failed to start Typesense container: " + err.Error())
+	}
+	defer func() {
+		if err := tsContainer.Terminate(ctx); err != nil {
+			panic("failed to terminate Typesense container: " + err.Error())
+		}
+	}()
+
+	tsHost, err := tsContainer.Host(ctx)
+	if err != nil {
+		panic("failed to get Typesense container host: " + err.Error())
+	}
+	tsPort, err := tsContainer.MappedPort(ctx, "8108/tcp")
+	if err != nil {
+		panic("failed to get Typesense container port: " + err.Error())
+	}
+	testTypesenseURL = fmt.Sprintf("http://%s:%s", tsHost, tsPort.Port())
 
 	os.Exit(m.Run())
 }
