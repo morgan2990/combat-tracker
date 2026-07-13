@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -23,11 +24,24 @@ const testTypesenseAPIKey = "test-api-key"
 
 var testTypesenseURL string
 
-// TestMain spins up a single, real MongoDB container plus a single, real
-// Typesense container for the whole package's integration tests (not
-// per-test — a fresh container per test would be needlessly slow), points
-// store.Init() at Mongo via MONGODB_URI, and tears both down afterward. Run
-// with: go test -tags=integration ./store/...
+// testMinioEndpoint, testMinioAccessKey, and testMinioSecretKey point at the
+// real Minio container started by TestMain. globalMinio.client stays nil by
+// default (matching production when Minio is unconfigured — see
+// TestUploadPDF_NotInitialized), so tests that need a real client build one
+// from these and swap it in for their own duration (see withRealMinio in
+// minio_integration_test.go).
+var (
+	testMinioEndpoint  string
+	testMinioAccessKey string
+	testMinioSecretKey string
+)
+
+// TestMain spins up a single, real MongoDB container, a single, real
+// Typesense container, and a single, real Minio container for the whole
+// package's integration tests (not per-test — a fresh container per test
+// would be needlessly slow), points store.Init() at Mongo via MONGODB_URI,
+// and tears all three down afterward. Run with:
+// go test -tags=integration ./store/...
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
@@ -80,6 +94,23 @@ func TestMain(m *testing.M) {
 		panic("failed to get Typesense container port: " + err.Error())
 	}
 	testTypesenseURL = fmt.Sprintf("http://%s:%s", tsHost, tsPort.Port())
+
+	minioContainer, err := minio.Run(ctx, "minio/minio:RELEASE.2024-01-16T16-07-38Z")
+	if err != nil {
+		panic("failed to start Minio container: " + err.Error())
+	}
+	defer func() {
+		if err := minioContainer.Terminate(ctx); err != nil {
+			panic("failed to terminate Minio container: " + err.Error())
+		}
+	}()
+
+	testMinioEndpoint, err = minioContainer.ConnectionString(ctx)
+	if err != nil {
+		panic("failed to get Minio connection string: " + err.Error())
+	}
+	testMinioAccessKey = minioContainer.Username
+	testMinioSecretKey = minioContainer.Password
 
 	os.Exit(m.Run())
 }
