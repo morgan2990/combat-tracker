@@ -52,6 +52,19 @@ type MonsterHit struct {
 	OwnerDisplayName   string `json:"owner_display_name,omitempty"`
 }
 
+// typesenseInitRetries and typesenseInitRetryDelay bound how long
+// InitTypesense will wait for Typesense to report healthy at startup. Var,
+// not const, so tests can shrink them to keep the unreachable-server case
+// fast. Typesense's own container healthcheck (docker-compose.yml) only
+// confirms its TCP port is open, not that its HTTP API has finished internal
+// startup (Raft leader election) — on slower hardware the two can be
+// seconds apart, so a single-shot health check can lose that race even
+// though Typesense comes up fine moments later.
+var (
+	typesenseInitRetries    = 5
+	typesenseInitRetryDelay = 2 * time.Second
+)
+
 // InitTypesense connects to Typesense and ensures the monsters collection
 // schema exists. Unlike store.Init() (MongoDB), failure here is logged, not
 // fatal — Typesense is a best-effort search layer, not the source of truth.
@@ -69,13 +82,26 @@ func InitTypesense() {
 		typesense.WithConnectionTimeout(5*time.Second),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if _, err := client.Health(ctx, 5*time.Second); err != nil {
-		log.Printf("typesense: init failed: %v", err)
+	var healthErr error
+	for attempt := 1; attempt <= typesenseInitRetries; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, healthErr = client.Health(ctx, 5*time.Second)
+		cancel()
+		if healthErr == nil {
+			break
+		}
+		if attempt < typesenseInitRetries {
+			log.Printf("typesense: health check failed (attempt %d/%d): %v, retrying in %s", attempt, typesenseInitRetries, healthErr, typesenseInitRetryDelay)
+			time.Sleep(typesenseInitRetryDelay)
+		}
+	}
+	if healthErr != nil {
+		log.Printf("typesense: init failed after %d attempts: %v", typesenseInitRetries, healthErr)
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if err := ensureMonsterCollection(ctx, client); err != nil {
 		log.Printf("typesense: schema init failed: %v", err)
 		return

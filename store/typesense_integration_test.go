@@ -94,6 +94,10 @@ func TestInitTypesense_Unreachable_NoOp(t *testing.T) {
 	t.Cleanup(func() { globalTypesense = original })
 	globalTypesense = typesenseStore{}
 
+	originalRetries, originalDelay := typesenseInitRetries, typesenseInitRetryDelay
+	typesenseInitRetries, typesenseInitRetryDelay = 2, time.Millisecond
+	t.Cleanup(func() { typesenseInitRetries, typesenseInitRetryDelay = originalRetries, originalDelay })
+
 	t.Setenv("TYPESENSE_URL", "http://127.0.0.1:1")
 	t.Setenv("TYPESENSE_API_KEY", "unreachable")
 

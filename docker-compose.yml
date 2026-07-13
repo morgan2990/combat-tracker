@@ -64,7 +64,16 @@ services:
     ports:
       - "8108:8108"
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8108' || exit 1"]
+      # A bare TCP check (the previous test here) only confirms the process
+      # is listening, not that Typesense has finished internal startup (Raft
+      # leader election) — combatapp's depends_on/service_healthy gate was
+      # passing before Typesense's /health endpoint actually returned ok,
+      # causing InitTypesense() to see a 503 and permanently disable search
+      # for that run. This image has neither curl nor wget, so the /health
+      # endpoint is hit via a raw HTTP request over bash's /dev/tcp instead.
+      # Uses the exec form with bash named explicitly, not CMD-SHELL — this
+      # image's /bin/sh is dash, which has no /dev/tcp support.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8108 && printf 'GET /health HTTP/1.0\r\n\r\n' >&3 && timeout 3 grep -q '\"ok\":true' <&3"]
       interval: 10s
       timeout: 5s
       retries: 5
