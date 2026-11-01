@@ -196,6 +196,32 @@ describe('DMView', () => {
     expect(await screen.findByText("Aria's Inventory")).toBeInTheDocument()
   })
 
+  it("links a linked party member's sheet through the room, in a new tab", async () => {
+    setTier('phone')
+    stubPartyFetch([{ pc_id: 'pc1', name: 'Aria', currency: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 } }])
+    const state = room({ entities: [entity({ id: 'e1', name: 'Aria', pc_id: 'pc1' })] })
+    render(<DMView roomState={state} sendMessage={vi.fn()} onBackToDashboard={vi.fn()} />)
+
+    const link = await screen.findByTitle('View character sheet')
+    expect(link).toHaveAttribute('href', `/characters/pc1/sheet?room=${encodeURIComponent(state.room_id)}`)
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it("does not link a sheet for a pc not linked to the room's party", async () => {
+    setTier('phone')
+    stubPartyFetch([])
+    render(
+      <DMView
+        roomState={room({ entities: [entity({ id: 'e1', name: 'Aria', pc_id: 'pc1' })] })}
+        sendMessage={vi.fn()}
+        onBackToDashboard={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByText('Aria')).toBeInTheDocument())
+    expect(screen.queryByTitle('View character sheet')).not.toBeInTheDocument()
+  })
+
   it("does not offer inventory access for a pc not linked to the room's party", async () => {
     setTier('phone')
     stubPartyFetch([]) // no members linked

@@ -194,6 +194,14 @@ describe('Dashboard', () => {
   })
 
   describe('Player panel: characters', () => {
+    it('links each character to its sheet page', () => {
+      setTier('desktop')
+      stubFetch()
+      renderDashboard(me({ pcs: [pc()] }))
+
+      expect(screen.getByRole('link', { name: 'Sheet' })).toHaveAttribute('href', '/characters/pc1/sheet')
+    })
+
     it('lists characters with HP, opens inventory, and deletes one', async () => {
       setTier('desktop')
       vi.spyOn(window, 'confirm').mockReturnValue(true)

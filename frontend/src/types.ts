@@ -171,3 +171,51 @@ export interface MeResponse {
   recent_rooms: RoomMembership[]
   parties: Party[]
 }
+
+// A character sheet section as the API returns it. Sections are edited by a
+// schema-driven UI (see sheet/sheetSchema.tsx), so their fields are not
+// spelled out here; the authoritative shapes are in store/character_sheet.go.
+export type SheetRecord = Record<string, unknown>
+
+export interface SheetSource {
+  kind?: string
+  sheet_version?: string
+  sheet_build?: string
+  imported_at?: string
+  file_name?: string
+  file_sha256?: string
+  mapper_version?: string
+  import_id?: string
+}
+
+export interface CharacterSheet {
+  pc_id: string
+  schema_version: number
+  revision: number
+  source?: SheetSource
+  identity?: SheetRecord
+  abilities?: SheetRecord
+  skills?: SheetRecord
+  combat?: SheetRecord
+  defenses?: SheetRecord
+  attacks?: SheetRecord[]
+  actions?: SheetRecord
+  limited_uses?: SheetRecord[]
+  features?: SheetRecord[]
+  weapon_masteries?: SheetRecord[]
+  proficiencies?: SheetRecord
+  magic_items?: SheetRecord[]
+  spellcasting?: SheetRecord
+  wild_shapes?: SheetRecord
+  notes?: SheetRecord
+  creature?: SheetRecord
+}
+
+export interface SheetBundle {
+  pc: PC
+  sheet: CharacterSheet
+}
+
+export interface SheetResponse extends SheetBundle {
+  companions: SheetBundle[]
+}

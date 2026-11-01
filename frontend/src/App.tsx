@@ -6,6 +6,7 @@ import { Dashboard } from './components/Dashboard'
 import { PlayerView } from './components/PlayerView'
 import { DMView } from './components/DMView'
 import { CharacterForm } from './components/CharacterForm'
+import { CharacterSheetPage } from './components/CharacterSheetPage'
 import { MonsterForm } from './components/MonsterForm'
 import { EncounterForm } from './components/EncounterForm'
 import { color, radius } from './theme'
@@ -208,6 +209,7 @@ export default function App() {
       />
       <Route path="/characters/new" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
       <Route path="/characters/:id/edit" element={<CharacterForm onSaved={async () => { await refreshMe(); navigate('/') }} />} />
+      <Route path="/characters/:id/sheet" element={<CharacterSheetPage />} />
       <Route path="/monsters/new" element={<MonsterForm />} />
       <Route path="/monsters/custom/:id/edit" element={<MonsterForm />} />
       <Route path="/encounters/new" element={<EncounterForm />} />

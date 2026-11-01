@@ -29,9 +29,12 @@ interface EntityRowProps {
   // the only case where the DM has a legal, working path to its inventory.
   canOpenInventory?: boolean
   onOpenInventory: (pcId: string) => void
+  // Where this PC's character sheet opens (a new tab); set only for party
+  // members, for the same reason as canOpenInventory.
+  sheetHref?: string
 }
 
-export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenInventory, onOpenInventory }: EntityRowProps) {
+export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenInventory, onOpenInventory, sheetHref }: EntityRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [hpInput, setHpInput] = useState('')
   const [initInput, setInitInput] = useState(entity.initiative != null ? String(entity.initiative) : '')
@@ -120,6 +123,18 @@ export function EntityRow({ entity, isActive, sendMessage, onStatblock, canOpenI
             >
               🎒
             </button>
+          )}
+          {entity.type === 'pc' && sheetHref && (
+            <a
+              href={sheetHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              title="View character sheet"
+              style={{ marginLeft: 6, color: color.textSecondary, fontSize: 13, padding: '0 2px', lineHeight: 1, textDecoration: 'none' }}
+            >
+              📜
+            </a>
           )}
           {entity.type === 'creature' && entity.source_type && onStatblock && (
             <button

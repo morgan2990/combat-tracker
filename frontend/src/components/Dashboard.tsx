@@ -297,6 +297,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
                 >
                   Inventory
                 </button>
+                <Link to={`/characters/${pc.id}/sheet`} style={{ fontSize: 12, color: color.info }}>Sheet</Link>
                 <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
                 <button onClick={() => handleDeleteCharacter(pc.id)} style={deleteBtn}>Delete</button>
               </span>

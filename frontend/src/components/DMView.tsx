@@ -192,6 +192,9 @@ export function DMView({ roomState, sendMessage, onBackToDashboard }: DMViewProp
               : undefined}
             canOpenInventory={!!entity.pc_id && partyMemberPCIDs.has(entity.pc_id)}
             onOpenInventory={setInventoryPcId}
+            sheetHref={entity.pc_id && partyMemberPCIDs.has(entity.pc_id)
+              ? `/characters/${encodeURIComponent(entity.pc_id)}/sheet?room=${encodeURIComponent(roomState.room_id)}`
+              : undefined}
           />
         ))}
       </div>
