@@ -6,12 +6,14 @@ import (
 	"combatapp/store"
 )
 
+// pcPayload's optional fields are pointers (or a nil-able slice) so a handler
+// can tell "omitted" from "empty": UpdatePC only writes the ones present.
 type pcPayload struct {
-	Name             string         `json:"name"`
-	MaxHP            int            `json:"max_hp"`
-	SharesInitiative bool           `json:"shares_initiative"`
-	Items            []store.Item   `json:"items"`
-	Currency         store.Currency `json:"currency"`
+	Name             string          `json:"name"`
+	MaxHP            int             `json:"max_hp"`
+	SharesInitiative *bool           `json:"shares_initiative"`
+	Items            []store.Item    `json:"items"`
+	Currency         *store.Currency `json:"currency"`
 }
 
 func CreatePC(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +74,7 @@ func UpdatePC(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
-	if body.Currency.IsNegative() {
+	if body.Currency != nil && body.Currency.IsNegative() {
 		http.Error(w, "currency values cannot be negative", http.StatusBadRequest)
 		return
 	}
@@ -96,13 +98,22 @@ func DeletePC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	if _, ok := requireOwnedPC(w, r, id, userID); !ok {
+	pc, ok := requireOwnedPC(w, r, id, userID)
+	if !ok {
+		return
+	}
+	// Read the companions first: DeletePC removes them, and their sheets
+	// must go with them.
+	companions, err := pcDB.GetCompanionsByParentID(id)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 	if err := pcDB.DeletePC(id); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
+	deleteSheetsFor(pc, companions)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -164,7 +175,8 @@ func CreateCompanion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name and max_hp required", http.StatusBadRequest)
 		return
 	}
-	companion, err := pcDB.CreateCompanion(parentID, userID, body.Name, body.MaxHP, body.SharesInitiative)
+	sharesInitiative := body.SharesInitiative != nil && *body.SharesInitiative
+	companion, err := pcDB.CreateCompanion(parentID, userID, body.Name, body.MaxHP, sharesInitiative)
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return

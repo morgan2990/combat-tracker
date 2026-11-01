@@ -66,13 +66,15 @@ func (f *fakePCStore) UpdatePC(id string, fields store.PCUpdateFields) error {
 	}
 	pc.Name = fields.Name
 	pc.MaxHP = fields.MaxHP
-	pc.SharesInitiative = fields.SharesInitiative
-	items := fields.Items
-	if items == nil {
-		items = []store.Item{}
+	if fields.SharesInitiative != nil {
+		pc.SharesInitiative = *fields.SharesInitiative
 	}
-	pc.Items = items
-	pc.Currency = fields.Currency
+	if fields.Items != nil {
+		pc.Items = fields.Items
+	}
+	if fields.Currency != nil {
+		pc.Currency = *fields.Currency
+	}
 	return nil
 }
 

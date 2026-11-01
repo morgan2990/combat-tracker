@@ -119,6 +119,11 @@ func Init() error {
 	if err := ensureCatalogItemIndex(ctx, itemsCol); err != nil {
 		return err
 	}
+	sheetsCol := db.Collection("character_sheets")
+	GlobalCharacterSheets = CharacterSheetStore{col: sheetsCol}
+	if err := ensureCharacterSheetIndex(ctx, sheetsCol); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -208,30 +213,37 @@ func (s *Store) CreatePC(ownerUserID, name string, maxHP int) (*PC, error) {
 	return &p, nil
 }
 
-// PCUpdateFields holds the editable fields for UpdatePC.
+// PCUpdateFields holds the editable fields for UpdatePC. Name and MaxHP are
+// always written; every other field is written only when set, so a caller that
+// doesn't know about a field can't erase it. Items uses nil for "omitted" — an
+// empty non-nil slice clears the list.
 type PCUpdateFields struct {
 	Name             string
 	MaxHP            int
-	SharesInitiative bool
+	SharesInitiative *bool
 	Items            []Item
-	Currency         Currency
+	Currency         *Currency
 }
 
-// UpdatePC overwrites the editable fields of an existing PC. Callers must verify ownership first.
+// UpdatePC overwrites name and max_hp, plus any optional field set in fields,
+// leaving the rest untouched. Callers must verify ownership first.
 func (s *Store) UpdatePC(id string, fields PCUpdateFields) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	items := fields.Items
-	if items == nil {
-		items = []Item{}
+	set := bson.M{
+		"name":   fields.Name,
+		"max_hp": fields.MaxHP,
 	}
-	_, err := s.col.UpdateOne(ctx, bson.M{"id": id}, bson.M{"$set": bson.M{
-		"name":              fields.Name,
-		"max_hp":            fields.MaxHP,
-		"shares_initiative": fields.SharesInitiative,
-		"items":             items,
-		"currency":          fields.Currency,
-	}})
+	if fields.SharesInitiative != nil {
+		set["shares_initiative"] = *fields.SharesInitiative
+	}
+	if fields.Items != nil {
+		set["items"] = fields.Items
+	}
+	if fields.Currency != nil {
+		set["currency"] = *fields.Currency
+	}
+	_, err := s.col.UpdateOne(ctx, bson.M{"id": id}, bson.M{"$set": set})
 	return err
 }
 
