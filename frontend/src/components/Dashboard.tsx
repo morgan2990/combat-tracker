@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { ImportSheetDialog } from '../sheet/ImportSheetDialog'
 import type { MeResponse, CustomMonster, Encounter, Party, PC, Currency } from '../types'
 import { InventoryPanel } from './InventoryPanel'
 import { CurrencyEditor } from './CurrencyEditor'
@@ -14,13 +15,17 @@ interface DashboardProps {
   onOpenRoomAsDM: (roomId: string) => void
   onJoinAsPlayer: (roomId: string, pcId: string) => void
   onLogout: () => void
+  /** Reloads `me` so a character created from a PDF shows up in the list. */
+  onRefresh?: () => void | Promise<void>
 }
 
-export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: DashboardProps) {
+export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout, onRefresh }: DashboardProps) {
   const tier = useLayoutTier()
+  const navigate = useNavigate()
   const [activePanel, setActivePanel] = useState<'dm' | 'player'>('dm')
 
   const [dmEdition, setDmEdition] = useState<'5e' | '5.5e'>('5e')
+  const [importingNew, setImportingNew] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
@@ -281,7 +286,10 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
           title="My Characters"
           count={pcs.length}
           headerAction={
-            <Link to="/characters/new" style={headerActionButton}>+ New Character</Link>
+            <span style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setImportingNew(true)} style={{ ...headerActionButton, cursor: 'pointer' }}>New character from PDF</button>
+              <Link to="/characters/new" style={headerActionButton}>+ New Character</Link>
+            </span>
           }
         >
           {pcs.length === 0 && (
@@ -297,6 +305,7 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
                 >
                   Inventory
                 </button>
+                <Link to={`/characters/${pc.id}/sheet`} style={{ fontSize: 12, color: color.info }}>Sheet</Link>
                 <Link to={`/characters/${pc.id}/edit`} style={{ fontSize: 12, color: color.info }}>Edit</Link>
                 <button onClick={() => handleDeleteCharacter(pc.id)} style={deleteBtn}>Delete</button>
               </span>
@@ -445,6 +454,19 @@ export function Dashboard({ me, onOpenRoomAsDM, onJoinAsPlayer, onLogout }: Dash
 
       {inventoryPcId && (
         <InventoryPanel pcId={inventoryPcId} onClose={() => setInventoryPcId(null)} />
+      )}
+
+      {importingNew && (
+        <ImportSheetDialog
+          title="New character from PDF"
+          uploadUrl="/api/sheet-imports"
+          onClose={() => setImportingNew(false)}
+          onConfirmed={async ({ pc_id }) => {
+            setImportingNew(false)
+            await onRefresh?.()
+            navigate(`/characters/${encodeURIComponent(pc_id)}/sheet`)
+          }}
+        />
       )}
     </div>
   )

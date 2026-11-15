@@ -38,11 +38,12 @@ func TestPCStore_UpdatePC(t *testing.T) {
 		t.Fatalf("CreatePC() error = %v", err)
 	}
 
+	shares := true
 	err = Global.UpdatePC(pc.ID, PCUpdateFields{
 		Name:             "Strider",
 		MaxHP:            50,
-		SharesInitiative: true,
-		Currency:         Currency{GP: 10},
+		SharesInitiative: &shares,
+		Currency:         &Currency{GP: 10},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePC() error = %v", err)
@@ -54,6 +55,62 @@ func TestPCStore_UpdatePC(t *testing.T) {
 	}
 	if got.Name != "Strider" || got.MaxHP != 50 || !got.SharesInitiative || got.Currency.GP != 10 {
 		t.Errorf("after UpdatePC(), got = %+v", got)
+	}
+}
+
+func TestPCStore_UpdatePC_OmittedFieldsKeepStoredValues(t *testing.T) {
+	pc, err := Global.CreatePC("owner1", "Aragorn", 45)
+	if err != nil {
+		t.Fatalf("CreatePC() error = %v", err)
+	}
+	shares := true
+	if err := Global.UpdatePC(pc.ID, PCUpdateFields{
+		Name:             "Aragorn",
+		MaxHP:            45,
+		SharesInitiative: &shares,
+		Items:            []Item{{Name: "Longsword", Quantity: 1}},
+		Currency:         &Currency{GP: 25},
+	}); err != nil {
+		t.Fatalf("UpdatePC() setup error = %v", err)
+	}
+
+	if err := Global.UpdatePC(pc.ID, PCUpdateFields{Name: "Strider", MaxHP: 50}); err != nil {
+		t.Fatalf("UpdatePC() error = %v", err)
+	}
+
+	got, err := Global.GetPCByID(pc.ID)
+	if err != nil {
+		t.Fatalf("GetPCByID() error = %v", err)
+	}
+	if got.Name != "Strider" || got.MaxHP != 50 {
+		t.Errorf("name/max_hp not updated: %+v", got)
+	}
+	if len(got.Items) != 1 || got.Items[0].Name != "Longsword" || got.Currency.GP != 25 || !got.SharesInitiative {
+		t.Errorf("omitted fields were not preserved: %+v", got)
+	}
+}
+
+func TestPCStore_UpdatePC_EmptyItemsClearsList(t *testing.T) {
+	pc, err := Global.CreatePC("owner1", "Aragorn", 45)
+	if err != nil {
+		t.Fatalf("CreatePC() error = %v", err)
+	}
+	if err := Global.UpdatePC(pc.ID, PCUpdateFields{
+		Name: "Aragorn", MaxHP: 45, Items: []Item{{Name: "Longsword", Quantity: 1}},
+	}); err != nil {
+		t.Fatalf("UpdatePC() setup error = %v", err)
+	}
+
+	if err := Global.UpdatePC(pc.ID, PCUpdateFields{Name: "Aragorn", MaxHP: 45, Items: []Item{}}); err != nil {
+		t.Fatalf("UpdatePC() error = %v", err)
+	}
+
+	got, err := Global.GetPCByID(pc.ID)
+	if err != nil {
+		t.Fatalf("GetPCByID() error = %v", err)
+	}
+	if len(got.Items) != 0 {
+		t.Errorf("Items = %+v, want empty", got.Items)
 	}
 }
 

@@ -164,6 +164,36 @@ describe('PlayerView', () => {
     expect(await screen.findByText("Aria's Inventory")).toBeInTheDocument()
   })
 
+  it('links my character sheet in a new tab so the room stays open', () => {
+    render(
+      <PlayerView
+        roomState={room({ entities: [entity({ id: 'e1', pc_id: 'pc1' })] })}
+        myEntityId="e1"
+        needsInitiative={false}
+        sendMessage={vi.fn()}
+        onBackToDashboard={vi.fn()}
+      />,
+    )
+
+    const link = screen.getByRole('link', { name: /Sheet/ })
+    expect(link).toHaveAttribute('href', '/characters/pc1/sheet')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+  })
+
+  it('does not link a sheet when my entity has no pc_id', () => {
+    render(
+      <PlayerView
+        roomState={room({ entities: [entity({ id: 'e1' })] })}
+        myEntityId="e1"
+        needsInitiative={false}
+        sendMessage={vi.fn()}
+        onBackToDashboard={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('link', { name: /Sheet/ })).not.toBeInTheDocument()
+  })
+
   it('does not show the Inventory button when my entity has no pc_id', () => {
     render(
       <PlayerView

@@ -276,6 +276,18 @@ export function PlayerView({ roomState, myEntityId, needsInitiative, sendMessage
                   🎒 Inventory
                 </button>
               )}
+              {myEntity.pc_id && (
+                // A new tab, so opening the sheet never disturbs the live room.
+                <a
+                  href={`/characters/${encodeURIComponent(myEntity.pc_id)}/sheet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open character sheet"
+                  style={{ padding: '4px 10px', fontSize: 12, textDecoration: 'none', background: '#1e1e30', color: color.textSecondary, border: `1px solid ${color.border}`, borderRadius: radius.sm }}
+                >
+                  📜 Sheet
+                </a>
+              )}
               <button
                 onClick={() => sendMessage({ type: 'refresh_from_profile' })}
                 title="Refresh max HP from saved profile"

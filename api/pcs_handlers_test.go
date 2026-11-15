@@ -123,9 +123,81 @@ func TestUpdatePC_Success(t *testing.T) {
 	}
 }
 
+func TestUpdatePC_OmittedFieldsKeepStoredValues(t *testing.T) {
+	fake := newFakePCStore(store.PC{
+		ID: "pc1", OwnerUserID: "owner1", Name: "Aragorn", MaxHP: 45,
+		SharesInitiative: true,
+		Items:            []store.Item{{Name: "Longsword", Quantity: 1}},
+		Currency:         store.Currency{GP: 25},
+	})
+	withFakePCStore(t, fake)
+	withFakeAuth(t, "owner1")
+
+	w := httptest.NewRecorder()
+	r := authedRequest(http.MethodPut, "/api/pcs/pc1", []byte(`{"name":"Strider","max_hp":50}`))
+	r.SetPathValue("id", "pc1")
+
+	UpdatePC(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	got, _ := fake.GetPCByID("pc1")
+	if got.Name != "Strider" || got.MaxHP != 50 {
+		t.Errorf("name/max_hp not updated: %+v", got)
+	}
+	if len(got.Items) != 1 || got.Currency.GP != 25 || !got.SharesInitiative {
+		t.Errorf("omitted fields were not preserved: %+v", got)
+	}
+}
+
+func TestUpdatePC_EmptyItemsClearsList(t *testing.T) {
+	fake := newFakePCStore(store.PC{
+		ID: "pc1", OwnerUserID: "owner1", Name: "Aragorn", MaxHP: 45,
+		Items: []store.Item{{Name: "Longsword", Quantity: 1}},
+	})
+	withFakePCStore(t, fake)
+	withFakeAuth(t, "owner1")
+
+	w := httptest.NewRecorder()
+	r := authedRequest(http.MethodPut, "/api/pcs/pc1", []byte(`{"name":"Aragorn","max_hp":45,"items":[]}`))
+	r.SetPathValue("id", "pc1")
+
+	UpdatePC(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	got, _ := fake.GetPCByID("pc1")
+	if len(got.Items) != 0 {
+		t.Errorf("Items = %+v, want empty", got.Items)
+	}
+}
+
+func TestUpdatePC_CompanionPersistsSharesInitiative(t *testing.T) {
+	fake := newFakePCStore(store.PC{ID: "c1", OwnerUserID: "owner1", Name: "Rex", Type: "companion", MaxHP: 8, ParentPCID: "pc1"})
+	withFakePCStore(t, fake)
+	withFakeAuth(t, "owner1")
+
+	w := httptest.NewRecorder()
+	r := authedRequest(http.MethodPut, "/api/pcs/c1", []byte(`{"name":"Rex","max_hp":8,"shares_initiative":true}`))
+	r.SetPathValue("id", "c1")
+
+	UpdatePC(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	got, _ := fake.GetPCByID("c1")
+	if !got.SharesInitiative {
+		t.Errorf("SharesInitiative = false, want true")
+	}
+}
+
 func TestDeletePC_Success(t *testing.T) {
 	fake := newFakePCStore(store.PC{ID: "pc1", OwnerUserID: "owner1", Name: "Aragorn", MaxHP: 45})
 	withFakePCStore(t, fake)
+	withFakeSheetStore(t, newFakeSheetStore())
 	withFakeAuth(t, "owner1")
 
 	w := httptest.NewRecorder()

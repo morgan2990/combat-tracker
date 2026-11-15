@@ -151,6 +151,29 @@ describe('EntityRow', () => {
     expect(screen.queryByTitle('View inventory')).not.toBeInTheDocument()
   })
 
+  it('links a party member\'s sheet in a new tab, without expanding the row', async () => {
+    const user = userEvent.setup()
+    renderRow({ type: 'pc', pc_id: 'pc1' }, { sheetHref: '/characters/pc1/sheet?room=R1' })
+
+    const link = screen.getByTitle('View character sheet')
+    expect(link).toHaveAttribute('href', '/characters/pc1/sheet?room=R1')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    await user.click(link)
+    expect(screen.queryByText('Initiative')).not.toBeInTheDocument() // row did not expand
+  })
+
+  it('shows no sheet link without an href, or for a non-PC entity', () => {
+    const { unmount } = render(
+      <EntityRow entity={entity({ type: 'pc', pc_id: 'pc1' })} isActive={false} sendMessage={vi.fn()} onOpenInventory={vi.fn()} />,
+    )
+    expect(screen.queryByTitle('View character sheet')).not.toBeInTheDocument()
+    unmount()
+
+    renderRow({ type: 'creature' }, { sheetHref: '/characters/x/sheet?room=R1' })
+    expect(screen.queryByTitle('View character sheet')).not.toBeInTheDocument()
+  })
+
   it('shows the statblock button only for a sourced creature with onStatblock, and calls it without expanding', async () => {
     const user = userEvent.setup()
     const onStatblock = vi.fn()
