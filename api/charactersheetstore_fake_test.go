@@ -126,3 +126,18 @@ func assignSection(sh *store.CharacterSheet, value any) {
 		sh.Creature = v
 	}
 }
+
+// ReplaceSheet mirrors the real compare-and-set: 0 creates, anything else must
+// match the stored revision.
+func (f *fakeSheetStore) ReplaceSheet(sh store.CharacterSheet, baseRevision int) (int, error) {
+	if f.forceErr != nil {
+		return 0, f.forceErr
+	}
+	cur, exists := f.byPC[sh.PCID]
+	if baseRevision == 0 && exists || baseRevision != 0 && (!exists || cur.Revision != baseRevision) {
+		return 0, store.ErrSheetConflict
+	}
+	sh.Revision = baseRevision + 1
+	f.byPC[sh.PCID] = &sh
+	return sh.Revision, nil
+}
