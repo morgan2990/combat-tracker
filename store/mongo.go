@@ -124,6 +124,11 @@ func Init() error {
 	if err := ensureCharacterSheetIndex(ctx, sheetsCol); err != nil {
 		return err
 	}
+	importsCol := db.Collection("character_sheet_imports")
+	GlobalSheetImports = CharacterSheetImportStore{col: importsCol}
+	if err := ensureSheetImportIndexes(ctx, importsCol); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCharacterSheet } from '../hooks/useCharacterSheet'
+import { ImportSheetDialog } from '../sheet/ImportSheetDialog'
 import { SectionCard } from '../sheet/SectionCard'
 import { CREATURE_SECTION, PC_SECTIONS } from '../sheet/sheetSchema'
 import { color } from '../theme'
@@ -15,6 +17,8 @@ export function CharacterSheetPage() {
   const roomId = params.get('room') ?? undefined
   const readOnly = Boolean(roomId)
   const { data, loading, error, reload } = useCharacterSheet(id, roomId)
+  const [importing, setImporting] = useState(false)
+  const canImport = !readOnly && data?.pc.type === 'pc'
 
   if (loading && !data) return <div style={pageStyle}>Loading…</div>
 
@@ -33,7 +37,24 @@ export function CharacterSheetPage() {
           </h1>
         )}
         {readOnly && <span style={{ fontSize: 12, color: color.textSecondary }}>Read-only · DM view</span>}
+        {canImport && (
+          <button
+            onClick={() => setImporting(true)}
+            style={{ marginLeft: 'auto', background: 'none', border: `1px solid ${color.border}`, color: color.info, borderRadius: 6, padding: '6px 10px', fontSize: 13, cursor: 'pointer' }}
+          >
+            Import from PDF
+          </button>
+        )}
       </div>
+
+      {importing && (
+        <ImportSheetDialog
+          title="Import from PDF"
+          uploadUrl={`/api/pcs/${encodeURIComponent(id)}/sheet/import`}
+          onClose={() => setImporting(false)}
+          onConfirmed={() => { setImporting(false); void reload() }}
+        />
+      )}
 
       {error && (
         <div role="alert" style={{ padding: '10px 12px', border: `1px solid ${color.danger}`, borderRadius: 6, color: color.danger, fontSize: 13 }}>

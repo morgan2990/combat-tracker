@@ -201,6 +201,7 @@ export default function App() {
                     onOpenRoomAsDM={roomId => connect(roomId, 'dm')}
                     onJoinAsPlayer={(roomId, pcId) => connect(roomId, 'player', pcId)}
                     onLogout={handleLogout}
+                    onRefresh={refreshMe}
                   />
                 </>
               )

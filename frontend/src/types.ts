@@ -219,3 +219,30 @@ export interface SheetBundle {
 export interface SheetResponse extends SheetBundle {
   companions: SheetBundle[]
 }
+
+// --- MPMB sheet import ---
+
+export interface ImportChange {
+  section: string
+  path: string
+  kind: 'added' | 'removed' | 'changed'
+  old?: unknown
+  new?: unknown
+}
+
+export interface ImportPreview {
+  import_id: string
+  new_character: boolean
+  name: string
+  max_hp: number
+  source: SheetSource
+  warnings: string[]
+  changes: ImportChange[]
+  companions: { removed: string[]; added: string[] }
+  inventory: { action: 'keep' | 'replace'; changed: boolean; old_items: number; new_items: number }
+}
+
+export interface ImportResult {
+  pc_id: string
+  revision: number
+}

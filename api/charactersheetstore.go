@@ -9,6 +9,7 @@ type sheetStore interface {
 	GetByPCID(pcID string) (*store.CharacterSheet, error)
 	GetByPCIDs(pcIDs []string) (map[string]store.CharacterSheet, error)
 	SaveSection(pcID, section string, revision int, value any) (int, error)
+	ReplaceSheet(sh store.CharacterSheet, baseRevision int) (int, error)
 	DeleteByPCIDs(pcIDs []string) error
 }
 
