@@ -64,4 +64,4 @@
 - [x] 10.2 In the running app, import Puck Adulto and Puck Niño into new characters, and compare each section against the PDF.
 - [x] 10.3 Reimport a sheet after a manual edit and confirm the diff shows the edit being lost. Confirm that a character with items keeps them after importing a sheet with no inventory.
 - [x] 10.4 Upload a flattened or non-MPMB PDF and confirm the message.
-- [ ] 10.5 After deploying, confirm that a real upload passes through the Cloudflare tunnel and that no pdfcpu directory appears in the container.
+- [x] 10.5 After deploying, confirm that a real upload passes through the Cloudflare tunnel and that no pdfcpu directory appears in the container.
