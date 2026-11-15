@@ -420,6 +420,37 @@ func (s *CharacterSheetStore) SaveSection(pcID, section string, revision int, va
 	return revision + 1, nil
 }
 
+// ReplaceSheet replaces pcID's whole sheet with sh — every section, and
+// source — and returns the new revision. Sections sh leaves unset are
+// cleared. It is a compare-and-set on baseRevision: 0 creates the sheet (and
+// conflicts if one exists), anything else must match the stored revision.
+// Unlike SaveSection, this is the one write that sets source.
+func (s *CharacterSheetStore) ReplaceSheet(sh CharacterSheet, baseRevision int) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	sh.SchemaVersion = SheetSchemaVersion
+	sh.Revision = baseRevision + 1
+	sh.UpdatedAt = time.Now().UTC()
+	if baseRevision == 0 {
+		_, err := s.col.InsertOne(ctx, sh)
+		if mongo.IsDuplicateKeyError(err) {
+			return 0, ErrSheetConflict
+		}
+		if err != nil {
+			return 0, err
+		}
+		return sh.Revision, nil
+	}
+	res, err := s.col.ReplaceOne(ctx, bson.M{"pc_id": sh.PCID, "revision": baseRevision}, sh)
+	if err != nil {
+		return 0, err
+	}
+	if res.MatchedCount == 0 {
+		return 0, ErrSheetConflict
+	}
+	return sh.Revision, nil
+}
+
 // DeleteByPCIDs deletes the sheets of every PC in pcIDs.
 func (s *CharacterSheetStore) DeleteByPCIDs(pcIDs []string) error {
 	if len(pcIDs) == 0 {
